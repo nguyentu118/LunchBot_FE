@@ -1,0 +1,162 @@
+/* AdminLayout.css */
+
+/* Reset body để full màn hình */
+body, html, #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.admin-layout {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar.open {
+    width: 260px;
+}
+
+.sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar-header {
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.sidebar-menu {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.menu-item {
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+    color: #212529 !important; /* Màu đen đậm */
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.menu-item:hover {
+    background-color: rgba(13, 110, 253, 0.08) !important;
+    color: #0d6efd !important;
+}
+
+.menu-item.active {
+    font-weight: 600;
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    color: #0d6efd !important;
+}
+
+.sidebar-footer {
+    min-height: 120px;
+}
+
+.upgrade-card {
+    transition: all 0.2s ease;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+/* Dark Mode */
+.admin-layout.dark-mode .content-area {
+    background-color: #1a1d21;
+}
+
+.admin-layout.dark-mode .sidebar {
+    background-color: #2d3139 !important;
+    border-color: #3d4149 !important;
+}
+
+.admin-layout.dark-mode .menu-item {
+    color: #e9ecef !important;
+}
+
+.admin-layout.dark-mode .menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+
+.admin-layout.dark-mode .menu-item.active {
+    background-color: rgba(13, 110, 253, 0.2) !important;
+    color: #6ea8fe !important;
+}
+
+/* Avatar */
+.avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+}
+
+/* Search Input */
+.search-input .form-control {
+    border-left: none;
+    border-right: none;
+}
+
+.search-input .form-control:focus {
+    box-shadow: none;
+    border-color: #ced4da;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar.open {
+        width: 260px;
+        position: absolute;
+        z-index: 1000;
+        height: 100vh;
+    }
+
+    .sidebar.collapsed {
+        width: 0;
+        overflow: hidden;
+    }
+}
