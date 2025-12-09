@@ -1,46 +1,98 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { ROUTES } from './route.constants';
-import { AdminLayout } from '../components/layout/AdminLayout';
-import { MerchantListPage } from '../features/admin/merchants/pages/MerchantListPage';
-import { MerchantDetailPage } from '../features/admin/merchants/pages/MerchantDetailPage';
-import { DashboardPage } from '../features/admin/merchants/pages/DashboardPage.tsx';
+import {createBrowserRouter, RouterProvider} from 'react-router-dom';
+import {ROUTES} from './route.constants';
+import {AdminLayout} from '../components/layout/AdminLayout';
+import {MerchantListPage} from '../features/admin/merchants/pages/MerchantListPage';
+import {MerchantDetailPage} from '../features/admin/merchants/pages/MerchantDetailPage';
+import {DashboardPage} from '../features/admin/merchants/pages/DashboardPage';
+import LoginForm from "../features/auth/LoginForm.tsx";
+import RegistrationForm from "../features/auth/RegistrationForm.tsx";
+import MerchantUpdateForm from "../features/merchants/MerchantUpdateForm.tsx";
+import UserUpdateForm from "../features/user/UserUpdateForm.tsx";
+import HomePage from "../components/layout/Homepage.tsx";
+
 
 const router = createBrowserRouter([
+    // ⭐ AUTH ROUTES (Public - không cần layout)
+
+    {
+        path: '/login',
+        element: <LoginForm/>
+    },
+    {
+        path: '/register',
+        element: <RegistrationForm/>
+    },
+    {
+        path: 'merchant/update',
+        element: <MerchantUpdateForm/>,
+    },
+    {
+        path: 'user/update',
+        element: <UserUpdateForm/>,
+    },
+
+
+    // ⭐ ADMIN ROUTES (Protected - có AdminLayout)
     {
         path: ROUTES.ADMIN.DASHBOARD, // '/admin'
-        element: <AdminLayout />,
+        element: <AdminLayout/>,
         children: [
-            // ⭐ THÊM INDEX ROUTE CHO DASHBOARD
             {
-                index: true, // Đường dẫn: /admin (trang mặc định)
-                element: <DashboardPage />,
+                index: true, // Đường dẫn: /admin
+                element: <DashboardPage/>,
             },
             {
                 path: 'merchants', // Đường dẫn: /admin/merchants
-                element: <MerchantListPage />,
+                element: <MerchantListPage/>,
             },
             {
                 path: 'merchants/:merchantId', // Đường dẫn: /admin/merchants/123
-                element: <MerchantDetailPage />,
+                element: <MerchantDetailPage/>,
             },
-            // ⭐ TÙY CHỌN: Thêm các route khác nếu cần
-            // {
-            //     path: 'users',
-            //     element: <UserListPage />,
-            // },
-            // {
-            //     path: 'drivers',
-            //     element: <DriverListPage />,
-            // },
-            // {
-            //     path: 'orders',
-            //     element: <OrderListPage />,
-            // },
+            // Các route admin khác
+            {
+                path: 'users',
+                element: <div>User Management Page</div>,
+            },
+            {
+                path: 'drivers',
+                element: <div>Driver Management Page</div>,
+            },
+            {
+                path: 'orders',
+                element: <div>Order Management Page</div>,
+            },
+            {
+                path: 'reports',
+                element: <div>Reports Page</div>,
+            },
+            {
+                path: 'settings',
+                element: <div>Settings Page</div>,
+            },
         ],
+    },
+
+    // ⭐ ROOT ROUTE - Redirect hoặc Landing Page
+    {
+        path: '/',
+        element: <HomePage/>,
+    },
+
+    // ⭐ 404 NOT FOUND
+    {
+        path: '*',
+        element: (
+            <div className="d-flex flex-column align-items-center justify-content-center" style={{height: '100vh'}}>
+                <h1 className="display-1 fw-bold text-primary">404</h1>
+                <p className="fs-4 text-muted mb-4">Trang không tồn tại</p>
+                <a href="/admin" className="btn btn-primary">Quay về Dashboard</a>
+            </div>
+        ),
     },
 ]);
 
 export const AppRouter: React.FC = () => {
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 };
