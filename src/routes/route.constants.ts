@@ -11,4 +11,18 @@ export const ROUTES = {
         REPORTS: '/admin/reports',
         SETTINGS: '/admin/settings'
     },
+
+    AUTH: {
+        LOGIN: '/login',
+        REGISTER_USER: '/register',
+        REGISTER_MERCHANT: '/register-merchant',
+    },
+
+    MERCHANTS: {
+        PROFILE_UPDATE: 'merchant/update',
+    },
+
+    USER: {
+        PROFILE: 'user/update',
+    }
 };
