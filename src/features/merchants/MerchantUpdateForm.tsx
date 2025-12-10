@@ -151,9 +151,6 @@ const MerchantUpdateForm: React.FC = () => {
 
             toast.success('Cập nhật thông tin thành công!');
 
-            setTimeout(() => {
-                navigate('/'); // Chuyển hướng về trang chủ
-            }, 1500);
         } catch (err) {
             console.error('Lỗi khi cập nhật:', err);
             let errorMsg: string = 'Có lỗi xảy ra khi cập nhật thông tin';
