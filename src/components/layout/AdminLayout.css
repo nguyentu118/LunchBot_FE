@@ -1,13 +1,6 @@
 /* AdminLayout.css */
 
-/* Reset body để full màn hình */
-body, html, #root {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
+/* ⭐ CHỈ ÁP DỤNG CHO ADMIN LAYOUT - KHÔNG ẢNH HƯỞNG HOMEPAGE */
 
 .admin-layout {
     display: flex;
@@ -98,10 +91,17 @@ body, html, #root {
     overflow: hidden;
 }
 
+/* Content Area - ⭐ QUAN TRỌNG: Cho phép scroll */
 .content-area {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     background-color: #f8f9fa;
+    height: 100%;
+}
+
+.content-area > div {
+    max-width: 100%;
 }
 
 /* Dark Mode */
@@ -159,4 +159,22 @@ body, html, #root {
         width: 0;
         overflow: hidden;
     }
+}
+
+/* ⭐ CUSTOM SCROLLBAR CHO CONTENT AREA */
+.content-area::-webkit-scrollbar {
+    width: 8px;
+}
+
+.content-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.content-area::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
