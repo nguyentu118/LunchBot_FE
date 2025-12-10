@@ -1,50 +1,62 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { ROUTES } from './route.constants';
-import { AdminLayout } from '../components/layout/AdminLayout';
-import { MerchantListPage } from '../features/admin/merchants/pages/MerchantListPage';
-import { MerchantDetailPage } from '../features/admin/merchants/pages/MerchantDetailPage';
-import { DashboardPage } from '../features/admin/merchants/pages/DashboardPage';
-import Homepage from "../components/common/Homepage.tsx";
+import {createBrowserRouter, RouterProvider} from 'react-router-dom';
+import {ROUTES} from './route.constants';
+import {AdminLayout} from '../components/layout/AdminLayout';
+import {MerchantListPage} from '../features/admin/merchants/pages/MerchantListPage';
+import {MerchantDetailPage} from '../features/admin/merchants/pages/MerchantDetailPage';
+import {DashboardPage} from '../features/admin/merchants/pages/DashboardPage';
+import LoginForm from "../features/auth/LoginForm.tsx";
+import RegistrationForm from "../features/auth/RegistrationForm.tsx";
+import MerchantUpdateForm from "../features/merchants/MerchantUpdateForm.tsx";
+import UserUpdateForm from "../features/user/UserUpdateForm.tsx";
+import HomePage from "../components/common/Homepage.tsx";
+import MerchantRegistrationForm from "../features/merchants/MerchantRegistrationForm.tsx";
+import ProtectedRoute from "./ProtectedRoute.tsx";
 
-// ⭐ IMPORT LOGIN FORM - Thêm đường dẫn đúng của bạn
-// import { LoginForm } from '../features/auth/LoginForm';
-// hoặc
-// import { LoginForm } from '../components/auth/LoginForm';
 
 const router = createBrowserRouter([
     // ⭐ AUTH ROUTES (Public - không cần layout)
+
     {
         path: '/login',
-        element: <div>Login Page - Chờ import LoginForm</div>, // Thay bằng <LoginForm />
+        element: <LoginForm/>
     },
-    // Có thể thêm các auth routes khác
     {
         path: '/register',
-        element: <div>Register Page</div>,
+        element: <RegistrationForm/>
     },
     {
-        path: '/forgot-password',
-        element: <div>Forgot Password Page</div>,
+        path: 'merchant/update',
+        element: <MerchantUpdateForm/>,
+    },
+    {
+        path: 'user/update',
+        element: <UserUpdateForm/>,
+    },
+    {
+        path: '/register-merchant',
+        element: <MerchantRegistrationForm/>,
     },
 
 
     // ⭐ ADMIN ROUTES (Protected - có AdminLayout)
     {
         path: ROUTES.ADMIN.DASHBOARD, // '/admin'
-        element: <AdminLayout />,
+        element: <ProtectedRoute requiredRole="ADMIN">
+            <AdminLayout />
+            </ProtectedRoute>,
         children: [
             {
                 index: true, // Đường dẫn: /admin
-                element: <DashboardPage />,
+                element: <DashboardPage/>,
             },
             {
                 path: 'merchants', // Đường dẫn: /admin/merchants
-                element: <MerchantListPage />,
+                element: <MerchantListPage/>,
             },
             {
                 path: 'merchants/:merchantId', // Đường dẫn: /admin/merchants/123
-                element: <MerchantDetailPage />,
+                element: <MerchantDetailPage/>,
             },
             // Các route admin khác
             {
@@ -73,14 +85,14 @@ const router = createBrowserRouter([
     // ⭐ ROOT ROUTE - Redirect hoặc Landing Page
     {
         path: '/',
-        element: <Homepage/>,
+        element: <HomePage/>,
     },
 
     // ⭐ 404 NOT FOUND
     {
         path: '*',
         element: (
-            <div className="d-flex flex-column align-items-center justify-content-center" style={{ height: '100vh' }}>
+            <div className="d-flex flex-column align-items-center justify-content-center" style={{height: '100vh'}}>
                 <h1 className="display-1 fw-bold text-primary">404</h1>
                 <p className="fs-4 text-muted mb-4">Trang không tồn tại</p>
                 <a href="/admin" className="btn btn-primary">Quay về Dashboard</a>
@@ -90,5 +102,5 @@ const router = createBrowserRouter([
 ]);
 
 export const AppRouter: React.FC = () => {
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 };

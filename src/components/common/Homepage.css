@@ -1,0 +1,31 @@
+/* Trong file Homepage.css */
+
+/* ⭐ THIẾT LẬP GỐC: Bắt buộc HTML, BODY, #ROOT chiếm 100% chiều cao */
+html, body, #root {
+    /* Đảm bảo chiếm toàn bộ chiều cao màn hình, cho phép nội dung dài hơn */
+    min-height: 100vh;
+    height: 100%; /* Rất quan trọng để các element con (vd: #root) kế thừa */
+    margin: 0;
+}
+
+/* ⭐ CLASS CHO THẺ BỌC NGOÀI CÙNG CỦA COMPONENT HOMEPAGE */
+.homepage-wrapper {
+    /* Quan trọng: Bỏ 'height: 100vh;' để nó tự động mở rộng khi nội dung dài hơn 100vh */
+    min-height: 100vh;
+    /* Loại bỏ overflow-y: auto; nếu bạn muốn thanh cuộn của trình duyệt hiển thị */
+    /* overflow-y: auto; */
+}
+
+/* --- Tông màu RGB(255, 94, 98) cho các class custom --- */
+.text-pink-custom {
+    color: #FF5E62 !important;
+}
+
+.bg-pink-custom {
+    background-color: #FF5E62 !important;
+}
+
+/* Thêm màu cho Navbar/Hero nếu bạn muốn dùng class thay vì style inline */
+.bg-lunchbot-primary {
+    background-color: #FF5E62 !important;
+}
