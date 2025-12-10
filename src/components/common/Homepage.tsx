@@ -5,6 +5,7 @@ import {
 } from 'react-bootstrap';
 import './Homepage.css';
 import { Heart, Star, Clock, MapPin, Search, ChevronLeft, ChevronRight, Phone, Mail, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
+import {Link} from "react-router-dom";
 
 // --- Interface cho dữ liệu ---
 
@@ -152,7 +153,9 @@ const HomePage: React.FC = () => {
                                     <Nav.Link href="#" className="text-white mx-1">🎁 Ưu đãi</Nav.Link>
                                     <Nav.Link href="#" className="text-white mx-1">🍽️ Nhà hàng</Nav.Link>
                                     <Button variant="light" className="ms-md-3 mt-2 mt-md-0 fw-bold">
-                                        📝 Đăng nhập
+                                        <Link to="/login" className="text-decoration-none text-dark">
+                                            📝 Đăng nhập
+                                        </Link>
                                     </Button>
                                 </Nav>
                             </Navbar.Collapse>
