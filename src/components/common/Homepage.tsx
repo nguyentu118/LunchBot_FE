@@ -36,8 +36,6 @@ import {Link} from "react-router-dom";
 import UserDropdown, {UserRole} from './UserDropdown';
 
 
-// --- Interface Định nghĩa kiểu dữ liệu ---
-
 interface Category {
     name: string;
     image: string;
@@ -79,10 +77,6 @@ const formatCurrency = (value: number | undefined | null): string => {
 };
 
 
-// ----------------------------------------------------------------
-// ⭐ COMPONENT CHÍNH: HomePage ⭐
-// ----------------------------------------------------------------
-
 const HomePage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [location, setLocation] = useState<string>('');
@@ -97,9 +91,6 @@ const HomePage: React.FC = () => {
             // Lấy token và role từ localStorage
             const token = localStorage.getItem('token');
             const storedRole = localStorage.getItem('userRole');
-
-            console.log('Stored token:', token);
-            console.log('Stored role:', storedRole);
 
             if (token && storedRole) {
                 setIsLoggedIn(true);
@@ -411,7 +402,7 @@ const HomePage: React.FC = () => {
                                 </Alert>
                                 <h1 className="display-5 fw-bold mb-4">
                                     Khám phá món ăn<br/>ngon nhất tại<br/>
-                                    <span className="text-warning">Hà Nội 🇻🇳</span>
+                                    <span className="text-warning">Hà Nội</span>
                                 </h1>
                                 <p className="lead mb-4 text-white-75">
                                     Hàng nghìn nhà hàng, quán ăn với ưu đãi hấp dẫn

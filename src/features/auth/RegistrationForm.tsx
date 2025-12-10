@@ -196,7 +196,7 @@ const RegistrationForm: React.FC = () => {
                             <UserPlus size={30} className="text-white" />
                         </div>
                         <h4 className="fw-bold mb-1">Đăng ký Tài khoản</h4> {/* Giảm h3 xuống h4 */}
-                        <p className="text-muted small mb-0">Tham gia hệ thống Food Delivery</p> {/* Sử dụng small */}
+                        <p className="text-muted small mb-0">Tham gia hệ thống LunchBot</p> {/* Sử dụng small */}
                     </div>
 
                     {/* Error Alert (Hiện lỗi chi tiết nếu có) */}
