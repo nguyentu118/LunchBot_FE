@@ -140,9 +140,6 @@ const UserUpdateForm: React.FC = () => {
             };
             await axiosInstance.put('/users/profile', requestBody);
             toast.success('Cập nhật hồ sơ cá nhân thành công!');
-            setTimeout(() => {
-                navigate('/');
-            }, 1000);
         } catch (err) {
             console.error('Lỗi khi cập nhật:', (err as AxiosError)?.response || err);
             const axiosError = err as AxiosError;
@@ -154,6 +151,10 @@ const UserUpdateForm: React.FC = () => {
         } finally {
             setSubmitLoading(false);
         }
+    };
+
+    const handleCancel = (): void => {
+        navigate('/');
     };
 
     // --- STYLE ĐÃ TỐI ƯU HÓA CHIỀU CAO ---
@@ -318,6 +319,17 @@ const UserUpdateForm: React.FC = () => {
                                     Đang lưu...
                                 </>
                             ) : "Lưu thay đổi"}
+                        </Button>
+
+                        <Button
+                            type="button"
+                            onClick={handleCancel}
+                            variant="light"
+                            className="w-100"
+                            style={{ borderRadius: '0.5rem' }}
+                            disabled={loading}
+                        >
+                            Hủy
                         </Button>
 
                     </Form>

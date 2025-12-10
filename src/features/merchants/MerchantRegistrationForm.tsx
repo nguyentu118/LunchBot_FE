@@ -1,11 +1,11 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axiosInstance from '../../config/axiosConfig'; // Đảm bảo đường dẫn này đúng
+import axiosInstance from '../../config/axiosConfig';
 import toast from 'react-hot-toast';
 
 // Import components từ React-Bootstrap và Icons
 import { Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
-import { Store, Mail, Lock, Phone, MapPin } from 'lucide-react';
+import { Store, Mail, Lock, Phone, MapPin, AlertCircle } from 'lucide-react';
 
 // --- 1. INTERFACE DEFINITION ---
 
@@ -30,7 +30,6 @@ interface IMerchantFormErrors {
 // --- 2. HELPER FUNCTION ---
 
 const getCurrentUserEmail = (): string | null => {
-    // Luôn luôn dùng hằng số hoặc enum cho key để tránh lỗi chính tả
     const email: string | null = ('');
     return email || null;
 };
@@ -42,10 +41,9 @@ const MerchantRegistrationForm: React.FC = () => {
     const userEmail: string | null = getCurrentUserEmail();
     const isUserLoggedIn: boolean = !!userEmail;
 
-    // Khởi tạo state với email đã đăng nhập nếu có
     const [formData, setFormData] = useState<IMerchantFormData>(() => ({
         restaurantName: '',
-        email: userEmail || '', // ✅ Nếu chưa đăng nhập: email là '', cho phép nhập.
+        email: userEmail || '',
         phone: '',
         address: '',
         password: '',
@@ -60,35 +58,25 @@ const MerchantRegistrationForm: React.FC = () => {
     const EMAIL_REGEX: RegExp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     const PHONE_REGEX: RegExp = /^(0|\+84)\d{9,10}$/;
 
-    // Cập nhật email khi userEmail thay đổi (chủ yếu khi component mount)
     useEffect(() => {
         if (userEmail) {
-            // ✅ Đảm bảo email luôn là email của người dùng đã đăng nhập
             setFormData(prevData => ({ ...prevData, email: userEmail }));
         }
     }, [userEmail]);
 
-    // Handle Change
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prevData => ({ ...prevData, [name]: value }));
-        // Xóa lỗi cho trường hiện tại và lỗi API
         setErrors(prevErrors => ({ ...prevErrors, [name]: undefined }));
         setApiError(null);
     };
 
-    // Validate Logic
     const validateForm = (): boolean => {
-        const { email, password, confirmPassword, phone, address, restaurantName } = formData;
+        const { email, password, confirmPassword, phone, address } = formData;
         let formErrors: IMerchantFormErrors = {};
         let isValid: boolean = true;
 
-        if (!restaurantName.trim()) {
-            formErrors.restaurantName = 'Tên nhà hàng không được để trống.';
-            isValid = false;
-        }
-
-        // ✅ LOGIC XỬ LÝ EMAIL: CHỈ VALIDATE NẾU CHƯA ĐĂNG NHẬP
+        // Validate Email (chỉ khi chưa đăng nhập)
         if (!isUserLoggedIn) {
             if (!email) {
                 formErrors.email = 'Email không được để trống.';
@@ -99,6 +87,7 @@ const MerchantRegistrationForm: React.FC = () => {
             }
         }
 
+        // Validate Phone
         if (!phone.trim()) {
             formErrors.phone = 'Số điện thoại không được để trống.';
             isValid = false;
@@ -107,11 +96,13 @@ const MerchantRegistrationForm: React.FC = () => {
             isValid = false;
         }
 
+        // Validate Address
         if (!address.trim()) {
             formErrors.address = 'Địa chỉ không được để trống.';
             isValid = false;
         }
 
+        // Validate Password
         if (!password) {
             formErrors.password = 'Mật khẩu không được để trống.';
             isValid = false;
@@ -120,6 +111,7 @@ const MerchantRegistrationForm: React.FC = () => {
             isValid = false;
         }
 
+        // Validate Confirm Password
         if (!confirmPassword) {
             formErrors.confirmPassword = 'Xác nhận mật khẩu không được để trống.';
             isValid = false;
@@ -132,7 +124,6 @@ const MerchantRegistrationForm: React.FC = () => {
         return isValid;
     };
 
-    // Handle Submit
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -145,7 +136,6 @@ const MerchantRegistrationForm: React.FC = () => {
         setApiError(null);
 
         try {
-            // Tạo request body chỉ với các trường cần thiết
             const requestBody = {
                 restaurantName: formData.restaurantName,
                 email: formData.email,
@@ -177,12 +167,46 @@ const MerchantRegistrationForm: React.FC = () => {
 
         } catch (error: any) {
             let errorMsg: string = 'Đăng ký thất bại do lỗi hệ thống.';
+            let fieldError: keyof IMerchantFormErrors | null = null;
 
             if (error.response) {
-                // Lấy thông báo lỗi cụ thể từ response
-                errorMsg = error.response.data?.message
-                    || error.response.data
-                    || `Lỗi ${error.response.status}: ${error.response.statusText}`;
+                const responseData = error.response.data;
+                const message = responseData?.message || responseData;
+
+                // ✅ XỬ LÝ CÁC LỖI CỤ THỂ
+                if (typeof message === 'string') {
+                    const lowerMsg = message.toLowerCase();
+
+                    // Kiểm tra lỗi phone trùng
+                    if (lowerMsg.includes('phone') ||
+                        lowerMsg.includes('số điện thoại') ||
+                        lowerMsg.includes('điện thoại') ||
+                        lowerMsg.includes('sdt') ||
+                        lowerMsg.includes('duplicate') && lowerMsg.includes('phone')) {
+                        errorMsg = 'Số điện thoại này đã được đăng ký. Vui lòng sử dụng số khác.';
+                        fieldError = 'phone';
+                    }
+                    // Kiểm tra lỗi email trùng
+                    else if (lowerMsg.includes('email') ||
+                        lowerMsg.includes('e-mail') ||
+                        lowerMsg.includes('duplicate') && lowerMsg.includes('email')) {
+                        errorMsg = 'Email này đã tồn tại trong hệ thống. Vui lòng sử dụng email khác.';
+                        fieldError = 'email';
+                    }
+                    else {
+                        errorMsg = message;
+                    }
+                } else {
+                    errorMsg = `Lỗi ${error.response.status}: Không thể đăng ký.`;
+                }
+
+                // ✅ SET LỖI VÀO ĐÚNG FIELD
+                if (fieldError) {
+                    setErrors(prevErrors => ({
+                        ...prevErrors,
+                        [fieldError]: errorMsg
+                    }));
+                }
             }
 
             setApiError(errorMsg);
@@ -230,10 +254,16 @@ const MerchantRegistrationForm: React.FC = () => {
                         <p className="text-muted small mb-0">Hoàn tất để trở thành Chủ nhà hàng</p>
                     </div>
 
-                    {/* API Error Alert */}
-                    {apiError && (
-                        <Alert variant="danger" className="mb-4" dismissible onClose={() => setApiError(null)}>
-                            {apiError}
+                    {/* API Error Alert - Chỉ hiển thị khi KHÔNG có field error */}
+                    {apiError && !Object.values(errors).some(Boolean) && (
+                        <Alert
+                            variant="danger"
+                            className="mb-4 d-flex align-items-start"
+                            dismissible
+                            onClose={() => setApiError(null)}
+                        >
+                            <AlertCircle size={20} className="me-2 mt-1 flex-shrink-0" />
+                            <div className="flex-grow-1">{apiError}</div>
                         </Alert>
                     )}
 
@@ -242,7 +272,10 @@ const MerchantRegistrationForm: React.FC = () => {
 
                         {/* Tên Nhà hàng */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold"><Store size={16} className="me-2" />Tên Nhà hàng (*)</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <Store size={16} className="me-2" />
+                                Tên Nhà hàng
+                            </Form.Label>
                             <Form.Control
                                 type="text"
                                 name="restaurantName"
@@ -252,30 +285,43 @@ const MerchantRegistrationForm: React.FC = () => {
                                 disabled={loading}
                                 isInvalid={!!errors.restaurantName}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.restaurantName}</Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.restaurantName}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Email */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold"><Mail size={16} className="me-2" />Email {isUserLoggedIn ? '' : '(*)'}</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <Mail size={16} className="me-2" />
+                                Email {isUserLoggedIn ? '' : '(*)'}
+                            </Form.Label>
                             <Form.Control
                                 type="email"
                                 name="email"
                                 placeholder="email@nhahang.com"
                                 value={formData.email}
                                 onChange={handleChange}
-                                // ✅ LOGIC: Khóa nếu đã đăng nhập (isUserLoggedIn)
                                 disabled={loading || isUserLoggedIn}
                                 className={isUserLoggedIn ? 'bg-light text-muted' : ''}
                                 isInvalid={!!errors.email}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.email}</Form.Control.Feedback>
-                            {isUserLoggedIn && (<Form.Text muted>Email tài khoản hiện tại được sử dụng.</Form.Text>)}
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.email}
+                            </Form.Control.Feedback>
+                            {isUserLoggedIn && (
+                                <Form.Text muted>Email tài khoản hiện tại được sử dụng.</Form.Text>
+                            )}
                         </Form.Group>
 
                         {/* Số điện thoại */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold"><Phone size={16} className="me-2" />Số điện thoại (*)</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <Phone size={16} className="me-2" />
+                                Số điện thoại (*)
+                            </Form.Label>
                             <Form.Control
                                 type="tel"
                                 name="phone"
@@ -285,12 +331,18 @@ const MerchantRegistrationForm: React.FC = () => {
                                 disabled={loading}
                                 isInvalid={!!errors.phone}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.phone}</Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.phone}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Địa chỉ */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold"><MapPin size={16} className="me-2" />Địa chỉ (*)</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <MapPin size={16} className="me-2" />
+                                Địa chỉ (*)
+                            </Form.Label>
                             <Form.Control
                                 type="text"
                                 name="address"
@@ -300,12 +352,18 @@ const MerchantRegistrationForm: React.FC = () => {
                                 disabled={loading}
                                 isInvalid={!!errors.address}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.address}</Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.address}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Mật khẩu */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold"><Lock size={16} className="me-2" />Mật khẩu (*)</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <Lock size={16} className="me-2" />
+                                Mật khẩu (*)
+                            </Form.Label>
                             <Form.Control
                                 type="password"
                                 name="password"
@@ -315,13 +373,19 @@ const MerchantRegistrationForm: React.FC = () => {
                                 disabled={loading}
                                 isInvalid={!!errors.password}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.password}
+                            </Form.Control.Feedback>
                             <Form.Text muted>Tối thiểu 6 ký tự.</Form.Text>
                         </Form.Group>
 
                         {/* Xác nhận Mật khẩu */}
                         <Form.Group className="mb-4">
-                            <Form.Label className="fw-semibold"><Lock size={16} className="me-2" />Xác nhận Mật khẩu (*)</Form.Label>
+                            <Form.Label className="fw-semibold">
+                                <Lock size={16} className="me-2" />
+                                Xác nhận Mật khẩu (*)
+                            </Form.Label>
                             <Form.Control
                                 type="password"
                                 name="confirmPassword"
@@ -331,7 +395,10 @@ const MerchantRegistrationForm: React.FC = () => {
                                 disabled={loading}
                                 isInvalid={!!errors.confirmPassword}
                             />
-                            <Form.Control.Feedback type="invalid">{errors.confirmPassword}</Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">
+                                <AlertCircle size={14} className="me-1" />
+                                {errors.confirmPassword}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Nút Submit */}

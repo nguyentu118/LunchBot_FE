@@ -52,12 +52,9 @@ const RegistrationForm: React.FC = () => {
     const validateForm = (): boolean => {
         let formErrors: IFormErrors = {};
         let isValid: boolean = true;
-        const { name, email, password, confirmPassword } = formData;
+        const { email, password, confirmPassword } = formData;
 
-        if (!name) {
-            formErrors.name = 'Tên không được để trống.';
-            isValid = false;
-        }
+
 
         if (!email) {
             formErrors.email = 'Email không được để trống.';
@@ -210,13 +207,12 @@ const RegistrationForm: React.FC = () => {
                     <Form onSubmit={handleSubmit}>
                         {/* Tên - mb-2 để giảm khoảng cách */}
                         <Form.Group className="mb-2">
-                            <Form.Label className="fw-semibold small mb-0">Tên (*)</Form.Label>
+                            <Form.Label className="fw-semibold small mb-0">Tên</Form.Label>
                             <Form.Control
                                 type="text"
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
                                 size="sm" // Quan trọng: Giảm chiều cao input
                                 style={{ borderRadius: '0.5rem' }}
