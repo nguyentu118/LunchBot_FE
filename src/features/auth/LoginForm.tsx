@@ -117,16 +117,24 @@ const LoginForm: React.FC = () => {
 
             // ⭐ LƯU THÔNG TIN ĐĂNG NHẬP VÀO LOCAL STORAGE ⭐
             if (token && email && role) {
+
                 localStorage.setItem('token', token);
                 localStorage.setItem('userEmail', email);
-                // Loại bỏ tiền tố ROLE_ nếu có (ví dụ: 'ROLE_USER' -> 'USER')
+
+                const userRole = role.replace('ROLE_', '');
+                localStorage.setItem('userRole', userRole);
+
                 localStorage.setItem('userRole', role.replace('ROLE_', ''));
 
                 // ⭐ SỬ DỤNG TOAST CHO THÀNH CÔNG ⭐
-                toast.success(`Chào mừng ${email}! Đăng nhập thành công.`);
+                toast.success(`Đăng nhập thành công.`);
+                if (userRole === "ADMIN") {
+                    // Nếu là ADMIN, chuyển đến trang Admin Dashboard
+                    navigate(ROUTES.ADMIN.DASHBOARD);
+                } else {
+                    navigate(ROUTES.HOME);
+                }
 
-                // Chuyển hướng
-                navigate(ROUTES.HOME); // Chuyển về trang chủ
             } else {
                 throw new Error('Thiếu thông tin đăng nhập.');
             }
