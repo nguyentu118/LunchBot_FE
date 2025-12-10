@@ -49,7 +49,7 @@ export const MerchantListPage: React.FC = () => {
 
     const [currentPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-    const [pageSize] = useState(10);
+    const [pageSize] = useState(5);
 
     const [statusFilter, setStatusFilter] = useState<MerchantStatusEnum | 'ALL'>('ALL');
     const [searchKeyword, setSearchKeyword] = useState('');
@@ -314,7 +314,7 @@ export const MerchantListPage: React.FC = () => {
                                 <thead className="bg-light">
                                 <tr>
                                     <th className="text-muted small fw-semibold" style={{ width: '60px' }}>ID</th>
-                                    <th className="text-muted small fw-semibold" style={{ minWidth: '200px' }}>Nhà hàng</th>
+                                    <th className="text-muted small fw-semibold" style={{ minWidth: '200px' }}>Tên Nhà hàng</th>
                                     <th className="text-muted small fw-semibold" style={{ width: '120px' }}>Trạng thái</th>
                                     <th className="text-muted small fw-semibold text-center" style={{ width: '80px' }}>Món ăn</th>
                                     <th className="text-muted small fw-semibold text-center" style={{ width: '90px' }}>Đơn hàng</th>
