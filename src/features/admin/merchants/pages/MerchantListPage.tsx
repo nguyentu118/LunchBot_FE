@@ -105,20 +105,19 @@ export const MerchantListPage: React.FC = () => {
     };
 
     const renderMerchantRow = (merchant: AdminMerchantListResponse) => (
-        <tr key={merchant.id} style={{ transition: 'background-color 0.2s' }}>
-            <td className="fw-semibold">{merchant.id}</td>
-            <td>
+        <tr key={merchant.id}>
+            <td className="col-restaurant">
                 <div className="d-flex align-items-center gap-2">
                     <div className="p-2 bg-primary bg-opacity-10 rounded">
                         <Store size={20} className="text-primary" />
                     </div>
-                    <div>
-                        <div className="fw-semibold text-dark">{merchant.restaurantName}</div>
-                        <small className="text-muted">{merchant.ownerName}</small>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="fw-semibold text-dark" style={{ fontSize: '0.9rem' }}>{merchant.restaurantName}</div>
+                        <small className="text-muted" style={{ fontSize: '0.8rem' }}>{merchant.ownerName}</small>
                     </div>
                 </div>
             </td>
-            <td>
+            <td className="col-status">
                 <Badge
                     bg={getStatusVariant(merchant.status, merchant.isLocked)}
                     className="px-3 py-2"
@@ -127,23 +126,29 @@ export const MerchantListPage: React.FC = () => {
                     {getStatusText(merchant.status, merchant.isLocked)}
                 </Badge>
             </td>
-            <td className="text-center">
-                <span className="badge bg-light text-dark border">{merchant.dishCount}</span>
+            <td className="col-phone">
+                <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                    {merchant.phone || 'N/A'}
+                </span>
             </td>
-            <td className="text-center">
-                <span className="badge bg-light text-dark border">{merchant.orderCount}</span>
+            <td className="col-hours">
+                <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                    {merchant.openTime || 'N/A'} - {merchant.closeTime || 'N/A'}
+                </span>
             </td>
-            <td className="fw-semibold text-success">{formatCurrency(merchant.revenueTotal)}</td>
-            <td className="fw-semibold text-primary">{formatCurrency(merchant.currentBalance)}</td>
-            <td>
+            <td className="col-revenue">
+                <span className="fw-semibold text-success" style={{ fontSize: '0.9rem' }}>
+                    {formatCurrency(merchant.revenueTotal)}
+                </span>
+            </td>
+            <td className="col-actions">
                 <div className="d-flex gap-2 flex-wrap">
                     <Link
                         to={`/admin/merchants/${merchant.id}`}
-                        className="btn btn-sm btn-outline-primary"
-                        style={{ minWidth: '90px' }}
+                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center"
+                        style={{ minWidth: '50px', fontSize: '0.8rem' }}
                     >
-                        <Eye size={14} className="me-1" />
-                        Chi tiết
+                        <Eye size={15}  />
                     </Link>
 
                     {merchant.status === MerchantStatusEnum.PENDING && !merchant.isLocked && (
@@ -152,7 +157,8 @@ export const MerchantListPage: React.FC = () => {
                                 variant="success"
                                 size="sm"
                                 onClick={() => handleApprovalClick(merchant, true)}
-                                style={{ minWidth: '70px' }}
+                                className="d-inline-flex align-items-center"
+                                style={{ minWidth: '75px', fontSize: '0.8rem' }}
                             >
                                 <Check size={14} className="me-1" />
                                 Duyệt
@@ -161,7 +167,8 @@ export const MerchantListPage: React.FC = () => {
                                 variant="danger"
                                 size="sm"
                                 onClick={() => handleApprovalClick(merchant, false)}
-                                style={{ minWidth: '80px' }}
+                                className="d-inline-flex align-items-center"
+                                style={{ minWidth: '90px', fontSize: '0.8rem' }}
                             >
                                 <X size={14} className="me-1" />
                                 Từ chối
@@ -174,7 +181,8 @@ export const MerchantListPage: React.FC = () => {
                             variant="warning"
                             size="sm"
                             onClick={() => handleLockClick(merchant, true)}
-                            style={{ minWidth: '70px' }}
+                            className="d-inline-flex align-items-center"
+                            style={{ minWidth: '75px', fontSize: '0.8rem' }}
                         >
                             <Lock size={14} className="me-1" />
                             Khóa
@@ -186,7 +194,8 @@ export const MerchantListPage: React.FC = () => {
                             variant="success"
                             size="sm"
                             onClick={() => handleLockClick(merchant, false)}
-                            style={{ minWidth: '90px' }}
+                            className="d-inline-flex align-items-center"
+                            style={{ minWidth: '95px', fontSize: '0.8rem' }}
                         >
                             <Unlock size={14} className="me-1" />
                             Mở khóa
@@ -198,7 +207,8 @@ export const MerchantListPage: React.FC = () => {
                             variant="primary"
                             size="sm"
                             onClick={() => handleReProcessClick(merchant)}
-                            style={{ minWidth: '100px' }}
+                            className="d-inline-flex align-items-center"
+                            style={{ minWidth: '105px', fontSize: '0.8rem' }}
                         >
                             <RefreshCw size={14} className="me-1" />
                             Duyệt lại
@@ -211,6 +221,80 @@ export const MerchantListPage: React.FC = () => {
 
     return (
         <div>
+            {/* CSS Styles for Table */}
+            <style>{`
+                .merchant-table thead th {
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    padding: 1rem 0.75rem;
+                    white-space: nowrap;
+                    vertical-align: middle;
+                }
+                
+                .merchant-table tbody td {
+                    padding: 1rem 0.75rem;
+                    font-size: 0.875rem;
+                    vertical-align: middle;
+                }
+                
+                .merchant-table tbody tr {
+                    transition: background-color 0.2s ease;
+                }
+                
+                /* Column widths - Cân đối tỷ lệ */
+                .col-restaurant { 
+                    width: 25%; 
+                    min-width: 220px; 
+                }
+                
+                .col-status { 
+                    width: 10%; 
+                    min-width: 110px; 
+                    text-align: center; 
+                }
+                
+                .col-phone { 
+                    width: 12%; 
+                    min-width: 120px; 
+                    text-align: center; 
+                }
+                
+                .col-hours { 
+                    width: 15%; 
+                    min-width: 150px; 
+                    text-align: center; 
+                }
+                
+                .col-revenue { 
+                    width: 13%; 
+                    min-width: 130px; 
+                    text-align: right; 
+                }
+                
+                .col-actions { 
+                    width: 25%; 
+                    min-width: 280px; 
+                }
+                
+                /* Responsive */
+                @media (max-width: 1200px) {
+                    .merchant-table {
+                        font-size: 0.85rem;
+                    }
+                    
+                    .merchant-table thead th {
+                        padding: 0.75rem 0.5rem;
+                        font-size: 0.75rem;
+                    }
+                    
+                    .merchant-table tbody td {
+                        padding: 0.75rem 0.5rem;
+                    }
+                }
+            `}</style>
+
             {/* Page Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -310,17 +394,15 @@ export const MerchantListPage: React.FC = () => {
                     </Card.Header>
                     <Card.Body className="p-0">
                         <div className="table-responsive">
-                            <table className="table table-hover align-middle mb-0">
+                            <table className="table table-hover align-middle mb-0 merchant-table">
                                 <thead className="bg-light">
                                 <tr>
-                                    <th className="text-muted small fw-semibold" style={{ width: '60px' }}>ID</th>
-                                    <th className="text-muted small fw-semibold" style={{ minWidth: '200px' }}>Tên Nhà hàng</th>
-                                    <th className="text-muted small fw-semibold" style={{ width: '120px' }}>Trạng thái</th>
-                                    <th className="text-muted small fw-semibold text-center" style={{ width: '80px' }}>Món ăn</th>
-                                    <th className="text-muted small fw-semibold text-center" style={{ width: '90px' }}>Đơn hàng</th>
-                                    <th className="text-muted small fw-semibold" style={{ width: '130px' }}>Doanh thu</th>
-                                    <th className="text-muted small fw-semibold" style={{ width: '130px' }}>Số dư</th>
-                                    <th className="text-muted small fw-semibold" style={{ minWidth: '300px' }}>Hành động</th>
+                                    <th className="text-muted small fw-semibold col-restaurant">Tên Nhà hàng</th>
+                                    <th className="text-muted small fw-semibold col-status">Trạng thái</th>
+                                    <th className="text-muted small fw-semibold col-phone">Số điện thoại</th>
+                                    <th className="text-muted small fw-semibold col-hours">Giờ đóng - mở cửa</th>
+                                    <th className="text-muted small fw-semibold col-revenue">Doanh thu</th>
+                                    <th className="text-muted small fw-semibold col-actions">Hành động</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -328,7 +410,7 @@ export const MerchantListPage: React.FC = () => {
                                     merchants.map(renderMerchantRow)
                                 ) : (
                                     <tr>
-                                        <td colSpan={8} className="text-center py-5">
+                                        <td colSpan={6} className="text-center py-5">
                                             <Store size={48} className="text-muted mb-3" />
                                             <p className="text-muted">Không tìm thấy merchant nào</p>
                                         </td>
@@ -341,6 +423,7 @@ export const MerchantListPage: React.FC = () => {
                 </Card>
             )}
 
+            {/* Modals */}
             <MerchantApprovalModal
                 show={showApprovalModal}
                 merchant={selectedMerchant}

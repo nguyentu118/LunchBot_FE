@@ -110,7 +110,6 @@ export class MerchantApiService {
         }
     }
     /**
-     * Chuyển trạng thái Merchant từ REJECTED về PENDING để xem xét lại
      * Task 26: Re-process rejected merchant
      */
     static async reProcessMerchant(
