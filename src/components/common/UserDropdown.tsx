@@ -115,13 +115,6 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
                             <Briefcase size={16} className="me-2 text-primary" />
                             Quản lý Thông tin Nhà hàng
                         </Dropdown.Item>
-                        <Dropdown.Item
-                            onClick={handleUpdateUserProfile}
-                            className="d-flex align-items-center"
-                        >
-                            <Settings size={16} className="me-2 text-primary" />
-                            Cập nhật Thông tin Cá nhân
-                        </Dropdown.Item>
                     </>
                 )}
 
