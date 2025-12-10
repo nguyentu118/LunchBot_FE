@@ -401,7 +401,7 @@ const MerchantUpdateForm: React.FC = () => {
                 {/* Footer */}
                 <div className="text-center py-3 border-top">
                     <small className="text-muted">
-                        © 2024 Food Delivery. All rights reserved.
+                        © 2025 LunchBot. All rights reserved.
                     </small>
                 </div>
             </Card>

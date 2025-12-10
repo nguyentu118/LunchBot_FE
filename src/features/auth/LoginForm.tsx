@@ -1,16 +1,12 @@
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-// Giữ lại import cho API và thông báo
+import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
-import toast from 'react-hot-toast'; // ĐẢM BẢO IMPORT ĐÚNG
+import toast from 'react-hot-toast';
 
-// Import components từ React-Bootstrap và Icons
 import {Form, Button, Card, Alert, Spinner, InputGroup} from 'react-bootstrap';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-// Đảm bảo ROUTES có các path cần thiết
 import { ROUTES } from '../../routes/route.constants';
 
-// 1. Định nghĩa kiểu dữ liệu (Interfaces/Types)
 interface LoginFormData {
     email: string;
     password: string;
@@ -21,13 +17,11 @@ interface LoginErrors {
     password: string | null;
 }
 
-// Interface chi tiết cho đối tượng Role
 interface IRoleDetail {
     name?: string;
     authority?: string;
 }
 
-// Kiểu dữ liệu cho phản hồi thành công từ API
 interface LoginResponseData {
     token?: string;
     jwt?: string;
@@ -39,124 +33,158 @@ interface LoginResponseData {
 
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [verificationMessage, setVerificationMessage] = useState<string>('');
+
     const [formData, setFormData] = useState<LoginFormData>({
         email: '',
-        password: ''
+        password: '',
     });
-
-    const [loading, setLoading] = useState<boolean>(false);
-    // Thay thế error message bằng state lỗi API để hiển thị trong Alert
+    const [errors, setErrors] = useState<LoginErrors>({ email: null, password: null });
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [formErrors, setFormErrors] = useState<LoginErrors>({ email: null, password: null });
-    const [showPassword, setShowPassword] = useState<boolean>(false);
 
-    const EMAIL_REGEX: RegExp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    // ✅ HOOK XỬ LÝ KÍCH HOẠT TÀI KHOẢN TỪ URL
+    useEffect(() => {
+        const urlParams = new URLSearchParams(location.search);
+        const token = urlParams.get('token');
+
+        if (token) {
+            setVerificationStatus('loading');
+            setApiError(null);
+
+            const activateAccount = async () => {
+                try {
+                    const response = await axiosInstance.get(`/auth/activate?token=${token}`);
+
+                    // ✅ FIX: Extract string từ response
+                    let message = 'Tài khoản đã được kích hoạt thành công!';
+
+                    if (typeof response.data === 'string') {
+                        message = response.data;
+                    } else if (response.data && typeof response.data.message === 'string') {
+                        message = response.data.message;
+                    }
+
+                    setVerificationStatus('success');
+                    setVerificationMessage(message);
+                    toast.success(message);
+
+                } catch (error: any) {
+                    let errorMsg = 'Kích hoạt thất bại do lỗi hệ thống.';
+
+                    if (error.response) {
+                        // ✅ FIX: Extract string từ error response
+                        if (typeof error.response.data === 'string') {
+                            errorMsg = error.response.data;
+                        } else if (error.response.data && typeof error.response.data.message === 'string') {
+                            errorMsg = error.response.data.message;
+                        } else if (error.response.statusText) {
+                            errorMsg = error.response.statusText;
+                        }
+                    }
+
+                    setVerificationStatus('error');
+                    setVerificationMessage(errorMsg);
+                    toast.error(errorMsg);
+
+                } finally {
+                    navigate(ROUTES.AUTH.LOGIN, { replace: true });
+                }
+            };
+
+            activateAccount();
+        }
+    }, [location.search, navigate]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        setFormErrors({ ...formErrors, [name as keyof LoginErrors]: null });
-        setApiError(null); // Xóa lỗi API khi người dùng bắt đầu nhập
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setErrors({ ...errors, [e.target.name]: null });
+        setApiError(null);
     };
 
     const validateForm = (): boolean => {
-        let errors: LoginErrors = { email: null, password: null };
-        let isValid: boolean = true;
-        const { email, password } = formData;
+        let isValid = true;
+        let newErrors: LoginErrors = { email: null, password: null };
 
-        if (!email) {
-            errors.email = 'Email không được để trống.';
+        if (!formData.email) {
+            newErrors.email = 'Email không được để trống.';
             isValid = false;
-        } else if (!EMAIL_REGEX.test(email)) {
-            errors.email = 'Email không hợp lệ.';
-            isValid = false;
-        }
-
-        if (!password) {
-            errors.password = 'Mật khẩu không được để trống.';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            newErrors.email = 'Email không hợp lệ.';
             isValid = false;
         }
 
-        setFormErrors(errors);
-
-        // ⭐ SỬ DỤNG TOAST CHO LỖI VALIDATION ⭐
-        if (!isValid) {
-            toast.error('Vui lòng kiểm tra lại thông tin đăng nhập.');
+        if (!formData.password) {
+            newErrors.password = 'Mật khẩu không được để trống.';
+            isValid = false;
         }
 
+        setErrors(newErrors);
         return isValid;
     };
 
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-
+        setApiError(null);
         if (!validateForm()) {
             return;
         }
 
-        setLoading(true);
-        setApiError(null);
-
+        setIsLoading(true);
         try {
-            const response = await axiosInstance.post<LoginResponseData>('/auth/login', formData);
-            const data = response.data;
-            const token = data.token || data.jwt; // Lấy token
-            const email = data.email || data.userEmail; // Lấy email
-            let role = data.role; // Lấy role dạng string
+            const response = await axiosInstance.post<LoginResponseData>('auth/login', formData);
 
-            // Xử lý trường hợp role là mảng (thường gặp trong Spring Security)
-            if (data.roles && Array.isArray(data.roles) && data.roles.length > 0) {
-                // Lấy role đầu tiên, xử lý nếu đó là object
-                const firstRole = data.roles[0];
-                if (typeof firstRole === 'object' && firstRole !== null && 'authority' in firstRole) {
-                    role = firstRole.authority; // Ví dụ: 'ROLE_USER'
-                } else if (typeof firstRole === 'string') {
-                    role = firstRole;
-                }
-            }
+            const token = response.data.token || response.data.jwt;
+            const role = response.data.role;
 
-            // ⭐ LƯU THÔNG TIN ĐĂNG NHẬP VÀO LOCAL STORAGE ⭐
-            if (token && email && role) {
-
+            if (token && role) {
                 localStorage.setItem('token', token);
-                localStorage.setItem('userEmail', email);
+                localStorage.setItem('userRole', role);
 
-                const userRole = role.replace('ROLE_', '');
-                localStorage.setItem('userRole', userRole);
+                toast.success('Đăng nhập thành công!');
 
-                localStorage.setItem('userRole', role.replace('ROLE_', ''));
-
-                // ⭐ SỬ DỤNG TOAST CHO THÀNH CÔNG ⭐
-                toast.success(`Đăng nhập thành công.`);
-                if (userRole === "ADMIN") {
-                    // Nếu là ADMIN, chuyển đến trang Admin Dashboard
+                if (role === 'ADMIN') {
                     navigate(ROUTES.ADMIN.DASHBOARD);
                 } else {
                     navigate(ROUTES.HOME);
                 }
-
             } else {
-                throw new Error('Thiếu thông tin đăng nhập.');
+                setApiError('Phản hồi đăng nhập không hợp lệ.');
             }
 
         } catch (error: any) {
-            let errorMsg: string = 'Đăng nhập thất bại do lỗi hệ thống.';
+            console.error('Login error:', error);
+            let errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu.';
 
-            if (error.response) {
-                // Lấy thông báo lỗi cụ thể từ server
-                errorMsg = error.response.data?.message || error.response.data?.error || error.response.data || error.response.statusText || errorMsg;
+            if (error.response && error.response.data) {
+                // ✅ FIX: Extract string từ error response
+                if (typeof error.response.data === 'string') {
+                    errorMessage = error.response.data;
+                } else if (error.response.data.message && typeof error.response.data.message === 'string') {
+                    errorMessage = error.response.data.message;
+                }
+
+                // ✅ NEW: Xử lý lỗi tài khoản chưa được cấp quyền
+                if (errorMessage.toLowerCase().includes('chưa được cấp quyền') ||
+                    errorMessage.toLowerCase().includes('pending approval') ||
+                    errorMessage.toLowerCase().includes('not approved')) {
+                    errorMessage = '⚠️ Tài khoản của bạn đang chờ Admin phê duyệt. Vui lòng liên hệ quản trị viên để được cấp quyền truy cập.';
+                }
             }
 
-            setApiError(errorMsg);
-            // ⭐ SỬ DỤNG TOAST CHO LỖI API ⭐
-            toast.error(errorMsg);
+            setApiError(errorMessage);
 
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    // Rendering
+    const togglePassword = () => setShowPassword(!showPassword);
+
     return (
         <div
             className="d-flex align-items-center justify-content-center min-vh-100"
@@ -167,24 +195,32 @@ const LoginForm: React.FC = () => {
                 style={{ width: '100%', maxWidth: '400px', borderRadius: '1rem' }}
             >
                 <Card.Body className="p-5">
-                    {/* Title */}
                     <div className="text-center mb-4">
-                        <div
-                            className="d-inline-flex align-items-center justify-content-center mb-3"
-                            style={{
-                                width: '60px',
-                                height: '60px',
-                                background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)',
-                                borderRadius: '1rem'
-                            }}
-                        >
-                            <Lock size={30} className="text-white" />
-                        </div>
-                        <h3 className="fw-bold mb-2">Đăng Nhập</h3>
-                        <p className="text-muted mb-0">Sử dụng tài khoản của bạn</p>
+                        <h2>Đăng Nhập</h2>
+                        <p className="text-muted">Truy cập tài khoản của bạn</p>
                     </div>
 
-                    {/* Error Alert */}
+                    {/* Trạng thái kích hoạt */}
+                    {verificationStatus === 'loading' && (
+                        <Alert variant="info" className="mb-4">
+                            <Spinner as="span" animation="border" size="sm" className="me-2" />
+                            Đang xử lý kích hoạt tài khoản... Vui lòng chờ.
+                        </Alert>
+                    )}
+
+                    {verificationStatus === 'success' && (
+                        <Alert variant="success" className="mb-4">
+                            {verificationMessage}
+                        </Alert>
+                    )}
+
+                    {verificationStatus === 'error' && (
+                        <Alert variant="danger" className="mb-4" dismissible onClose={() => setVerificationStatus('idle')}>
+                            {verificationMessage}
+                        </Alert>
+                    )}
+
+                    {/* Lỗi đăng nhập */}
                     {apiError && (
                         <Alert variant="danger" className="mb-4" dismissible onClose={() => setApiError(null)}>
                             {apiError}
@@ -192,100 +228,75 @@ const LoginForm: React.FC = () => {
                     )}
 
                     {/* Login Form */}
-                    <Form onSubmit={handleSubmit}>
-                        {/* Email */}
-                        <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <Mail size={16} className="me-2" />
-                                Email
-                            </Form.Label>
-                            <Form.Control
-                                type="email"
-                                name="email"
-                                placeholder="name@example.com"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
-                                isInvalid={!!formErrors.email}
-                            />
-                            <Form.Control.Feedback type="invalid">
-                                {formErrors.email}
-                            </Form.Control.Feedback>
-                        </Form.Group>
+                    {(verificationStatus === 'idle' || verificationStatus === 'success' || verificationStatus === 'error') && (
+                        <Form onSubmit={handleSubmit}>
+                            <Form.Group className="mb-3" controlId="email">
+                                <Form.Label className="fw-semibold">Email</Form.Label>
+                                <InputGroup hasValidation>
+                                    <InputGroup.Text><Mail size={18} /></InputGroup.Text>
+                                    <Form.Control
+                                        type="email"
+                                        name="email"
+                                        placeholder="Nhập địa chỉ email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        isInvalid={!!errors.email}
+                                    />
+                                    <Form.Control.Feedback type="invalid">
+                                        {errors.email}
+                                    </Form.Control.Feedback>
+                                </InputGroup>
+                            </Form.Group>
 
-                        {/* Mật khẩu */}
-                        <Form.Group className="mb-4">
-                            <Form.Label className="fw-semibold">
-                                <Lock size={16} className="me-2" />
-                                Mật khẩu
-                            </Form.Label>
-                            <InputGroup>
-                                <Form.Control
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                    disabled={loading}
-                                    className="py-2"
-                                    style={{ borderTopLeftRadius: '0.5rem', borderBottomLeftRadius: '0.5rem' }}
-                                    isInvalid={!!formErrors.password}
-                                />
-                                <Button
-                                    variant="outline-secondary"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    disabled={loading}
-                                    style={{ borderTopRightRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}
-                                >
-                                    {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                                </Button>
-                                <Form.Control.Feedback type="invalid">
-                                    {formErrors.password}
-                                </Form.Control.Feedback>
-                            </InputGroup>
-                        </Form.Group>
+                            <Form.Group className="mb-4" controlId="password">
+                                <Form.Label className="fw-semibold">Mật khẩu</Form.Label>
+                                <InputGroup hasValidation>
+                                    <InputGroup.Text><Lock size={18} /></InputGroup.Text>
+                                    <Form.Control
+                                        type={showPassword ? 'text' : 'password'}
+                                        name="password"
+                                        placeholder="Nhập mật khẩu"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        isInvalid={!!errors.password}
+                                    />
+                                    <Button
+                                        variant="outline-secondary"
+                                        onClick={togglePassword}
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </Button>
+                                    <Form.Control.Feedback type="invalid">
+                                        {errors.password}
+                                    </Form.Control.Feedback>
+                                </InputGroup>
+                            </Form.Group>
 
-                        {/* Nút Submit */}
-                        <Button
-                            type="submit"
-                            className="w-100 py-2 fw-semibold"
-                            style={{
-                                borderRadius: '0.5rem',
-                                background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)',
-                                border: 'none'
-                            }}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <Spinner as="span" animation="border" size="sm" className="me-2" />
-                                    Đang đăng nhập...
-                                </>
-                            ) : (
-                                'Đăng Nhập'
-                            )}
-                        </Button>
-                    </Form>
+                            <Button
+                                variant="primary"
+                                type="submit"
+                                className="w-100 fw-bold py-2"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <Spinner animation="border" size="sm" />
+                                ) : (
+                                    'Đăng Nhập'
+                                )}
+                            </Button>
+                        </Form>
+                    )}
 
-                    {/* Link Đăng ký (Hợp nhất các link) */}
                     <div className="text-center mt-4 pt-4 border-top">
                         <span className="text-muted">Chưa có tài khoản? </span>
-
-                        {/* Đăng ký Người dùng */}
                         <Link
                             to={ROUTES.AUTH.REGISTER_USER}
                             className="text-primary text-decoration-none fw-semibold"
                         >
                             Đăng ký Người dùng
                         </Link>
-
                         <span className="text-muted mx-2">|</span>
-
-                        {/* Đăng ký Merchant */}
                         <Link
                             to={ROUTES.AUTH.REGISTER_MERCHANT}
                             className="text-primary text-decoration-none fw-semibold"
@@ -293,9 +304,8 @@ const LoginForm: React.FC = () => {
                             Đăng ký Merchant
                         </Link>
                     </div>
-
                 </Card.Body>
-                {/* Footer */}
+
                 <div className="text-center py-3 border-top">
                     <small className="text-muted">
                         © 2024 Food Delivery. All rights reserved.
