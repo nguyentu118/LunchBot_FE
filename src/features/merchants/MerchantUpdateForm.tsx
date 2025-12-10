@@ -69,21 +69,9 @@ const MerchantUpdateForm: React.FC = () => {
     const fetchMerchantInfo = async () => {
         setApiError(null);
         try {
-            const userEmail: string | null = localStorage.getItem('userEmail');
+            const response = await axiosInstance.get<IMerchantBackendData>('/merchants/profile');
+            const responseData = response.data;
 
-            // TODO: Thay thế bằng API endpoint thực tế của Spring Boot
-            // const response = await axiosInstance.get<IMerchantBackendData>('/api/merchants/profile');
-            // const responseData = response.data;
-
-            // Mock data cho mục đích testing/demo
-            const responseData: IMerchantBackendData = {
-                restaurantName: '',
-                address: '',
-                email: userEmail || '',
-                phone: '',
-                openTime: '',
-                closeTime: ''
-            };
 
             // Map dữ liệu từ Backend (HH:MM:SS) về Form (HH:MM)
             setFormData({
