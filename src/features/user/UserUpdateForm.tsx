@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../../config/axiosConfig.ts';
+import axiosInstance from '../../config/axiosConfig';
 import toast from 'react-hot-toast';
 import { AxiosError } from 'axios';
 // Imports: sử dụng React-Bootstrap

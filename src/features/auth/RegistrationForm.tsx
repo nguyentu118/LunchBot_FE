@@ -87,7 +87,7 @@ const RegistrationForm: React.FC = () => {
         return isValid;
     };
 
-    // 5. Logic Submit (Giữ nguyên)
+    // 5. Logic Submit (Đã cập nhật chi tiết xử lý lỗi)
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -104,6 +104,7 @@ const RegistrationForm: React.FC = () => {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password,
+                confirmPassword: formData.confirmPassword,
             };
 
             const response = await axiosInstance.post('/auth/register', requestBody);
@@ -121,10 +122,29 @@ const RegistrationForm: React.FC = () => {
             let errorMsg: string = 'Đăng ký thất bại do lỗi hệ thống.';
 
             if (error.response) {
-                errorMsg = error.response.data?.message || error.response.data?.error || error.response.statusText || 'Lỗi từ server.';
+                // ⭐ LOG CHI TIẾT LỖI 400 TẠI ĐÂY ⭐
+                console.error("Lỗi API:", error.response);
+
+                const data = error.response.data;
+
+                // Xử lý lỗi chi tiết từ server
+                if (typeof data === 'string') {
+                    errorMsg = data;
+                } else if (data?.message) {
+                    errorMsg = data.message;
+                } else if (data?.error) {
+                    errorMsg = data.error;
+                } else if (Array.isArray(data?.errors) && data.errors.length > 0) {
+                    // Trường hợp server trả về danh sách lỗi validation
+                    errorMsg = 'Lỗi Validation: ' + data.errors.map((e: any) => e.defaultMessage || e.message).join(' | ');
+                } else {
+                    errorMsg = error.response.statusText || 'Lỗi không xác định từ server.';
+                }
             }
+
             setApiError(errorMsg);
-            toast.error(errorMsg);
+            const toastMessage = errorMsg.length > 100 ? 'Đăng ký thất bại. Xem chi tiết lỗi.' : errorMsg;
+            toast.error(toastMessage);
 
         } finally {
             setLoading(false);
@@ -179,7 +199,7 @@ const RegistrationForm: React.FC = () => {
                         <p className="text-muted small mb-0">Tham gia hệ thống Food Delivery</p> {/* Sử dụng small */}
                     </div>
 
-                    {/* Error Alert */}
+                    {/* Error Alert (Hiện lỗi chi tiết nếu có) */}
                     {apiError && (
                         <Alert variant="danger" className="mb-3 p-2 small" dismissible onClose={() => setApiError(null)}>
                             {apiError}
@@ -294,14 +314,7 @@ const RegistrationForm: React.FC = () => {
                             Đăng nhập ngay
                         </Link>
                     </div>
-
                 </Card.Body>
-                {/* Footer */}
-                <div className="text-center py-2 border-top">
-                    <small className="text-muted smaller">
-                        © 2024 Food Delivery. All rights reserved.
-                    </small>
-                </div>
             </Card>
         </div>
     );
