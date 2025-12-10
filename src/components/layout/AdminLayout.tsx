@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
-import {BarChart3, Bell, ChevronDown, Home, Menu, Moon, Package, Search, Settings, Shield, Store, Sun, Truck, Users} from 'lucide-react';
+import {BarChart3, Bell, Home, Menu, Moon, Package, Search, Settings, Shield, Store, Sun, Truck, Users} from 'lucide-react';
 import {ROUTES} from '../../routes/route.constants';
 import './AdminLayout.css';
 import AdminProfileDropdown from "./AdminProfileDropdown.tsx";
