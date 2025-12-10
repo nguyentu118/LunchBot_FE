@@ -77,12 +77,12 @@ const MerchantUpdateForm: React.FC = () => {
 
             // Mock data cho mục đích testing/demo
             const responseData: IMerchantBackendData = {
-                restaurantName: 'Nhà hàng Hải sản Vũng Tàu',
-                address: '123 Đường Trần Phú, Vũng Tàu',
-                email: userEmail || 'merchant@example.com',
-                phone: '0987654321',
-                openTime: '08:00:00',
-                closeTime: '22:00:00'
+                restaurantName: '',
+                address: '',
+                email: userEmail || '',
+                phone: '',
+                openTime: '',
+                closeTime: ''
             };
 
             // Map dữ liệu từ Backend (HH:MM:SS) về Form (HH:MM)

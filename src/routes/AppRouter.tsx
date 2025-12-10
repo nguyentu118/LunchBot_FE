@@ -9,7 +9,9 @@ import LoginForm from "../features/auth/LoginForm.tsx";
 import RegistrationForm from "../features/auth/RegistrationForm.tsx";
 import MerchantUpdateForm from "../features/merchants/MerchantUpdateForm.tsx";
 import UserUpdateForm from "../features/user/UserUpdateForm.tsx";
-import HomePage from "../components/layout/Homepage.tsx";
+import HomePage from "../components/common/Homepage.tsx";
+import MerchantRegistrationForm from "../features/merchants/MerchantRegistrationForm.tsx";
+import ProtectedRoute from "./ProtectedRoute.tsx";
 
 
 const router = createBrowserRouter([
@@ -31,12 +33,18 @@ const router = createBrowserRouter([
         path: 'user/update',
         element: <UserUpdateForm/>,
     },
+    {
+        path: '/register-merchant',
+        element: <MerchantRegistrationForm/>,
+    },
 
 
     // ⭐ ADMIN ROUTES (Protected - có AdminLayout)
     {
         path: ROUTES.ADMIN.DASHBOARD, // '/admin'
-        element: <AdminLayout/>,
+        element: <ProtectedRoute requiredRole="ADMIN">
+            <AdminLayout />
+            </ProtectedRoute>,
         children: [
             {
                 index: true, // Đường dẫn: /admin

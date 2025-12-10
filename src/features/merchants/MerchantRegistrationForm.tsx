@@ -1,13 +1,14 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axiosInstance from '../../config/axiosConfig';
+import axiosInstance from '../../config/axiosConfig'; // Đảm bảo đường dẫn này đúng
 import toast from 'react-hot-toast';
 
 // Import components từ React-Bootstrap và Icons
 import { Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { Store, Mail, Lock, Phone, MapPin } from 'lucide-react';
 
-// 1. Định nghĩa kiểu dữ liệu cho dữ liệu đầu vào (FormData)
+// --- 1. INTERFACE DEFINITION ---
+
 interface IMerchantFormData {
     restaurantName: string;
     email: string;
@@ -17,7 +18,6 @@ interface IMerchantFormData {
     confirmPassword: string;
 }
 
-// 2. Định nghĩa kiểu dữ liệu cho Errors (tất cả là optional)
 interface IMerchantFormErrors {
     restaurantName?: string;
     email?: string;
@@ -27,59 +27,68 @@ interface IMerchantFormErrors {
     confirmPassword?: string;
 }
 
-// Hàm helper để lấy email người dùng hiện tại
+// --- 2. HELPER FUNCTION ---
+
 const getCurrentUserEmail = (): string | null => {
-    const email: string | null = localStorage.getItem('userEmail');
+    // Luôn luôn dùng hằng số hoặc enum cho key để tránh lỗi chính tả
+    const email: string | null = ('');
     return email || null;
 };
+
+// --- 3. COMPONENT ---
 
 const MerchantRegistrationForm: React.FC = () => {
     const navigate = useNavigate();
     const userEmail: string | null = getCurrentUserEmail();
-    const isUserLoggedIn: boolean = !!userEmail; // Kiểm tra trạng thái đăng nhập
+    const isUserLoggedIn: boolean = !!userEmail;
 
-    const [formData, setFormData] = useState<IMerchantFormData>({
+    // Khởi tạo state với email đã đăng nhập nếu có
+    const [formData, setFormData] = useState<IMerchantFormData>(() => ({
         restaurantName: '',
-        email: userEmail || '', // Sử dụng email đã đăng nhập nếu có
+        email: userEmail || '', // ✅ Nếu chưa đăng nhập: email là '', cho phép nhập.
         phone: '',
         address: '',
         password: '',
         confirmPassword: '',
-    });
+    }));
 
     const [loading, setLoading] = useState<boolean>(false);
     const [errors, setErrors] = useState<IMerchantFormErrors>({});
-    const [apiError, setApiError] = useState<string | null>(null); // Thêm state cho lỗi API
+    const [apiError, setApiError] = useState<string | null>(null);
 
-    // Cập nhật email trong form data khi component mount hoặc userEmail thay đổi
+    // Constants cho Regex
+    const EMAIL_REGEX: RegExp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    const PHONE_REGEX: RegExp = /^(0|\+84)\d{9,10}$/;
+
+    // Cập nhật email khi userEmail thay đổi (chủ yếu khi component mount)
     useEffect(() => {
         if (userEmail) {
+            // ✅ Đảm bảo email luôn là email của người dùng đã đăng nhập
             setFormData(prevData => ({ ...prevData, email: userEmail }));
         }
     }, [userEmail]);
 
-    const EMAIL_REGEX: RegExp = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    const PHONE_REGEX: RegExp = /^(0|\+84)\d{9,10}$/;
-
-    // 3. Định nghĩa kiểu cho Event Handler
+    // Handle Change
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prevData => ({ ...prevData, [name]: value }));
+        // Xóa lỗi cho trường hiện tại và lỗi API
         setErrors(prevErrors => ({ ...prevErrors, [name]: undefined }));
-        setApiError(null); // Xóa lỗi API khi người dùng bắt đầu nhập
+        setApiError(null);
     };
 
-    // 4. Logic Validate (Giữ nguyên)
+    // Validate Logic
     const validateForm = (): boolean => {
+        const { email, password, confirmPassword, phone, address, restaurantName } = formData;
         let formErrors: IMerchantFormErrors = {};
         let isValid: boolean = true;
-        const { email, password, confirmPassword, phone, address, restaurantName } = formData;
 
-        if (!restaurantName) {
+        if (!restaurantName.trim()) {
             formErrors.restaurantName = 'Tên nhà hàng không được để trống.';
             isValid = false;
         }
 
+        // ✅ LOGIC XỬ LÝ EMAIL: CHỈ VALIDATE NẾU CHƯA ĐĂNG NHẬP
         if (!isUserLoggedIn) {
             if (!email) {
                 formErrors.email = 'Email không được để trống.';
@@ -90,15 +99,15 @@ const MerchantRegistrationForm: React.FC = () => {
             }
         }
 
-        if (!phone) {
+        if (!phone.trim()) {
             formErrors.phone = 'Số điện thoại không được để trống.';
             isValid = false;
         } else if (!PHONE_REGEX.test(phone)) {
-            formErrors.phone = 'Số điện thoại không hợp lệ.';
+            formErrors.phone = 'Số điện thoại không hợp lệ (ví dụ: 0901234567).';
             isValid = false;
         }
 
-        if (!address) {
+        if (!address.trim()) {
             formErrors.address = 'Địa chỉ không được để trống.';
             isValid = false;
         }
@@ -119,19 +128,16 @@ const MerchantRegistrationForm: React.FC = () => {
             isValid = false;
         }
 
-        if (!isValid) {
-            toast.error('Vui lòng điền đầy đủ và chính xác các trường bắt buộc.');
-        }
-
         setErrors(formErrors);
         return isValid;
     };
 
-    // 5. Logic Submit (Giữ nguyên và thêm xử lý lỗi API)
+    // Handle Submit
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!validateForm()) {
+            toast('Vui lòng kiểm tra lại các trường bị lỗi.', { icon: '⚠️' });
             return;
         }
 
@@ -139,7 +145,8 @@ const MerchantRegistrationForm: React.FC = () => {
         setApiError(null);
 
         try {
-            const requestBody: IMerchantFormData = {
+            // Tạo request body chỉ với các trường cần thiết
+            const requestBody = {
                 restaurantName: formData.restaurantName,
                 email: formData.email,
                 phone: formData.phone,
@@ -163,6 +170,7 @@ const MerchantRegistrationForm: React.FC = () => {
                 restaurantName: ''
             });
 
+            // Chuyển hướng sau khi thành công
             setTimeout(() => {
                 navigate('/login');
             }, 2000);
@@ -171,8 +179,12 @@ const MerchantRegistrationForm: React.FC = () => {
             let errorMsg: string = 'Đăng ký thất bại do lỗi hệ thống.';
 
             if (error.response) {
-                errorMsg = error.response.data?.message || error.response.data || error.response.statusText || errorMsg;
+                // Lấy thông báo lỗi cụ thể từ response
+                errorMsg = error.response.data?.message
+                    || error.response.data
+                    || `Lỗi ${error.response.status}: ${error.response.statusText}`;
             }
+
             setApiError(errorMsg);
             toast.error(errorMsg);
 
@@ -181,35 +193,44 @@ const MerchantRegistrationForm: React.FC = () => {
         }
     };
 
-    // 6. Kết xuất (Rendering) - Sử dụng React-Bootstrap
+    // --- 4. RENDERING ---
+
     return (
         <div
-            className="d-flex align-items-center justify-content-center min-vh-100"
-            style={{ background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)' }}
+            className="d-flex flex-column justify-content-center align-items-center min-vh-100 py-5 overflow-y-auto"
+            style={{
+                background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)',
+            }}
         >
             <Card
                 className="border-0 shadow-lg"
-                style={{ width: '100%', maxWidth: '450px', borderRadius: '1rem' }}
+                style={{
+                    width: '100%',
+                    maxWidth: '450px',
+                    borderRadius: '1rem',
+                    marginBottom: '2rem'
+                }}
             >
                 <Card.Body className="p-5">
-                    {/* Logo & Title */}
+
+                    {/* Title Section */}
                     <div className="text-center mb-4">
                         <div
-                            className="d-inline-flex align-items-center justify-content-center mb-3"
+                            className="d-inline-flex align-items-center justify-content-center mb-2"
                             style={{
-                                width: '70px',
-                                height: '70px',
+                                width: '50px',
+                                height: '50px',
                                 background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)',
-                                borderRadius: '1rem'
+                                borderRadius: '0.75rem'
                             }}
                         >
-                            <Store size={36} className="text-white" />
+                            <Store size={26} className="text-white" />
                         </div>
-                        <h3 className="fw-bold mb-2">Đăng ký Merchant</h3>
-                        <p className="text-muted mb-0">Hoàn tất để trở thành Chủ nhà hàng</p>
+                        <h3 className="fw-bold mb-1 fs-5">Đăng ký Merchant</h3>
+                        <p className="text-muted small mb-0">Hoàn tất để trở thành Chủ nhà hàng</p>
                     </div>
 
-                    {/* Error Alert */}
+                    {/* API Error Alert */}
                     {apiError && (
                         <Alert variant="danger" className="mb-4" dismissible onClose={() => setApiError(null)}>
                             {apiError}
@@ -221,146 +242,96 @@ const MerchantRegistrationForm: React.FC = () => {
 
                         {/* Tên Nhà hàng */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <Store size={16} className="me-2" />
-                                Tên Nhà hàng (*)
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><Store size={16} className="me-2" />Tên Nhà hàng (*)</Form.Label>
                             <Form.Control
                                 type="text"
                                 name="restaurantName"
                                 placeholder="Tên nhà hàng của bạn"
                                 value={formData.restaurantName}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
                                 isInvalid={!!errors.restaurantName}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.restaurantName}
-                            </Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">{errors.restaurantName}</Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Email */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <Mail size={16} className="me-2" />
-                                Email {isUserLoggedIn ? '' : '(*)'}
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><Mail size={16} className="me-2" />Email {isUserLoggedIn ? '' : '(*)'}</Form.Label>
                             <Form.Control
                                 type="email"
                                 name="email"
                                 placeholder="email@nhahang.com"
                                 value={formData.email}
                                 onChange={handleChange}
-                                required={!isUserLoggedIn}
+                                // ✅ LOGIC: Khóa nếu đã đăng nhập (isUserLoggedIn)
                                 disabled={loading || isUserLoggedIn}
-                                className={`py-2 ${isUserLoggedIn ? 'bg-light text-muted' : ''}`}
-                                style={{ borderRadius: '0.5rem' }}
+                                className={isUserLoggedIn ? 'bg-light text-muted' : ''}
                                 isInvalid={!!errors.email}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.email}
-                            </Form.Control.Feedback>
-                            {isUserLoggedIn && (
-                                <Form.Text muted>
-                                    Email tài khoản hiện tại được sử dụng để đăng ký Merchant.
-                                </Form.Text>
-                            )}
+                            <Form.Control.Feedback type="invalid">{errors.email}</Form.Control.Feedback>
+                            {isUserLoggedIn && (<Form.Text muted>Email tài khoản hiện tại được sử dụng.</Form.Text>)}
                         </Form.Group>
 
                         {/* Số điện thoại */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <Phone size={16} className="me-2" />
-                                Số điện thoại (*)
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><Phone size={16} className="me-2" />Số điện thoại (*)</Form.Label>
                             <Form.Control
                                 type="tel"
                                 name="phone"
                                 placeholder="0901234567"
                                 value={formData.phone}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
                                 isInvalid={!!errors.phone}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.phone}
-                            </Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">{errors.phone}</Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Địa chỉ */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <MapPin size={16} className="me-2" />
-                                Địa chỉ (*)
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><MapPin size={16} className="me-2" />Địa chỉ (*)</Form.Label>
                             <Form.Control
                                 type="text"
                                 name="address"
                                 placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"
                                 value={formData.address}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
                                 isInvalid={!!errors.address}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.address}
-                            </Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">{errors.address}</Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Mật khẩu */}
                         <Form.Group className="mb-3">
-                            <Form.Label className="fw-semibold">
-                                <Lock size={16} className="me-2" />
-                                Mật khẩu (*)
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><Lock size={16} className="me-2" />Mật khẩu (*)</Form.Label>
                             <Form.Control
                                 type="password"
                                 name="password"
                                 placeholder="••••••••"
                                 value={formData.password}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
                                 isInvalid={!!errors.password}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.password}
-                            </Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
                             <Form.Text muted>Tối thiểu 6 ký tự.</Form.Text>
                         </Form.Group>
 
                         {/* Xác nhận Mật khẩu */}
                         <Form.Group className="mb-4">
-                            <Form.Label className="fw-semibold">
-                                <Lock size={16} className="me-2" />
-                                Xác nhận Mật khẩu (*)
-                            </Form.Label>
+                            <Form.Label className="fw-semibold"><Lock size={16} className="me-2" />Xác nhận Mật khẩu (*)</Form.Label>
                             <Form.Control
                                 type="password"
                                 name="confirmPassword"
                                 placeholder="••••••••"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
-                                required
                                 disabled={loading}
-                                className="py-2"
-                                style={{ borderRadius: '0.5rem' }}
                                 isInvalid={!!errors.confirmPassword}
                             />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.confirmPassword}
-                            </Form.Control.Feedback>
+                            <Form.Control.Feedback type="invalid">{errors.confirmPassword}</Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Nút Submit */}
@@ -397,12 +368,6 @@ const MerchantRegistrationForm: React.FC = () => {
                     </div>
 
                 </Card.Body>
-                {/* Footer */}
-                <div className="text-center py-3 border-top">
-                    <small className="text-muted">
-                        © 2024 Food Delivery. All rights reserved.
-                    </small>
-                </div>
             </Card>
         </div>
     );
