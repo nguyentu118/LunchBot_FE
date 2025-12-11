@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dropdown, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import {LogOut, ChevronDown, Briefcase } from 'lucide-react';
+import {LogOut, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ROUTES } from '../../routes/route.constants';
 
@@ -49,8 +49,6 @@ const AdminProfileDropdown: React.FC<AdminProfileDropdownProps> = ({ adminName, 
                         <div className="fw-semibold small">{displayAdminName}</div>
                         <div className="text-muted" style={{ fontSize: '0.75rem' }}>Administrator</div>
                     </div>
-
-                    <ChevronDown size={16} className="text-muted" />
                 </div>
             </Dropdown.Toggle>
 
