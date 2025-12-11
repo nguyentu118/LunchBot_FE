@@ -49,15 +49,16 @@ const AdminProfileDropdown: React.FC<AdminProfileDropdownProps> = ({ adminName, 
                         <div className="fw-semibold small">{displayAdminName}</div>
                         <div className="text-muted" style={{ fontSize: '0.75rem' }}>Administrator</div>
                     </div>
-
                 </div>
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="shadow-sm">
+                {/* Tiêu đề hoặc thông tin Profile (Optional) */}
                 <Dropdown.Header className="text-muted small border-bottom mb-2">
                     {displayAdminName} ({'Admin'})
                 </Dropdown.Header>
 
+                {/* Ví dụ: Link quản lý chung (nếu có) */}
                 <Dropdown.Item
                     onClick={() => navigate(ROUTES.ADMIN.DASHBOARD)} // Giả sử đây là trang chính
                     className="d-flex align-items-center"

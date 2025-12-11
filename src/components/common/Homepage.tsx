@@ -1,21 +1,17 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
     Badge,
     Button,
     Card,
-    Carousel,
     Col,
     Container,
     Form,
     Image,
     InputGroup,
-    Nav,
-    Navbar,
     Row
 } from 'react-bootstrap';
 import './Homepage.css';
-// Đã loại bỏ User, LogOut, Briefcase, Settings vì chúng đã ở trong UserDropdown.tsx
 import {
     ChevronLeft,
     ChevronRight,
@@ -31,15 +27,15 @@ import {
     Twitter,
     Youtube
 } from 'lucide-react';
-import {Link} from "react-router-dom";
-// ⭐ IMPORT COMPONENT VÀ TYPE MỚI ⭐
-import UserDropdown, {UserRole} from './UserDropdown';
+// Import Navigation Component
+import Navigation from '../layout/Navigation';
 
 
 interface Category {
     name: string;
     image: string;
     colorClass: string;
+    restaurantCount: number;
 }
 
 interface Deal {
@@ -69,70 +65,93 @@ interface Restaurant {
 }
 
 
-// --- Hàm hỗ trợ ---
-
+// Hàm hỗ trợ format tiền tệ
 const formatCurrency = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0₫';
-    return new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(value);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
 
 const HomePage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
-    const [location, setLocation] = useState<string>('');
     const [currentSlide, setCurrentSlide] = useState<number>(0);
     const [discountSlideIndex, setDiscountSlideIndex] = useState<number>(0);
+    const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
 
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-    const [userRole, setUserRole] = useState<UserRole>(null);
-
-    useEffect(() => {
-        const checkAuthStatus = () => {
-            // Lấy token và role từ localStorage
-            const token = localStorage.getItem('token');
-            const storedRole = localStorage.getItem('userRole');
-
-            if (token && storedRole) {
-                setIsLoggedIn(true);
-
-                // Chuẩn hóa role trước khi set
-                const normalizedRole = storedRole.trim().toUpperCase().replace(/^ROLE_/, '');
-
-                setUserRole(normalizedRole as UserRole);
-            } else {
-                setIsLoggedIn(false);
-                setUserRole(null);
-            }
-        };
-
-        checkAuthStatus();
-    }, []);
-
-    // Hàm xử lý Đăng xuất
-    const handleLogout = useCallback(() => {
-        // Xóa token và role từ localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userId'); // Nếu có
-
-        setIsLoggedIn(false);
-        setUserRole(null);
-
-    }, []);
-
-    // Dữ liệu Food Categories (kiểu Category[])
+    // Dữ liệu Food Categories
     const foodCategories: Category[] = [
-        {name: 'Burger', image: '🍔', colorClass: 'bg-warning text-dark'},
-        {name: 'Pizza', image: '🍕', colorClass: 'bg-danger text-white'},
-        {name: 'Sushi', image: '🍣', colorClass: 'bg-info text-white'},
-        {name: 'Pasta', image: '🍝', colorClass: 'bg-secondary text-white'},
-        {name: 'Salad', image: '🥗', colorClass: 'bg-success text-white'},
-        {name: 'Dessert', image: '🍰', colorClass: 'bg-pink-custom text-white'},
-        {name: 'Coffee', image: '☕', colorClass: 'bg-dark text-white'},
-        {name: 'Noodles', image: '🍜', colorClass: 'bg-primary text-white'},
+        {name: 'Burger', image: '🍔', colorClass: 'bg-warning text-dark', restaurantCount: 145},
+        {name: 'Pizza', image: '🍕', colorClass: 'bg-danger text-white', restaurantCount: 128},
+        {name: 'Sushi', image: '🍣', colorClass: 'bg-info text-white', restaurantCount: 89},
+        {name: 'Pasta', image: '🍝', colorClass: 'bg-secondary text-white', restaurantCount: 112},
+        {name: 'Salad', image: '🥗', colorClass: 'bg-success text-white', restaurantCount: 95},
+        {name: 'Dessert', image: '🍰', colorClass: 'bg-pink-custom text-white', restaurantCount: 156},
+        {name: 'Coffee', image: '☕', colorClass: 'bg-dark text-white', restaurantCount: 203},
+        {name: 'Noodles', image: '🍜', colorClass: 'bg-primary text-white', restaurantCount: 167},
     ];
 
-    // Dữ liệu Discount Deals (kiểu Deal[])
+    const infiniteCategories = [...foodCategories, ...foodCategories, ...foodCategories];
+
+    // ⭐ CẤU HÌNH SLIDER
+    const itemWidth = 130;
+    const gap = 12;
+    const itemWidthWithGap = itemWidth + gap;
+    const totalOriginalItems = foodCategories.length;
+
+    // ⭐ BẮT ĐẦU TỪ BẢN SAO THỨ 2 (giữa)
+    useEffect(() => {
+        setCurrentSlide(totalOriginalItems);
+    }, []);
+
+    // ⭐ HÀM CHUYỂN SLIDE TIẾP THEO
+    const nextCategorySlide = useCallback(() => {
+        setIsTransitioning(true);
+        setCurrentSlide(prev => prev + 1);
+    }, []);
+
+    // ⭐ HÀM CHUYỂN SLIDE TRƯỚC ĐÓ
+    const prevCategorySlide = useCallback(() => {
+        setIsTransitioning(true);
+        setCurrentSlide(prev => prev - 1);
+    }, []);
+
+    // ⭐ XỬ LÝ INFINITE LOOP (Reset về giữa khi đến cuối hoặc đầu)
+    useEffect(() => {
+        // Nếu đến cuối bản sao thứ 2 (vị trí totalOriginalItems * 2)
+        if (currentSlide >= totalOriginalItems * 2) {
+            setTimeout(() => {
+                setIsTransitioning(false); // Tắt transition
+                setCurrentSlide(totalOriginalItems); // Nhảy về đầu bản sao thứ 2
+            }, 400); // 400ms = thời gian transition
+        }
+        // Nếu về đầu bản sao thứ 1 (vị trí 0)
+        else if (currentSlide < totalOriginalItems) {
+            setTimeout(() => {
+                setIsTransitioning(false);
+                setCurrentSlide(totalOriginalItems * 2 - 1); // Nhảy về cuối bản sao thứ 2
+            }, 400);
+        }
+    }, [currentSlide, totalOriginalItems]);
+
+    // ⭐ BẬT LẠI TRANSITION SAU KHI RESET
+    useEffect(() => {
+        if (!isTransitioning) {
+            setTimeout(() => {
+                setIsTransitioning(true);
+            }, 50);
+        }
+    }, [isTransitioning]);
+
+    // ⭐ AUTO SLIDE MỖI 3 GIÂY
+    useEffect(() => {
+        const timer = setInterval(() => {
+            nextCategorySlide();
+        }, 1500);
+        return () => clearInterval(timer);
+    }, [nextCategorySlide]);
+
+
+    // Dữ liệu Discount Deals
     const discountDeals: Deal[] = [
         {
             id: 1,
@@ -208,7 +227,7 @@ const HomePage: React.FC = () => {
         },
     ];
 
-    // Dữ liệu Popular Restaurants (kiểu Restaurant[])
+    // Dữ liệu Popular Restaurants
     const popularRestaurants: Restaurant[] = [
         {
             id: 1,
@@ -302,31 +321,23 @@ const HomePage: React.FC = () => {
             price: '30.000₫ - 60.000₫',
             rating: 4.6,
             reviews: '8.3k+',
-            image: 'https://images.unsplash.com/photo-1525385444361-6c20d6c0eb74?w=400&h=300&fit=crop',
+            image: 'http://gongcha.com.vn/wp-content/uploads/2019/11/Okinawa-Milk-Foam-Smoothie.png',
             favorite: true,
             deliveryFee: 'Miễn phí'
         },
     ];
 
-    // State quản lý Favorites (kiểu Record<number, boolean>)
+    // State quản lý Favorites
     const [favorites, setFavorites] = useState<Record<number, boolean>>(
         popularRestaurants.reduce((acc, r) => ({...acc, [r.id]: r.favorite}), {} as Record<number, boolean>)
     );
 
-    // Hàm Toggle Favorite (kiểu useCallback)
+    // Hàm Toggle Favorite
     const toggleFavorite = useCallback((id: number) => {
         setFavorites(prev => ({...prev, [id]: !prev[id]}));
     }, []);
 
-    // Auto slide cho Hero Carousel
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % foodCategories.length);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, [foodCategories.length]);
-
-    // Logic cho Slider Ưu đãi (hiển thị 3 card, dùng margin/style thay vì Bootstrap Carousel)
+    // Logic cho Slider ưu đãi
     const nextDiscountSlide = useCallback(() => {
         setDiscountSlideIndex((prev) => Math.min(prev + 1, discountDeals.length - 3));
     }, [discountDeals.length]);
@@ -339,139 +350,137 @@ const HomePage: React.FC = () => {
         <div className="homepage-wrapper bg-light">
             <div className="bg-light min-vh-100">
                 {/* Navigation Bar */}
-                <Navbar
-                    expand="md"
-                    variant="dark"
-                    className="shadow sticky-top"
-                    style={{backgroundColor: '#FF5E62'}}
-                >
-                    <Container>
-                        <Navbar.Brand href="#">
-                            <div className="d-flex align-items-center">
-                                {/* ... Logo */}
-                                <div className="bg-white p-1 rounded shadow-sm me-2">
-                                    <svg className="text-danger" style={{width: '24px', height: '24px'}}
-                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                              d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h1 className="h5 fw-bold mb-0 text-white">Lunch<span
-                                        className="text-warning">Bot</span></h1>
-                                    <p className="text-sm mb-0 text-white-50">Gợi ý món ngon mỗi ngày</p>
-                                </div>
-                            </div>
-                        </Navbar.Brand>
-                        <Navbar.Toggle aria-controls="basic-navbar-nav"/>
-                        <Navbar.Collapse id="basic-navbar-nav">
-                            <Nav className="ms-auto align-items-center">
-                                <Nav.Link href="#" className="text-white mx-1">🏠 Trang chủ</Nav.Link>
-                                <Nav.Link href="#" className="text-white mx-1">🎁 Ưu đãi</Nav.Link>
-                                <Nav.Link href="#" className="text-white mx-1">🍽️ Nhà hàng</Nav.Link>
+                <Navigation/>
+                {/* Hero Section - NEW DESIGN */}
+                <div className="py-5 shadow-lg"
+                     style={{
+                         backgroundImage: 'url(https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&h=900&fit=crop)',
+                         backgroundSize: 'cover',
+                         backgroundPosition: 'center',
+                         position: 'relative',
+                         overflow: 'hidden',
+                         minHeight: '500px'
+                     }}>
+                    {/* Overlay */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 0
+                    }}></div>
 
-                                {/* ⭐ SỬ DỤNG COMPONENT UserDropdown ĐÃ TÁCH FILE ⭐ */}
-                                {isLoggedIn && userRole ? (
-                                    <UserDropdown userRole={userRole} handleLogout={handleLogout}/>
-                                ) : (
-                                    // HIỂN THỊ KHI CHƯA ĐĂNG NHẬP (Nút Đăng nhập)
-                                    <Button variant="light" className="ms-md-3 mt-2 mt-md-0 fw-bold">
-                                        <Link to="/login" className="text-primary text-decoration-none fw-semibold">
-                                            📝 Đăng nhập
-                                        </Link>
-                                    </Button>
-                                )}
-                                {/* ⭐ HẾT LOGIC HIỂN THỊ ⭐ */}
-                            </Nav>
-                        </Navbar.Collapse>
-                    </Container>
-                </Navbar>
+                    <Container className="py-5" style={{position: 'relative', zIndex: 1}}>
+                        {/* Center Content */}
+                        <div className="text-center text-white mb-5">
+                            <Alert variant="light"
+                                   className="d-inline-block rounded-pill mb-4 py-2 px-4 shadow-sm">
+                                <span className="small fw-semibold text-danger">🎉 Giảm giá đến 50% hôm nay!</span>
+                            </Alert>
+                            <h1 className="display-4 fw-bold mb-3" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>
+                                Khám phá món ăn ngon nhất tại <span className="text-warning">Hà Nội</span> VN
+                            </h1>
 
-                {/* Hero Section */}
-                <div className="bg-gradient-primary-danger py-5 shadow-lg"
-                     style={{backgroundColor: '#FF5E62', position: 'relative', overflow: 'hidden'}}>
-                    <Container className="py-md-5">
-                        <Row className="align-items-center">
-                            {/* Left Content */}
-                            <Col md={7} lg={6} className="text-white z-1">
-                                <Alert variant="light"
-                                       className="d-inline-block rounded-pill mb-4 py-2 px-4 shadow-sm">
-                                            <span
-                                                className="small fw-semibold text-danger">🎉 Giảm giá đến 50% hôm nay!</span>
-                                </Alert>
-                                <h1 className="display-5 fw-bold mb-4">
-                                    Khám phá món ăn<br/>ngon nhất tại<br/>
-                                    <span className="text-warning">Hà Nội</span>
-                                </h1>
-                                <p className="lead mb-4 text-white-75">
-                                    Hàng nghìn nhà hàng, quán ăn với ưu đãi hấp dẫn
-                                </p>
+                            {/* Search Bar - Centered */}
+                            <Row className="justify-content-center mb-4">
+                                <Col xs={12} lg={10} xl={9}>
+                                    <Card className="p-2 shadow-lg rounded-4 border-0">
+                                        <Form className="d-flex flex-column flex-md-row gap-2 align-items-stretch">
+                                            <div className="d-flex gap-2 flex-grow-1">
+                                                <InputGroup className="bg-light rounded-3 p-1 flex-grow-1">
+                                                    <InputGroup.Text className="bg-light border-0">
+                                                        <Search size={20} className="text-muted"/>
+                                                    </InputGroup.Text>
+                                                    <Form.Control
+                                                        type="text"
+                                                        placeholder="Nhập vị trí giao hàng của bạn"
+                                                        value={searchQuery}
+                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        className="border-0 bg-light"
+                                                    />
+                                                </InputGroup>
+                                                <Button variant="light" className="border">
+                                                    <MapPin size={20} className="text-danger"/>
+                                                    <span className="ms-2 d-none d-lg-inline">Định vị</span>
+                                                </Button>
+                                            </div>
+                                            <Button variant="danger" type="submit"
+                                                    className="fw-bold px-5 shadow-sm"
+                                                    style={{minWidth: '120px'}}>
+                                                Tìm kiếm
+                                            </Button>
+                                        </Form>
+                                    </Card>
+                                </Col>
+                            </Row>
+                        </div>
 
-                                {/* Search Bar */}
-                                <Card className="p-2 shadow-lg rounded-4 border-0">
-                                    <Form className="d-flex flex-column flex-sm-row gap-2">
-                                        <InputGroup className="bg-light rounded-3 p-1">
-                                            <InputGroup.Text className="bg-light border-0">
-                                                <Search size={20} className="text-muted"/>
-                                            </InputGroup.Text>
-                                            <Form.Control
-                                                type="text"
-                                                placeholder="Tìm món ăn, nhà hàng..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="border-0 bg-light"
-                                            />
-                                        </InputGroup>
-                                        <InputGroup className="bg-light rounded-3 p-1">
-                                            <InputGroup.Text className="bg-light border-0">
-                                                <MapPin size={20} className="text-danger"/>
-                                            </InputGroup.Text>
-                                            <Form.Control
-                                                type="text"
-                                                placeholder="Địa chỉ giao hàng"
-                                                value={location}
-                                                onChange={(e) => setLocation(e.target.value)}
-                                                className="border-0 bg-light"
-                                            />
-                                        </InputGroup>
-                                        <Button variant="warning" type="submit"
-                                                className="fw-bold px-4 shadow-sm">
-                                            Tìm kiếm
-                                        </Button>
-                                    </Form>
-                                </Card>
-                            </Col>
+                        {/* Food Categories Horizontal Slider */}
+                        <div className="mt-4">
+                            <p className="text-white text-center mb-3" style={{fontSize: '0.95rem', textShadow: '1px 1px 2px rgba(0,0,0,0.5)'}}>
+                                Bún, Phở, Đồ chay, Gà Rán, Pizza, Bugger, Cafe, Sinh tố, Nước ép,...
+                            </p>
+                            <div className="position-relative">
+                                {/* Previous Button */}
+                                <Button
+                                    variant="light"
+                                    onClick={prevCategorySlide}
+                                    className="rounded-circle shadow position-absolute start-0 top-50 translate-middle-y d-none d-lg-flex align-items-center justify-content-center"
+                                    style={{zIndex: 10, width: '45px', height: '45px', padding: 0, left: '-20px'}}
+                                >
+                                    <ChevronLeft size={24} className="text-dark"/>
+                                </Button>
 
-                            {/* Right - Food Category Slider (Sử dụng Bootstrap Carousel) */}
-                            <Col md={5} lg={6} className="mt-5 mt-md-0 d-flex justify-content-center">
-                                <div style={{maxWidth: '350px', width: '100%'}}>
-                                    <Carousel
-                                        activeIndex={currentSlide}
-                                        onSelect={(selectedIndex: number) => setCurrentSlide(selectedIndex)}
-                                        controls={false}
-                                        indicators={true}
-                                        interval={3000}
+                                {/* Slider Container */}
+                                <div className="overflow-hidden">
+                                    <div
+                                        className="d-flex gap-3 pb-2"
+                                        style={{
+                                            transform: `translateX(-${currentSlide * itemWidthWithGap}px)`,
+                                            transition: isTransitioning ? 'transform 0.4s ease-in-out' : 'none'
+                                        }}
                                     >
-                                        {foodCategories.map((category, index) => (
-                                            <Carousel.Item key={index}>
-                                                <Card
-                                                    className={`text-center p-5 rounded-4 border-0 shadow-lg ${category.colorClass}`}
-                                                    style={{minHeight: '350px'}}>
-                                                    <div
-                                                        className="d-flex flex-column align-items-center justify-content-center">
-                                                        <div style={{
-                                                            fontSize: '100px',
-                                                            marginBottom: '10px'
-                                                        }}>{category.image}</div>
-                                                        <h3 className="fw-bold h2">{category.name}</h3>
+                                        {infiniteCategories.map((category, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex-shrink-0 text-center"
+                                                style={{width: `${itemWidth}px`, cursor: 'pointer'}}
+                                            >
+                                                <Card className="border-0 shadow-sm bg-white rounded-4 overflow-hidden h-100"
+                                                      style={{transition: 'transform 0.2s'}}
+                                                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                                >
+                                                    <div className="p-3">
+                                                        <div style={{fontSize: '52px', marginBottom: '10px'}}>
+                                                            {category.image}
+                                                        </div>
+                                                        <h6 className="fw-bold mb-1 text-dark">
+                                                            {category.name}
+                                                        </h6>
+                                                        <p className="text-muted mb-0" style={{fontSize: '0.75rem'}}>
+                                                            {category.restaurantCount} quán
+                                                        </p>
                                                     </div>
                                                 </Card>
-                                            </Carousel.Item>
+                                            </div>
                                         ))}
-                                    </Carousel>
+                                    </div>
                                 </div>
-                            </Col>
-                        </Row>
+
+                                {/* Next Button */}
+                                <Button
+                                    variant="light"
+                                    onClick={nextCategorySlide}
+                                    className="rounded-circle shadow position-absolute end-0 top-50 translate-middle-y d-none d-lg-flex align-items-center justify-content-center"
+                                    style={{zIndex: 10, width: '45px', height: '45px', padding: 0, right: '-20px'}}
+                                >
+                                    <ChevronRight size={24} className="text-dark"/>
+                                </Button>
+                            </div>
+                        </div>
                     </Container>
                 </div>
 
@@ -502,7 +511,7 @@ const HomePage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Horizontal Card Slider (Cần CSS custom để làm hiệu ứng trượt) */}
+                    {/* Horizontal Card Slider */}
                     <div className="overflow-hidden">
                         <div
                             className="d-flex flex-row flex-nowrap gap-4 pb-3"
@@ -542,8 +551,7 @@ const HomePage: React.FC = () => {
 
                                     <Card.Body className="p-3">
                                         <Card.Title className="h5 fw-bold mb-1">{deal.title}</Card.Title>
-                                        <Card.Text
-                                            className="text-muted small mb-3">{deal.restaurant}</Card.Text>
+                                        <Card.Text className="text-muted small mb-3">{deal.restaurant}</Card.Text>
 
                                         <div className="d-flex align-items-center justify-content-between mb-3">
                                             <div className="d-flex align-items-center gap-1 text-muted small">
@@ -612,8 +620,7 @@ const HomePage: React.FC = () => {
                                         </div>
 
                                         <Card.Body className="p-3 d-flex flex-column">
-                                            <Card.Title
-                                                className="h5 fw-bold mb-1">{restaurant.name}</Card.Title>
+                                            <Card.Title className="h5 fw-bold mb-1">{restaurant.name}</Card.Title>
                                             <Card.Text
                                                 className="text-muted small mb-3">{restaurant.cuisine}</Card.Text>
 
@@ -623,14 +630,13 @@ const HomePage: React.FC = () => {
                                                     <Clock size={16} className="text-primary"/>
                                                     <span>{restaurant.time}</span>
                                                 </div>
-                                                <span
-                                                    className="fw-semibold text-danger">{restaurant.price}</span>
+                                                <span className="fw-semibold text-danger">{restaurant.price}</span>
                                             </div>
 
                                             <div
                                                 className="d-flex align-items-center justify-content-between pt-2 border-top mt-auto">
-                                                        <span className="small text-muted">Phí giao: <span
-                                                            className="fw-semibold text-success">{restaurant.deliveryFee}</span></span>
+                                                <span className="small text-muted">Phí giao: <span
+                                                    className="fw-semibold text-success">{restaurant.deliveryFee}</span></span>
                                                 <a href="#"
                                                    className="text-primary small fw-semibold text-decoration-none">
                                                     Xem chi tiết &rarr;
@@ -650,14 +656,13 @@ const HomePage: React.FC = () => {
                         </div>
                     </Container>
                 </div>
-
                 {/* Footer */}
-                <footer className="bg-dark text-white pt-5 pb-4">
+                <footer className="bg-dark text-white pt-5 pb-4" style={{position: 'relative', zIndex: 1}}>
                     <Container>
                         <Row className="g-4 mb-4">
-                            {/* 1. Company Info & Logo */}
+                            {/* Company Info & Logo */}
                             <Col xs={12} md={6} lg={4}>
-                                <div className="d-flex align-items-center space-x-2 mb-3">
+                                <div className="d-flex align-items-center gap-2 mb-3">
                                     <div className="bg-danger p-2 rounded shadow-sm">
                                         <svg className="text-white" style={{width: '24px', height: '24px'}}
                                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -665,93 +670,124 @@ const HomePage: React.FC = () => {
                                                   d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
                                         </svg>
                                     </div>
-                                    <h3 className="h4 fw-bold mb-0">Lunch<span
-                                        className="text-primary">Bot</span></h3>
+                                    <h3 className="h4 fw-bold mb-0">Lunch<span className="text-primary">Bot</span></h3>
                                 </div>
-                                <p className="text-muted small mb-3">
+                                <p className="small mb-3" style={{color: '#adb5bd'}}>
                                     Nền tảng đặt đồ ăn và giao hàng hàng đầu tại Việt Nam. Đảm bảo chất lượng,
                                     tốc độ và dịch vụ khách hàng 24/7.
                                 </p>
                                 <div className="d-flex gap-3">
-                                    <a href="#" className="text-muted text-decoration-none"><Facebook
-                                        size={24}/></a>
-                                    <a href="#" className="text-muted text-decoration-none"><Instagram
-                                        size={24}/></a>
-                                    <a href="#" className="text-muted text-decoration-none"><Twitter size={24}/></a>
-                                    <a href="#" className="text-muted text-decoration-none"><Youtube size={24}/></a>
+                                    <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                        <Facebook size={24}/>
+                                    </a>
+                                    <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                        <Instagram size={24}/>
+                                    </a>
+                                    <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                        <Twitter size={24}/>
+                                    </a>
+                                    <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                        <Youtube size={24}/>
+                                    </a>
                                 </div>
                             </Col>
 
-                            {/* 2. Dịch vụ */}
+                            {/* Dịch vụ */}
                             <Col xs={6} md={3} lg={2}>
-                                <h4 className="h6 fw-semibold mb-3 text-primary">Dịch vụ</h4>
+                                <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Dịch vụ</h4>
                                 <ul className="list-unstyled small">
-                                    <li><a href="#" className="text-muted text-decoration-none">Tìm kiếm Nhà
-                                        hàng</a></li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Ưu đãi hôm
-                                        nay</a></li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Giao hàng siêu
-                                        tốc</a></li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Theo dõi đơn
-                                        hàng</a></li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Tìm kiếm Nhà hàng
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Ưu đãi hôm nay
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Giao hàng siêu tốc
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Theo dõi đơn hàng
+                                        </a>
+                                    </li>
                                 </ul>
                             </Col>
 
-                            {/* 3. Công ty */}
+                            {/* Công ty */}
                             <Col xs={6} md={3} lg={2}>
-                                <h4 className="h6 fw-semibold mb-3 text-primary">Công ty</h4>
+                                <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Công ty</h4>
                                 <ul className="list-unstyled small">
-                                    <li><a href="#" className="text-muted text-decoration-none">Về chúng tôi</a>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Về chúng tôi
+                                        </a>
                                     </li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Tuyển dụng</a>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Tuyển dụng
+                                        </a>
                                     </li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Blog Tin tức</a>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Blog Tin tức
+                                        </a>
                                     </li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Trở thành đối
-                                        tác</a></li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Trở thành đối tác
+                                        </a>
+                                    </li>
                                 </ul>
                             </Col>
 
-                            {/* 4. Hỗ trợ & Liên hệ */}
+                            {/* Hỗ trợ & Liên hệ */}
                             <Col xs={12} md={6} lg={4}>
-                                <h4 className="h6 fw-semibold mb-3 text-primary">Hỗ trợ</h4>
+                                <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Hỗ trợ</h4>
                                 <ul className="list-unstyled small">
-                                    <li><a href="#" className="text-muted text-decoration-none">Trung tâm trợ
-                                        giúp</a></li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Điều khoản dịch
-                                        vụ</a></li>
-                                    <li><a href="#" className="text-muted text-decoration-none">Chính sách bảo
-                                        mật</a></li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Trung tâm trợ giúp
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Điều khoản dịch vụ
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Chính sách bảo mật
+                                        </a>
+                                    </li>
                                 </ul>
-                                <h4 className="h6 fw-semibold mt-4 mb-3 text-primary">Liên hệ</h4>
-
+                                <h4 className="h6 fw-semibold mt-4 mb-3" style={{color: '#0d6efd'}}>Liên hệ</h4>
                                 <ul className="list-unstyled small">
-                                    <li className="d-flex align-items-center text-muted mb-1">
-                                        <Phone size={16} className="me-2 text-danger"/>
+                                    <li className="d-flex align-items-center mb-2" style={{color: '#adb5bd'}}>
+                                        <Phone size={16} className="me-2" style={{color: '#dc3545'}}/>
                                         +84 987 654 321
                                     </li>
-
-                                    <li className="d-flex align-items-center text-muted">
-                                        <Mail size={16} className="me-2 text-danger"/>
+                                    <li className="d-flex align-items-center" style={{color: '#adb5bd'}}>
+                                        <Mail size={16} className="me-2" style={{color: '#dc3545'}}/>
                                         support@lunchbot.vn
                                     </li>
                                 </ul>
-
-                                {/* Copyright */}
-                                <div className="border-top border-secondary pt-4 mt-4 text-center">
-                                    <p className="text-muted small mb-0">
-                                        © {new Date().getFullYear()} LunchBot. Đã đăng ký bản quyền. Được phát triển bởi
-                                        CodeGym Vietnam.
-                                    </p>
-                                </div>
                             </Col>
                         </Row>
+                        <div className="border-top pt-4 mt-4 text-center" style={{borderColor: '#495057 !important'}}>
+                            <p className="small mb-0" style={{color: '#adb5bd'}}>
+                                © {new Date().getFullYear()} LunchBot. Đã đăng ký bản quyền. Được phát triển bởi CodeGym.
+                            </p>
+                        </div>
                     </Container>
                 </footer>
             </div>
         </div>
-
     );
 }
-
-export default HomePage;
+export default HomePage
