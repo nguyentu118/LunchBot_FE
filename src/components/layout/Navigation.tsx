@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Container, Navbar, Nav, Button, Badge, Dropdown } from 'react-bootstrap';
-import { ShoppingCart, User, LogOut, Briefcase, Settings, UserCircle } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Briefcase, Settings, UserCircle, Home, Sparkles,UtensilsCrossed, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // IMPORT SERVICES
@@ -132,23 +132,25 @@ const Navigation: React.FC = () => {
                         <div>
                             <h1 className="h5 fw-bold mb-0 text-white">Lunch<span
                                 className="text-warning">Bot</span></h1>
-                            <p className="text-sm mb-0 text-white-50">Gợi ý món ngon mỗi ngày</p>
+                            <p className="text-sm mb-0 text-white-50">Bữa trưa ngon như mẹ nấu</p>
                         </div>
                     </div>
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="ms-auto align-items-center">
-                        <Nav.Link as={Link} to="/" className="text-white mx-3 py-1">
-                            🏠 Trang chủ
+                        <Nav.Link as={Link} to="/" className="text-white mx-3 py-1 d-flex align-items-center">
+                            <Home size={20} className="me-2" />
+                            <span>Trang chủ</span>
                         </Nav.Link>
-                        <Nav.Link as={Link} to="/deals" className="text-white mx-3 py-1">
-                            🎁 Ưu đãi
+                        <Nav.Link as={Link} to="/deals" className="text-white mx-3 py-1 d-flex align-items-center">
+                            <Sparkles size={20} className="me-2" />
+                            <span>Ưu đãi</span>
                         </Nav.Link>
-                        <Nav.Link as={Link} to="/restaurants" className="text-white mx-3 py-1">
-                            🍽️ Nhà hàng
+                        <Nav.Link as={Link} to="/restaurants" className="text-white mx-3 py-1 d-flex align-items-center">
+                            <UtensilsCrossed size={20} className="me-2" />
+                            <span>Nhà hàng</span>
                         </Nav.Link>
-
                         {/* ICON GIỎ HÀNG */}
                         <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
                             <ShoppingCart size={24} color="#FFF" />
@@ -163,10 +165,11 @@ const Navigation: React.FC = () => {
                         {!userInfo.isLoggedIn ? (
                             <Button
                                 variant="light"
-                                className="ms-md-3  py-1 px-1 fw-bold"
+                                className="ms-md-3 py-1 px-2 fw-bold d-flex align-items-center"
                                 onClick={() => navigate('/login')}
                             >
-                                🔐 Đăng nhập
+                                <LogIn size={18} className="me-1 text-primary" />
+                                <span>Đăng nhập</span>
                             </Button>
                         ) : (
                             <Dropdown as={Nav.Item} align="end">
