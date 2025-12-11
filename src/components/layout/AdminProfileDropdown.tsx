@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dropdown, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import {LogOut, Briefcase } from 'lucide-react';
+import {LogOut, ChevronDown, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ROUTES } from '../../routes/route.constants';
 

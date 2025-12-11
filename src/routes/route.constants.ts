@@ -20,6 +20,7 @@ export const ROUTES = {
 
     MERCHANTS: {
         PROFILE_UPDATE: 'merchant/update',
+        DASHBOARD: 'merchant/dashboard',
     },
 
     USER: {

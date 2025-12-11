@@ -12,6 +12,7 @@ import UserUpdateForm from "../features/user/UserUpdateForm.tsx";
 import HomePage from "../components/common/Homepage.tsx";
 import MerchantRegistrationForm from "../features/merchants/MerchantRegistrationForm.tsx";
 import ProtectedRoute from "./ProtectedRoute.tsx";
+import MerchantDashboard from "../components/layout/MerchantDashBoard.tsx";
 
 
 const router = createBrowserRouter([
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
     {
         path: '/register-merchant',
         element: <MerchantRegistrationForm/>,
+    },
+    {
+        path: 'merchant/dashboard',
+        element: <MerchantDashboard/>,
     },
 
 
