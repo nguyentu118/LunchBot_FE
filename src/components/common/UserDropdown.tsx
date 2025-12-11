@@ -1,29 +1,25 @@
 import React from 'react';
 import { Dropdown, Nav } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Briefcase, Settings } from 'lucide-react';
-// 💡 BƯỚC 1: Import toast từ thư viện react-hot-toast
+import { User, LogOut, Briefcase, Settings, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export type UserRole = string | null;
 
 interface UserDropdownProps {
-    // 💡 Đổi tên prop handleLogout thành onLogout để rõ ràng hơn (tùy chọn)
     userRole: UserRole;
     handleLogout: () => void;
+    fullName: string;
 }
 
-const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) => {
+const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout, fullName }) => {
     const navigate = useNavigate();
 
     const normalizedRole = React.useMemo(() => {
         if (!userRole || typeof userRole !== 'string') {
-            console.warn('Invalid role received:', userRole);
             return null;
         }
-
         const normalized = userRole.trim().toUpperCase().replace(/^ROLE_/, '');
-        console.log('Original role:', userRole, '=> Normalized:', normalized);
         return normalized;
     }, [userRole]);
 
@@ -39,60 +35,44 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
         navigate('/merchant/update');
     };
 
-    // 💡 BƯỚC 2: Tạo hàm xử lý đăng xuất MỚI để gọi Toast
     const handleLogoutWithToast = () => {
-        // Hiển thị thông báo Toast trước hoặc sau khi gọi hàm đăng xuất chính
-        toast.success('Bạn đã đăng xuất thành công!', {
-            // Tùy chọn cấu hình Toast (ví dụ: thời gian hiển thị)
-            duration: 3000,
-            position: 'top-center',
-        });
-
-        // Gọi hàm đăng xuất gốc (thường chứa logic xóa token, chuyển hướng)
         handleLogout();
+        toast.success("Bạn đã đăng xuất thành công!");
     };
 
-    if (!normalizedRole) {
-        console.error('No valid role found');
-        return null;
-    }
-
-    const isValidRole = ['USER', 'MERCHANT'].includes(normalizedRole);
-    if (!isValidRole) {
-        console.error('Unknown role:', normalizedRole);
-        return null;
-    }
-
-    // ✅ CUSTOM TOGGLE - Không có mũi tên
-    const CustomToggle = React.forwardRef<HTMLDivElement, any>(({ onClick }, ref) => (
-        <div
-            ref={ref}
-            onClick={(e) => {
-                e.preventDefault();
-                onClick(e);
-            }}
-            style={{ cursor: 'pointer' }}
-            className="d-inline-block"
-        >
-            <div className="rounded-circle p-2 shadow-sm bg-light d-flex align-items-center justify-content-center"
-                 style={{ width: '40px', height: '40px' }}>
-                <User size={20} className="text-primary" />
-            </div>
-        </div>
-    ));
+    // Lấy tên đầu tiên để hiển thị
+    const displayName = fullName ? fullName.split(' ')[0] : 'User';
 
     return (
-        <Dropdown as={Nav.Item} align="end" className="ms-md-3 mt-2 mt-md-0">
-            {/* ✅ Sử dụng Custom Toggle */}
-            <Dropdown.Toggle as={CustomToggle} id="user-dropdown" />
+        <Dropdown as={Nav.Item} align="end">
+            {/* ⭐ DROPDOWN TOGGLE - Icon bên trái, Tên bên phải, tách biệt rõ ràng */}
+            <Dropdown.Toggle
+                as={Nav.Link}
+                className="py-2 px-3 ms-md-3 rounded-pill bg-white text-primary border border-primary"
+                style={{ cursor: 'pointer' }}
+            >
+                <div className="d-flex align-items-center gap-2">
+                    {/* ICON USER - Bên trái */}
+                    <div className="d-flex align-items-center justify-content-center bg-primary rounded-circle"
+                         style={{ width: '32px', height: '32px' }}>
+                        <User size={18} className="text-white" />
+                    </div>
 
-            <Dropdown.Menu className="shadow-lg rounded-3 p-2">
-                <Dropdown.Header className="fw-bold text-dark">
-                    {normalizedRole === 'MERCHANT' ? 'Tài khoản Đối tác' : 'Tài khoản Khách hàng'}
+                    {/* TÊN NGƯỜI DÙNG - Bên phải */}
+                    <span className="fw-bold" style={{ fontSize: '14px' }}>
+                        {displayName}
+                    </span>
+                </div>
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu className="shadow-lg mt-2">
+                {/* HEADER TRONG DROPDOWN */}
+                <Dropdown.Header className="d-flex align-items-center fw-bold border-bottom">
+                    <UserCircle size={20} className="me-2 text-primary" />
+                    {fullName}
                 </Dropdown.Header>
-                <Dropdown.Divider />
 
-                {/* ... Các Dropdown.Item khác ... */}
+                {/* USER LOGIC */}
                 {normalizedRole === 'USER' && (
                     <>
                         <Dropdown.Item
@@ -103,23 +83,30 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
                             Cập nhật Thông tin User
                         </Dropdown.Item>
 
-                    </>
-                )}
-
-                {normalizedRole === 'MERCHANT' && (
-                    <>
                         <Dropdown.Item
-                            onClick={handleManageMerchant}
+                            onClick={handleUpgrade}
                             className="d-flex align-items-center"
                         >
-                            <Briefcase size={16} className="me-2 text-primary" />
-                            Quản lý Thông tin Nhà hàng
+                            <Briefcase size={16} className="me-2 text-warning" />
+                            Đăng ký làm Đối tác/Nhà hàng
                         </Dropdown.Item>
                     </>
                 )}
 
+                {/* MERCHANT LOGIC */}
+                {normalizedRole === 'MERCHANT' && (
+                    <Dropdown.Item
+                        onClick={handleManageMerchant}
+                        className="d-flex align-items-center"
+                    >
+                        <Briefcase size={16} className="me-2 text-primary" />
+                        Quản lý Thông tin Nhà hàng
+                    </Dropdown.Item>
+                )}
+
                 <Dropdown.Divider />
-                {/* 💡 BƯỚC 3: Thay đổi onClick sang hàm MỚI */}
+
+                {/* Đăng xuất */}
                 <Dropdown.Item
                     onClick={handleLogoutWithToast}
                     className="d-flex align-items-center text-danger"
