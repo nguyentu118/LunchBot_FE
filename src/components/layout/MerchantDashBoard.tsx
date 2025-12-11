@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, List } from 'lucide-react';
-import { Modal } from "react-bootstrap"; // <-- Cần import Modal
+import { Modal } from "react-bootstrap";
 import AddDishModal from "../../features/dish/AddDishModal.tsx";
 import MerchantDishList from "../../features/dish/MerchantDishList.tsx";
 import UserDropdown from "../common/UserDropdown.tsx";
 import { Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import axiosInstance from "../../config/axiosConfig.ts"; // <-- Sử dụng Axios Instance
+import axiosInstance from "../../config/axiosConfig.ts";
 import { AxiosResponse, AxiosError } from 'axios';
 import useCategories from "../../features/category/useCategories.ts";
 import toast from "react-hot-toast";
 
-
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
-// DishDeleteButton sẽ được dùng trong MerchantDishList, không cần import trực tiếp ở đây
 
 // --- INTERFACES ---
 
@@ -21,7 +19,7 @@ interface Dish {
     id: number;
     name: string;
     description: string;
-    price: string; // Tạm dùng string theo cấu trúc cũ, nhưng BE dùng BigDecimal
+    price: string;
     image: string | null;
 }
 
@@ -44,8 +42,6 @@ interface SidebarButtonProps {
     onClick: () => void;
     color?: string;
 }
-
-// ... (customStyles và SidebarButton giữ nguyên) ...
 
 const customStyles = {
     primaryPink: '#ff5e62',
@@ -88,7 +84,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [selectedDishIdToEdit, setSelectedDishIdToEdit] = useState<number | null>(null);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
 
-
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>({
         name: '',
         merchantId: undefined,
@@ -112,7 +107,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
             setIsLoadingId(true);
 
             try {
-                // SỬ DỤNG AXIOS INSTANCE
                 const response = await axiosInstance.get('/merchants/current/id');
                 setCurrentMerchantId(response.data.merchantId);
             } catch (error) {
@@ -122,7 +116,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
             }
 
             try {
-                // SỬ DỤNG AXIOS INSTANCE
                 const profileResponse = await axiosInstance.get('/merchants/profile');
                 merchantNameData = profileResponse.data.restaurantName || 'Cửa hàng của tôi';
                 setMerchantName(merchantNameData);
@@ -159,7 +152,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         };
 
         try {
-            // SỬ DỤNG AXIOS INSTANCE
             const response: AxiosResponse = await axiosInstance.post('/dishes/create', requestBody);
             const createdDish = response.data;
 
@@ -204,25 +196,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }, []);
 
 
-    // 💡 CHỨC NĂNG XÓA: Giữ lại hàm này để tương thích, nhưng khuyến nghị dùng DishDeleteButton
-    const handleDeleteDish = useCallback(async (dishId: number) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa món ăn này?')) {
-            return;
-        }
-
-        try {
-            // Logic này sẽ được thay thế bằng Component DishDeleteButton
-            await axiosInstance.delete(`/dishes/${dishId}`);
-            if (selectedDish?.id === dishId) {
-                setSelectedDish(null);
-            }
-            toast.success('Xóa món ăn thành công!');
-            setDishCreatedToggle(prev => !prev);
-        } catch (error) {
-            console.error('Lỗi khi xóa món ăn:', error);
-            toast.error('Không thể xóa món ăn. Vui lòng thử lại.');
-        }
-    }, [selectedDish]);
 
 
     type InputChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
@@ -336,15 +309,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 setSelectedDish={setSelectedDish}
                                 // TRUYỀN HÀM SỬA ĐỂ MỞ MODAL
                                 onEdit={handleEditDish}
-                                // TRUYỀN HÀM XÓA (Khuyến nghị dùng DishDeleteButton trực tiếp trong list)
-                                onDelete={handleDeleteDish}
                             />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ADD DISH MODAL (Giữ nguyên) */}
+            {/* ADD DISH MODAL */}
             <AddDishModal
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
@@ -356,12 +327,11 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 MOCK_CATEGORIES={categories}
             />
 
-            {/* 💡 EDIT DISH MODAL (MỚI: Bọc Component DishUpdateForm) */}
             <Modal
                 show={showEditModal}
                 onHide={() => {
                     setShowEditModal(false);
-                    setSelectedDishIdToEdit(null); // Reset ID khi đóng
+                    setSelectedDishIdToEdit(null);
                 }}
                 size="lg"
                 centered
@@ -370,15 +340,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     <Modal.Title>Chỉnh Sửa Món Ăn</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {/* 💡 TÍCH HỢP DISHUPDATEFORM.TSX */}
                     {selectedDishIdToEdit ? (
                         <DishUpdateForm
-                            dishId={selectedDishIdToEdit} // Truyền ID qua props
+                            dishId={selectedDishIdToEdit}
                             onSuccess={() => {
-                                // Xử lý sau khi PUT thành công
                                 setShowEditModal(false);
                                 setSelectedDishIdToEdit(null);
-                                setDishCreatedToggle(prev => !prev); // Refresh list
+                                setDishCreatedToggle(prev => !prev);
                                 toast.success("Cập nhật món ăn thành công!");
                             }}
                             onCancel={() => setShowEditModal(false)}

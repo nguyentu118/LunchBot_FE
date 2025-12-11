@@ -1,12 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Container, Navbar, Nav, Button, Badge, Dropdown } from 'react-bootstrap';
-import { ShoppingCart, User, LogOut, Briefcase, Settings, UserCircle, Home, Sparkles,UtensilsCrossed, LogIn } from 'lucide-react';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Link, useNavigate} from 'react-router-dom';
+import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
+import {
+    Briefcase,
+    Home,
+    LogIn,
+    LogOut,
+    Settings,
+    ShoppingCart,
+    Sparkles,
+    User,
+    UserCircle,
+    UtensilsCrossed
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // IMPORT SERVICES
-import { UserApiService } from '../../features/user/services/UserApi.service';
-import { CartApiService } from '../../features/cart/services/CartApi.service';
+import {UserApiService} from '../../features/user/services/UserApi.service';
+import {CartApiService} from '../../features/cart/services/CartApi.service';
 
 // Định nghĩa Enum cho Role
 enum Role {
@@ -59,14 +70,14 @@ const Navigation: React.FC = () => {
 
     const fetchHeaderData = useCallback(async (isLoggedIn: boolean) => {
         if (!isLoggedIn) {
-            setUserInfo(prev => ({ ...prev, fullName: 'Tài khoản Khách hàng' }));
+            setUserInfo(prev => ({...prev, fullName: 'Tài khoản Khách hàng'}));
             setCartCount(0);
             return;
         }
 
         try {
             const userMe = await UserApiService.getMeInfo();
-            setUserInfo(prev => ({ ...prev, fullName: userMe.fullName }));
+            setUserInfo(prev => ({...prev, fullName: userMe.fullName}));
 
             const cartData = await CartApiService.getCartCount();
             setCartCount(cartData.count || 0);
@@ -90,14 +101,14 @@ const Navigation: React.FC = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('userRole');
-        setUserInfo({ isLoggedIn: false, userEmail: '', fullName: 'Tài khoản Khách hàng', userRole: '' });
+        setUserInfo({isLoggedIn: false, userEmail: '', fullName: 'Tài khoản Khách hàng', userRole: ''});
         setCartCount(0);
         toast.success("Bạn đã đăng xuất thành công!");
         navigate('/');
     };
 
-    const handleUpgrade = () => {
-        navigate('/register-merchant');
+    const handleMerchantDashBoard = () => {
+        navigate('/merchant/dashboard');
     };
 
     const handleUpdateUserProfile = () => {
@@ -113,7 +124,6 @@ const Navigation: React.FC = () => {
 
     // Tên hiển thị ngắn gọn (chỉ lấy tên đầu tiên)
     const displayName = userInfo.fullName ? userInfo.fullName.split(' ')[0] : 'User';
-
 
 
     return (
@@ -136,24 +146,25 @@ const Navigation: React.FC = () => {
                         </div>
                     </div>
                 </Navbar.Brand>
-                <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                <Navbar.Toggle aria-controls="basic-navbar-nav"/>
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="ms-auto align-items-center">
                         <Nav.Link as={Link} to="/" className="text-white mx-3 py-1 d-flex align-items-center">
-                            <Home size={20} className="me-2" />
+                            <Home size={20} className="me-2"/>
                             <span>Trang chủ</span>
                         </Nav.Link>
                         <Nav.Link as={Link} to="/deals" className="text-white mx-3 py-1 d-flex align-items-center">
-                            <Sparkles size={20} className="me-2" />
+                            <Sparkles size={20} className="me-2"/>
                             <span>Ưu đãi</span>
                         </Nav.Link>
-                        <Nav.Link as={Link} to="/restaurants" className="text-white mx-3 py-1 d-flex align-items-center">
-                            <UtensilsCrossed size={20} className="me-2" />
+                        <Nav.Link as={Link} to="/restaurants"
+                                  className="text-white mx-3 py-1 d-flex align-items-center">
+                            <UtensilsCrossed size={20} className="me-2"/>
                             <span>Nhà hàng</span>
                         </Nav.Link>
                         {/* ICON GIỎ HÀNG */}
                         <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
-                            <ShoppingCart size={24} color="#FFF" />
+                            <ShoppingCart size={24} color="#FFF"/>
                             {cartCount > 0 && (
                                 <Badge pill bg="warning" className="position-absolute top-0 start-100 translate-middle">
                                     {cartCount}
@@ -168,7 +179,7 @@ const Navigation: React.FC = () => {
                                 className="ms-md-3 py-1 px-2 fw-bold d-flex align-items-center"
                                 onClick={() => navigate('/login')}
                             >
-                                <LogIn size={18} className="me-1 text-primary" />
+                                <LogIn size={18} className="me-1 text-primary"/>
                                 <span>Đăng nhập</span>
                             </Button>
                         ) : (
@@ -178,17 +189,19 @@ const Navigation: React.FC = () => {
                                     className="py-0 px-1 ms-md-3 d-flex align-items-center text-white "
                                 >
                                     {/* ICON USER (Giữ nguyên kích thước 18 và me-1/me-2) */}
-                                    <div><div className="d-flex align-items-center justify-content-center rounded-circle"
-                                              style={{ width: '32px', height: '32px' }}>
-                                        <User size={20} className="text-white" />
-                                    </div></div>
+                                    <div>
+                                        <div className="d-flex align-items-center justify-content-center rounded-circle"
+                                             style={{width: '32px', height: '32px'}}>
+                                            <User size={20} className="text-white"/>
+                                        </div>
+                                    </div>
                                     {/* TÊN KHÁCH HÀNG (tay phải icon) */}
                                     <span className="fw-bold small">{displayName}</span>
                                 </Dropdown.Toggle>
 
                                 <Dropdown.Menu className="shadow-lg mt-2">
                                     <Dropdown.Header className="d-flex align-items-center fw-bold border-bottom">
-                                        <UserCircle size={20} className="me-2 text-primary" />
+                                        <UserCircle size={20} className="me-2 text-primary"/>
                                         {userInfo.fullName}
                                     </Dropdown.Header>
 
@@ -198,37 +211,41 @@ const Navigation: React.FC = () => {
                                                 onClick={handleUpdateUserProfile}
                                                 className="d-flex align-items-center"
                                             >
-                                                <Settings size={16} className="me-2 text-primary" />
+                                                <Settings size={16} className="me-2 text-primary"/>
                                                 Cập nhật Thông tin User
                                             </Dropdown.Item>
 
-                                            <Dropdown.Item
-                                                onClick={handleUpgrade}
-                                                className="d-flex align-items-center"
-                                            >
-                                                <Briefcase size={16} className="me-2 text-warning" />
-                                                Đăng ký làm Đối tác/Nhà hàng
-                                            </Dropdown.Item>
                                         </>
                                     )}
 
                                     {normalizedRole === 'MERCHANT' && (
-                                        <Dropdown.Item
-                                            onClick={handleManageMerchant}
-                                            className="d-flex align-items-center"
-                                        >
-                                            <Briefcase size={16} className="me-2 text-primary" />
-                                            Quản lý Thông tin Nhà hàng
-                                        </Dropdown.Item>
+                                        <>
+                                            <Dropdown.Item
+                                                onClick={handleMerchantDashBoard}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <Briefcase size={16} className="me-2 text-primary"/>
+                                                Nhà hàng của tôi
+                                            </Dropdown.Item>
+                                            <Dropdown.Item
+                                                onClick={handleManageMerchant}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <Briefcase size={16} className="me-2 text-primary"/>
+                                                Quản lý Thông tin Nhà hàng
+                                            </Dropdown.Item>
+
+
+                                        </>
                                     )}
 
-                                    <Dropdown.Divider />
+                                    <Dropdown.Divider/>
 
                                     <Dropdown.Item
                                         onClick={handleLogout}
                                         className="d-flex align-items-center text-danger"
                                     >
-                                        <LogOut size={16} className="me-2" />
+                                        <LogOut size={16} className="me-2"/>
                                         Đăng xuất
                                     </Dropdown.Item>
                                 </Dropdown.Menu>

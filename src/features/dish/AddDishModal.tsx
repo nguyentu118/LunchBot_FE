@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Tag, Clock, DollarSign, Percent, Upload } from 'lucide-react';
+import { Plus, Tag, Clock, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // --- ĐỊNH NGHĨA TYPESCRIPT INTERFACE ---
@@ -38,7 +38,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                        newDishData,
                                                        handleNewDishChange,
                                                        handleCategoryToggle,
-                                                       customStyles,
                                                        MOCK_CATEGORIES
                                                    }) => {
 
@@ -56,14 +55,9 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         formData.append('file', file);
         formData.append('upload_preset', 'lunchbot_dishes');
         formData.append('cloud_name', 'dxoln0uq3');
-
-        // ✅ THÊM CÁC TRANSFORMATION ĐỂ GIỮ CHẤT LƯỢNG ẢNH
-        formData.append('quality', 'auto:best'); // Tự động chọn quality tốt nhất
-        formData.append('fetch_format', 'auto'); // Tự động chọn format tốt nhất (WebP, AVIF...)
-        formData.append('folder', 'lunchbot/dishes'); // Tổ chức thư mục
-
-        // Giữ kích thước gốc hoặc resize hợp lý
-        // formData.append('transformation', 'w_1920,h_1920,c_limit'); // Giới hạn max 1920px
+        formData.append('quality', 'auto:best');
+        formData.append('fetch_format', 'auto');
+        formData.append('folder', 'lunchbot/dishes');
 
         try {
             const response = await fetch(
@@ -79,17 +73,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
             }
 
             const data = await response.json();
-
-            // ✅ TẠO URL VỚI TRANSFORMATION TỐT HƠN
-            // Thay vì dùng secure_url trực tiếp, ta tạo URL với parameters chất lượng cao
-            const baseUrl = data.secure_url;
-
-            // Option 1: Dùng URL gốc (chất lượng tốt nhất)
-            return baseUrl;
-
-            // Option 2: Hoặc customize URL với transformation
-            // const publicId = data.public_id;
-            // return `https://res.cloudinary.com/dxoln0uq3/image/upload/q_auto:best,f_auto/${publicId}`;
+            return data.secure_url;
 
         } catch (error) {
             console.error('Cloudinary upload error:', error);
@@ -100,7 +84,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
     const handleSaveClick = async () => {
         if (loading) return;
 
-        // Validation cơ bản
         if (!newDishData.name || !newDishData.price || newDishData.categoryIds.size === 0) {
             toast.error('Vui lòng điền đầy đủ các trường bắt buộc (Tên, Giá, Tag).');
             return;
@@ -114,7 +97,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         setLoading(true);
 
         try {
-            // ✅ UPLOAD THẬT TẤT CẢ ẢNH
             setUploadProgress('Đang tải ảnh lên...');
             const uploadPromises = selectedFiles.map((file, index) => {
                 setUploadProgress(`Đang tải ảnh ${index + 1}/${selectedFiles.length}...`);
@@ -123,8 +105,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
 
             const uploadedUrls = await Promise.all(uploadPromises);
             setUploadProgress('Upload hoàn tất!');
-
-            console.log('✅ Uploaded URLs:', uploadedUrls);
 
             const dataToSave = {
                 name: newDishData.name,
@@ -136,7 +116,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                 serviceFee: newDishData.serviceFee,
                 categoryIds: newDishData.categoryIds,
                 isRecommended: newDishData.isRecommended,
-                uploadedUrls: uploadedUrls // ✅ URL thật từ Cloudinary
+                uploadedUrls: uploadedUrls
             };
 
             await onSave(dataToSave);
@@ -159,8 +139,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                         <h5 className="modal-title fw-bold">Thêm món ăn mới</h5>
                         <button type="button" className="btn-close" onClick={onClose} disabled={loading}></button>
                     </div>
-                    <div className="modal-body pt-0">
-                        {/* HIỂN THỊ PROGRESS KHI UPLOAD */}
+                    <div className="modal-body pt-3">
                         {uploadProgress && (
                             <div className="alert alert-info d-flex align-items-center mb-3">
                                 <div className="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -168,56 +147,53 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                             </div>
                         )}
 
-                        <form className="row g-3" onSubmit={(e) => { e.preventDefault(); handleSaveClick(); }}>
+                        <form className="row g-4" onSubmit={(e) => { e.preventDefault(); handleSaveClick(); }}>
                             {/* Cột 1: Thông tin cơ bản */}
                             <div className="col-md-6">
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Tên món ăn <span className="text-danger">*</span></label>
+                                    <label className="form-label fw-bold">Tên món ăn <span className="text-danger">*</span></label>
                                     <input
                                         type="text"
                                         name="name"
                                         value={newDishData.name}
                                         onChange={handleNewDishChange}
-                                        className="form-control rounded-3"
+                                        className="form-control"
+                                        placeholder="Ví dụ: Phở bò tái"
                                         required
                                         disabled={loading}
                                     />
                                 </div>
 
-                                {/* TRƯỜNG UPLOAD FILE */}
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Tải ảnh lên <span className="text-danger">*</span></label>
-                                    <div className="input-group">
-                                        <input
-                                            type="file"
-                                            name="imagesFiles"
-                                            onChange={handleNewDishChange}
-                                            className="form-control rounded-3"
-                                            accept="image/*"
-                                            multiple
-                                            required={selectedFiles.length === 0}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="mt-2 small text-muted">
-                                        {selectedFiles.length > 0 ? (
-                                            <p className="mb-0 fw-medium text-success">
-                                                <Upload size={14} className="me-1"/> Đã chọn {selectedFiles.length} file.
-                                            </p>
-                                        ) : (
-                                            <p className="mb-0">Chọn một hoặc nhiều ảnh món ăn chất lượng cao.</p>
-                                        )}
-                                    </div>
+                                    <label className="form-label fw-bold d-flex align-items-center gap-1">
+                                        <Upload size={16}/> Tải ảnh lên <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="file"
+                                        name="imagesFiles"
+                                        onChange={handleNewDishChange}
+                                        className="form-control"
+                                        accept="image/*"
+                                        multiple
+                                        required={selectedFiles.length === 0}
+                                        disabled={loading}
+                                    />
+                                    {selectedFiles.length > 0 && (
+                                        <small className="text-success d-block mt-2">
+                                            ✓ Đã chọn {selectedFiles.length} file
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Mô tả/Ghi chú</label>
+                                    <label className="form-label fw-bold">Mô tả/Ghi chú</label>
                                     <textarea
                                         name="description"
                                         value={newDishData.description}
                                         onChange={handleNewDishChange}
-                                        className="form-control rounded-3"
-                                        rows={3}
+                                        className="form-control"
+                                        rows={4}
+                                        placeholder="Mô tả chi tiết món ăn (tùy chọn)"
                                         disabled={loading}
                                     />
                                 </div>
@@ -226,92 +202,106 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                             {/* Cột 2: Giá & Thuộc tính */}
                             <div className="col-md-6">
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Giá tiền (VNĐ) <span className="text-danger">*</span></label>
+                                    <label className="form-label fw-bold">Giá tiền <span className="text-danger">*</span></label>
                                     <div className="input-group">
-                                        <span className="input-group-text"><DollarSign size={16} /></span>
+                                        <span className="input-group-text">VND</span>
                                         <input
                                             type="number"
                                             name="price"
                                             value={newDishData.price}
                                             onChange={handleNewDishChange}
-                                            className="form-control rounded-3"
+                                            className="form-control"
                                             min="0"
+                                            step="1000"
                                             required
                                             disabled={loading}
                                         />
                                     </div>
                                 </div>
+
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Giá khuyến mãi (VNĐ)</label>
+                                    <label className="form-label">Giá khuyến mãi (VND)</label>
                                     <div className="input-group">
-                                        <span className="input-group-text"><DollarSign size={16} /></span>
+                                        <span className="input-group-text">VND</span>
                                         <input
                                             type="number"
                                             name="discountPrice"
                                             value={newDishData.discountPrice}
                                             onChange={handleNewDishChange}
-                                            className="form-control rounded-3"
+                                            className="form-control"
                                             min="0"
+                                            step="1000"
                                             disabled={loading}
                                         />
                                     </div>
                                 </div>
+
                                 <div className="mb-3">
-                                    <label className="form-label small fw-medium text-muted">Phí dịch vụ (VNĐ)</label>
+                                    <label className="form-label">Phí dịch vụ (VND)</label>
                                     <div className="input-group">
-                                        <span className="input-group-text"><Percent size={16} /></span>
+                                        <span className="input-group-text">VND</span>
                                         <input
                                             type="number"
                                             name="serviceFee"
                                             value={newDishData.serviceFee}
                                             onChange={handleNewDishChange}
-                                            className="form-control rounded-3"
+                                            className="form-control"
                                             min="0"
+                                            step="100"
                                             disabled={loading}
                                         />
                                     </div>
                                 </div>
-                                <div className="mb-4">
-                                    <label className="form-label small fw-medium text-muted">Thời gian chuẩn bị (phút)</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text"><Clock size={16} /></span>
-                                        <input
-                                            type="number"
-                                            name="preparationTime"
-                                            value={newDishData.preparationTime === undefined ? '' : newDishData.preparationTime}
-                                            onChange={handleNewDishChange}
-                                            className="form-control rounded-3"
-                                            min="0"
-                                            disabled={loading}
-                                        />
-                                    </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold d-flex align-items-center gap-1">
+                                        <Clock size={16}/> Thời gian chuẩn bị (phút)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="preparationTime"
+                                        value={newDishData.preparationTime === undefined ? '' : newDishData.preparationTime}
+                                        onChange={handleNewDishChange}
+                                        className="form-control"
+                                        min="0"
+                                        placeholder="Ví dụ: 20"
+                                        disabled={loading}
+                                    />
                                 </div>
                             </div>
 
                             {/* Tags và Đề cử */}
                             <div className="col-12">
-                                <label className="form-label small fw-medium text-muted d-block">Tags / Danh mục <span className="text-danger">*</span></label>
+                                <label className="form-label fw-bold d-flex align-items-center gap-1">
+                                    <Tag size={16}/> Tags / Danh mục <span className="text-danger">*</span>
+                                </label>
                                 <div className="d-flex flex-wrap gap-2 mb-3">
-                                    {MOCK_CATEGORIES.map(category => (
-                                        <span
-                                            key={category.id}
-                                            className={`badge cursor-pointer p-2 fw-medium ${
-                                                newDishData.categoryIds.has(category.id)
-                                                    ? 'text-white'
-                                                    : 'text-secondary border border-secondary bg-light'
-                                            }`}
-                                            style={{
-                                                backgroundColor: newDishData.categoryIds.has(category.id) ? customStyles.primaryPink : 'transparent',
-                                                transition: 'all 0.2s',
-                                                cursor: loading ? 'not-allowed' : 'pointer',
-                                                opacity: loading ? 0.6 : 1
-                                            }}
-                                            onClick={() => !loading && handleCategoryToggle(category.id)}
-                                        >
-                                            <Tag size={14} style={{ marginRight: '4px' }} />
-                                            {category.name}
-                                        </span>
-                                    ))}
+                                    {MOCK_CATEGORIES.map(category => {
+                                        const isSelected = newDishData.categoryIds.has(category.id);
+                                        return (
+                                            <div key={category.id} className="form-check form-check-inline p-0">
+                                                <input
+                                                    className="btn-check"
+                                                    type="checkbox"
+                                                    id={`cat-add-${category.id}`}
+                                                    checked={isSelected}
+                                                    onChange={() => handleCategoryToggle(category.id)}
+                                                    disabled={loading}
+                                                />
+                                                <label
+                                                    className="btn btn-sm"
+                                                    htmlFor={`cat-add-${category.id}`}
+                                                    style={{
+                                                        backgroundColor: isSelected ? '#ff5e62' : '#f8f9fa',
+                                                        color: isSelected ? 'white' : '#6c757d',
+                                                        border: isSelected ? '1px solid #ff5e62' : '1px solid #ced4da'
+                                                    }}
+                                                >
+                                                    {category.name}
+                                                </label>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -326,41 +316,46 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         id="isRecommendedCheck"
                                         disabled={loading}
                                     />
-                                    <label className="form-check-label small fw-medium text-dark" htmlFor="isRecommendedCheck">
+                                    <label className="form-check-label fw-bold" htmlFor="isRecommendedCheck">
                                         Đề cử món ăn này (Hiển thị nổi bật)
                                     </label>
                                 </div>
                             </div>
                         </form>
                     </div>
-                    <div className="modal-footer border-0 pt-0 d-flex gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSaveClick}
-                            className="btn btn-lg flex-grow-1 fw-bold text-white"
-                            style={{ backgroundColor: customStyles.primaryPink, border: 'none' }}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                    Đang xử lý...
-                                </>
-                            ) : (
-                                <>
-                                    <Plus size={18} style={{ marginRight: '8px' }} />
-                                    Thêm món
-                                </>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="btn btn-light btn-lg flex-grow-1 fw-bold text-secondary"
-                            disabled={loading}
-                        >
-                            Hủy
-                        </button>
+
+                    {/* Footer với nút căn đều */}
+                    <div className="modal-footer border-0 pt-0">
+                        <div className="d-flex gap-3 w-100">
+                            <button
+                                type="button"
+                                onClick={handleSaveClick}
+                                className="btn btn-danger btn-lg flex-fill fw-bold text-white"
+                                disabled={loading}
+                                style={{ minWidth: '150px' }}
+                            >
+                                {loading ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus size={18} className="me-2" />
+                                        Thêm món
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="btn btn-light btn-lg flex-fill fw-bold border"
+                                disabled={loading}
+                                style={{ minWidth: '150px' }}
+                            >
+                                Hủy
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

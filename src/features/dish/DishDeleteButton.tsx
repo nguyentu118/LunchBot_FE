@@ -12,7 +12,12 @@ interface DishDeleteButtonProps {
     className?: string;
 }
 
-const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({ dishId, dishName, onDeleteSuccess, className = "" }) => {
+const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
+                                                               dishId,
+                                                               dishName,
+                                                               onDeleteSuccess,
+                                                               className = ""
+                                                           }) => {
     const [loading, setLoading] = useState<boolean>(false);
     const navigate = useNavigate();
 
@@ -21,29 +26,28 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({ dishId, dishName, o
         setLoading(true);
 
         try {
-            // GỌI API DELETE (KHÔNG DÙNG ALERT/CONFIRM Ở ĐÂY)
             await axiosInstance.delete(`/dishes/${dishId}`);
-
-            // THÔNG BÁO THÀNH CÔNG bằng TOAST
             toast.success(`Món ăn "${dishName}" đã được xóa thành công!`, {
-                duration: 3000 // Tăng thời gian hiển thị success toast
+                duration: 3000,
+                icon: '✅'
             });
 
             if (onDeleteSuccess) {
-                // Gọi callback để Component cha xử lý (refresh data)
                 onDeleteSuccess();
             } else {
-                // Điều hướng nếu component này được dùng độc lập
                 navigate('/dishes/list');
             }
 
         } catch (err) {
             const axiosError = err as AxiosError;
-            // Tránh lỗi khi response.data là null hoặc không phải object
-            const message = (axiosError.response?.data as any)?.message || (axiosError.response?.data as string) || axiosError.message;
+            const message = (axiosError.response?.data as any)?.message ||
+                (axiosError.response?.data as string) ||
+                axiosError.message;
 
-            // THÔNG BÁO LỖI bằng TOAST
-            toast.error(`Xóa thất bại: ${message}`, { duration: 5000 });
+            toast.error(`Xóa thất bại: ${message}`, {
+                duration: 5000,
+                icon: '❌'
+            });
 
         } finally {
             setLoading(false);
@@ -52,45 +56,93 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({ dishId, dishName, o
 
     // 2. Hàm kích hoạt hộp thoại xác nhận (Sử dụng toast.custom)
     const handleConfirmOpen = () => {
-        // TẠO HỘP THOẠI XÁC NHẬN CUSTOM
         toast((t) => (
-            <div className="card p-3 shadow-lg" style={{ minWidth: '320px', borderRadius: '8px' }}>
-                <h5 className="mb-3 text-danger d-flex align-items-center gap-2">
-                    <Trash2 size={20}/> Xác nhận Xóa món ăn
-                </h5>
-                <p className="mb-4">Bạn có chắc chắn muốn xóa món ăn **{dishName}** không? Thao tác này không thể hoàn tác.</p>
-                <div className="d-flex justify-content-end gap-2">
-                    <button
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => toast.dismiss(t.id)}
+            <div
+                className="bg-white rounded-3 shadow-lg p-4 border border-danger"
+                style={{
+                    minWidth: '340px',
+                    maxWidth: '500px',
+                    animation: 'slideIn 0.3s ease-out'
+                }}
+            >
+                <div className="d-flex align-items-start gap-3 mb-3">
+                    <div
+                        className="rounded-circle bg-danger bg-opacity-10 p-2 d-flex align-items-center justify-content-center"
+                        style={{ width: '40px', height: '40px' }}
                     >
-                        Hủy bỏ
-                    </button>
+                        <Trash2 size={22} className="text-danger"/>
+                    </div>
+                    <div className="flex-grow-1">
+                        <h5 className="mb-2 fw-bold text-danger">Xác nhận Xóa</h5>
+                        <p className="mb-0 text-danger">
+                            Bạn có chắc chắn muốn xóa món ăn <strong>"{dishName}"</strong> không?
+                            <br/>
+                            <span className="small text-danger">Thao tác này không thể hoàn tác.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+
+                    {/* SỬA ĐỔI CHÍNH: Nút XÁC NHẬN XÓA được đặt trước nút HỦY BỎ */}
+
+                    {/* 1. Nút XÁC NHẬN XÓA (Nằm bên trái Hủy bỏ, nhưng vẫn ở phía phải của popup) */}
                     <button
-                        className="btn btn-danger btn-sm"
+                        className="btn btn-danger px-4 d-flex align-items-center gap-2"
                         onClick={() => {
                             toast.dismiss(t.id); // Đóng toast xác nhận
                             executeDelete();      // Thực thi hàm xóa (API call)
                         }}
                         disabled={loading}
                     >
-                        {loading ? 'Đang xóa...' : 'Xác nhận Xóa'}
+                        {loading ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm" role="status"></span>
+                                Đang xóa...
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 size={16} />
+                                Xác nhận Xóa
+                            </>
+                        )}
+                    </button>
+
+                    {/* 2. Nút HỦY BỎ (Nằm ngoài cùng bên phải) */}
+                    <button
+                        className="btn btn-light border px-4"
+                        onClick={() => toast.dismiss(t.id)}
+                        disabled={loading}
+                    >
+                        Hủy bỏ
                     </button>
                 </div>
             </div>
-        ), { duration: Infinity, position: 'top-center' });
+        ), {
+            duration: Infinity,
+            position: 'top-center',
+            style: {
+                background: 'transparent',
+                boxShadow: 'none'
+            }
+        });
     };
 
     return (
         <button
             onClick={handleConfirmOpen}
             disabled={loading}
-            // Đảm bảo nút có kiểu dáng đẹp
-            className={`btn btn-danger d-flex align-items-center gap-1 ${className}`}
+            className={`btn btn-outline-danger d-flex align-items-center gap-2 ${className}`}
         >
-            {loading ? 'Đang xóa...' : (
+            {loading ? (
                 <>
-                    <Trash2 size={18} /> Xóa
+                    <span className="spinner-border spinner-border-sm" role="status"></span>
+                    Đang xóa...
+                </>
+            ) : (
+                <>
+                    <Trash2 size={18} />
+                    Xóa
                 </>
             )}
         </button>

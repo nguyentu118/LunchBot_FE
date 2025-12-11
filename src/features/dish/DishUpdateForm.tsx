@@ -3,7 +3,7 @@ import { Camera, Clock, Tag } from 'lucide-react';
 import { AxiosError } from 'axios';
 import axiosInstance from "../../config/axiosConfig.ts";
 import useCategories from "../../features/category/useCategories.ts";
-import toast from "react-hot-toast"; // <-- Sử dụng react-hot-toast
+import toast from "react-hot-toast";
 
 // ----------------------------------------------------------------------
 // 💡 PROPS INTERFACE (Dùng trong Modal)
@@ -39,7 +39,6 @@ interface DishDetailResponse extends Omit<DishFormData, 'categoryIds' | 'price' 
     serviceFee: number;
     preparationTime: number;
     categories: CategoryResponse[];
-    // ...
 }
 
 const initialFormData: DishFormData = {
@@ -74,7 +73,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                 const response = await axiosInstance.get<DishDetailResponse>(`/dishes/${id}`);
                 const dishData = response.data;
 
-                // Ánh xạ dữ liệu và chuyển về string cho input
                 setFormData({
                     name: dishData.name,
                     merchantId: dishData.merchant.id,
@@ -161,7 +159,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
 
         try {
             await axiosInstance.put(`/dishes/${id}`, dataToSend);
-
             toast.success('Cập nhật món ăn thành công!');
 
             setTimeout(() => {
@@ -189,28 +186,39 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
         <div className="dish-update-form p-3">
 
             {/* Hiển thị lỗi validation/API */}
-            {error && <div className="alert alert-danger mb-4">❌ {error}</div>}
+            {error && <div className="alert alert-danger mb-4">⌠{error}</div>}
 
             <form onSubmit={handleSubmit} className="row g-4">
 
                 {/* CỘT TRÁI (Tên, Ảnh, Mô tả, Tags, Đề cử) */}
-                <div className="col-md-6 order-md-1 order-2">
+                <div className="col-md-6">
                     {/* 1. Tên món ăn (*) */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold">Tên món ăn <span className="text-danger">*</span></label>
-                        <input type="text" className="form-control" name="name"
-                               value={formData.name} onChange={handleChange} required disabled={generalLoading}
-                               placeholder="Ví dụ: Phở bò tái" maxLength={255}
+                        <input
+                            type="text"
+                            className="form-control"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            required
+                            disabled={generalLoading}
+                            placeholder="Ví dụ: Phở bò tái"
+                            maxLength={255}
                         />
                     </div>
 
                     {/* 2. Tải ảnh lên (Placeholder UI) */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold d-flex align-items-center gap-1">
                             <Camera size={16}/> Tải ảnh lên <span className="text-danger">*</span>
                         </label>
                         <div className="d-flex align-items-center gap-2">
-                            <button type="button" className="btn btn-secondary d-flex align-items-center gap-1" disabled={generalLoading}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary d-flex align-items-center gap-1"
+                                disabled={generalLoading}
+                            >
                                 Chọn tệp
                             </button>
                             <span className="text-muted small">
@@ -221,16 +229,21 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                     </div>
 
                     {/* 3. Mô tả / Ghi chú */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold">Mô tả/Ghi chú</label>
-                        <textarea className="form-control" name="description"
-                                  value={formData.description} onChange={handleChange} rows={4} disabled={generalLoading}
-                                  placeholder="Mô tả chi tiết món ăn (tùy chọn)"
+                        <textarea
+                            className="form-control"
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows={4}
+                            disabled={generalLoading}
+                            placeholder="Mô tả chi tiết món ăn (tùy chọn)"
                         />
                     </div>
 
                     {/* 4. Tag (Danh mục) (*) */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold d-flex align-items-center gap-1">
                             <Tag size={16}/> Tags / Danh mục <span className="text-danger">*</span>
                         </label>
@@ -238,34 +251,46 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                             {(isLoadingCategories || categoriesError) ? (
                                 <div className="text-muted small">{categoriesError ? 'Lỗi tải danh mục' : 'Đang tải...'}</div>
                             ) : (
-                                categories.map((cat: {id: number, name: string}) => (
-                                    <div key={cat.id} className="form-check form-check-inline p-0">
-                                        <input
-                                            className="btn-check"
-                                            type="checkbox"
-                                            id={`cat-edit-${cat.id}`}
-                                            checked={formData.categoryIds.has(cat.id)}
-                                            onChange={() => handleCategoryToggle(cat.id)}
-                                            disabled={generalLoading}
-                                        />
-                                        <label className="btn btn-sm" htmlFor={`cat-edit-${cat.id}`}
-                                               style={{
-                                                   backgroundColor: formData.categoryIds.has(cat.id) ? '#ff5e62' : '#f8f9fa',
-                                                   color: formData.categoryIds.has(cat.id) ? 'white' : '#6c757d',
-                                                   border: formData.categoryIds.has(cat.id) ? '1px solid #ff5e62' : '1px solid #ced4da'
-                                               }}>
-                                            {cat.name}
-                                        </label>
-                                    </div>
-                                ))
+                                categories.map((cat: {id: number, name: string}) => {
+                                    const isSelected = formData.categoryIds.has(cat.id);
+                                    return (
+                                        <div key={cat.id} className="form-check form-check-inline p-0">
+                                            <input
+                                                className="btn-check"
+                                                type="checkbox"
+                                                id={`cat-edit-${cat.id}`}
+                                                checked={isSelected}
+                                                onChange={() => handleCategoryToggle(cat.id)}
+                                                disabled={generalLoading}
+                                            />
+                                            <label
+                                                className="btn btn-sm"
+                                                htmlFor={`cat-edit-${cat.id}`}
+                                                style={{
+                                                    backgroundColor: isSelected ? '#ff5e62' : '#f8f9fa',
+                                                    color: isSelected ? 'white' : '#6c757d',
+                                                    border: isSelected ? '1px solid #ff5e62' : '1px solid #ced4da'
+                                                }}
+                                            >
+                                                {cat.name}
+                                            </label>
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     </div>
 
                     {/* 5. Đề cử */}
                     <div className="form-check pt-3">
-                        <input className="form-check-input" type="checkbox" id="isRecommended" name="isRecommended"
-                               checked={formData.isRecommended} onChange={handleChange} disabled={generalLoading}
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="isRecommended"
+                            name="isRecommended"
+                            checked={formData.isRecommended}
+                            onChange={handleChange}
+                            disabled={generalLoading}
                         />
                         <label className="form-check-label fw-bold" htmlFor="isRecommended">
                             Đề cử món ăn này (Hiển thị nổi bật)
@@ -274,60 +299,99 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                 </div>
 
                 {/* CỘT PHẢI (Giá tiền, Phí dịch vụ, Thời gian chuẩn bị) */}
-                <div className="col-md-6 order-md-2 order-1">
+                <div className="col-md-6">
                     {/* 6. Giá tiền (*) */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold">Giá tiền <span className="text-danger">*</span></label>
                         <div className="input-group">
                             <span className="input-group-text">VND</span>
-                            <input type="number" className="form-control" name="price"
-                                   value={formData.price} onChange={handleChange} min="0" step="1000" required disabled={generalLoading}
+                            <input
+                                type="number"
+                                className="form-control"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleChange}
+                                min="0"
+                                step="1000"
+                                required
+                                disabled={generalLoading}
                             />
                         </div>
                     </div>
 
                     {/* 7. Giá khuyến mãi */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label">Giá khuyến mãi (VND)</label>
                         <div className="input-group">
                             <span className="input-group-text">VND</span>
-                            <input type="number" className="form-control" name="discountPrice"
-                                   value={formData.discountPrice} onChange={handleChange} min="0" step="1000" disabled={generalLoading}
+                            <input
+                                type="number"
+                                className="form-control"
+                                name="discountPrice"
+                                value={formData.discountPrice}
+                                onChange={handleChange}
+                                min="0"
+                                step="1000"
+                                disabled={generalLoading}
                             />
                         </div>
                     </div>
 
                     {/* 8. Phí dịch vụ */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label">Phí dịch vụ (VND)</label>
                         <div className="input-group">
                             <span className="input-group-text">VND</span>
-                            <input type="number" className="form-control" name="serviceFee"
-                                   value={formData.serviceFee} onChange={handleChange} min="0" step="100" disabled={generalLoading}
+                            <input
+                                type="number"
+                                className="form-control"
+                                name="serviceFee"
+                                value={formData.serviceFee}
+                                onChange={handleChange}
+                                min="0"
+                                step="100"
+                                disabled={generalLoading}
                             />
                         </div>
                     </div>
 
                     {/* 9. Thời gian chuẩn bị */}
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <label className="form-label fw-bold d-flex align-items-center gap-1">
                             <Clock size={16}/> Thời gian chuẩn bị (phút)
                         </label>
-                        <input type="number" className="form-control" name="preparationTime"
-                               value={formData.preparationTime || ''} onChange={handleChange} min="0" disabled={generalLoading}
-                               placeholder="Ví dụ: 20"
+                        <input
+                            type="number"
+                            className="form-control"
+                            name="preparationTime"
+                            value={formData.preparationTime || ''}
+                            onChange={handleChange}
+                            min="0"
+                            disabled={generalLoading}
+                            placeholder="Ví dụ: 20"
                         />
                     </div>
-
                 </div>
 
-                <div className="col-12 d-flex justify-content-center gap-3 mt-4 pt-3 border-top">
-                    <button type="submit" className="btn btn-danger btn-lg text-white" disabled={generalLoading} style={{ minWidth: '150px' }}>
-                        {generalLoading ? 'Đang cập nhật...' : 'Cập nhật Món ăn'}
-                    </button>
-                    <button type="button" className="btn btn-light btn-lg border" onClick={onCancel} disabled={generalLoading} style={{ minWidth: '150px' }}>
-                        Hủy
-                    </button>
+                {/* Footer với nút full width */}
+                <div className="col-12 mt-4 pt-3 border-top">
+                    <div className="d-flex gap-3 w-100">
+                        <button
+                            type="submit"
+                            className="btn btn-danger btn-lg text-white flex-fill fw-bold"
+                            disabled={generalLoading}
+                        >
+                            {generalLoading ? 'Đang cập nhật...' : 'Cập nhật Món Ăn'}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-light btn-lg border flex-fill fw-bold"
+                            onClick={onCancel}
+                            disabled={generalLoading}
+                        >
+                            Hủy
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
