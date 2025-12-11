@@ -97,7 +97,6 @@ const HomePage: React.FC = () => {
 
                 // Chuẩn hóa role trước khi set
                 const normalizedRole = storedRole.trim().toUpperCase().replace(/^ROLE_/, '');
-                console.log('Normalized role:', normalizedRole);
 
                 setUserRole(normalizedRole as UserRole);
             } else {

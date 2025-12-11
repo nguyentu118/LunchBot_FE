@@ -23,12 +23,11 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
         }
 
         const normalized = userRole.trim().toUpperCase().replace(/^ROLE_/, '');
-        console.log('Original role:', userRole, '=> Normalized:', normalized);
         return normalized;
     }, [userRole]);
 
-    const handleUpgrade = () => {
-        navigate('/register-merchant');
+    const handleMerchantDashborad = () => {
+        navigate('/merchant/dashboard');
     };
 
     const handleUpdateUserProfile = () => {
@@ -41,7 +40,6 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
 
     // 💡 BƯỚC 2: Tạo hàm xử lý đăng xuất MỚI để gọi Toast
     const handleLogoutWithToast = () => {
-        // Hiển thị thông báo Toast trước hoặc sau khi gọi hàm đăng xuất chính
         toast.success('Bạn đã đăng xuất thành công!', {
             // Tùy chọn cấu hình Toast (ví dụ: thời gian hiển thị)
             duration: 3000,
@@ -108,6 +106,14 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout }) =
 
                 {normalizedRole === 'MERCHANT' && (
                     <>
+                        <Dropdown.Item
+                            onClick={handleMerchantDashborad}
+                            className="d-flex align-items-center"
+                        >
+                            <Briefcase size={16} className="me-2 text-primary" />
+                            Nhà hàng của tôi
+                        </Dropdown.Item>
+
                         <Dropdown.Item
                             onClick={handleManageMerchant}
                             className="d-flex align-items-center"

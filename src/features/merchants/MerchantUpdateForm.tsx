@@ -362,10 +362,11 @@ const MerchantUpdateForm: React.FC = () => {
                         </Row>
 
                         {/* Buttons */}
-                        <div className="d-flex justify-content-between pt-3">
+                        {/* Buttons */}
+                        <div className="d-grid gap-3 pt-3"> {/* THAY ĐỔI: Sử dụng d-grid và gap-3 cho layout cột dọc */}
                             <Button
                                 type="submit"
-                                className="flex-grow-1 py-2 fw-semibold me-2"
+                                className="py-2 fw-semibold w-100" // THAY ĐỔI: Bỏ flex-grow-1 và me-2, thêm w-100
                                 style={{
                                     borderRadius: '0.5rem',
                                     background: 'linear-gradient(135deg, #FF9966 0%, #FF5E62 100%)',
@@ -386,7 +387,7 @@ const MerchantUpdateForm: React.FC = () => {
                                 type="button"
                                 onClick={handleCancel}
                                 variant="light"
-                                className="py-2 fw-semibold border text-dark"
+                                className="py-2 fw-semibold border text-dark w-100" // THAY ĐỔI: Thêm w-100
                                 style={{ borderRadius: '0.5rem' }}
                                 disabled={loading}
                             >
