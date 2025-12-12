@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
     Alert,
     Badge,
@@ -23,12 +23,14 @@ import {
     MapPin,
     Phone,
     Search,
-    Star,
+    Star, Tag,
     Twitter,
     Youtube
 } from 'lucide-react';
 // Import Navigation Component
 import Navigation from '../layout/Navigation';
+import useSuggestedDishes from "../../features/dish/hooks/useSuggestedDishes.ts";
+import {SuggestedDish} from "../../features/dish/types/suggestedDish.ts";
 
 
 interface Category {
@@ -64,11 +66,117 @@ interface Restaurant {
     deliveryFee: string;
 }
 
+const mapSuggestedDishToDeal = (dish: SuggestedDish): Deal => {
+
+    const hasDiscount = dish.discountPrice < dish.price;
+
+    // 1. Xử lý % giảm giá (number -> string "X% OFF")
+    const discountValue = dish.discountPercentage;
+    const discountString = (discountValue && discountValue > 0)
+        ? `${Math.round(discountValue)}% OFF` // Ví dụ: "11% OFF"
+        : '';
+
+    // 2. Xử lý Thời gian chế biến (number -> string "X phút")
+    const timeValue = dish.preparationTime;
+    const timeString = timeValue ? `${timeValue} phút` : '30 phút';
+
+    // 3. Xử lý Coupon/Badge
+    const badgeString = hasDiscount ? 'GIẢM GIÁ' : 'GỢI Ý';
+
+    return {
+        id: dish.id,
+        title: dish.name, // ⭐️ Tên món
+        restaurant: dish.merchantAddress, // ⭐️ Địa chỉ Merchant
+        discount: discountString, // ⭐️ % giảm giá
+        originalPrice: dish.price, // ⭐️ Giá gốc
+        discountPrice: dish.discountPrice, // Giá sau giảm
+        image: dish.imageUrl, // ⭐️ Ảnh đại diện
+        badge: badgeString, // ⭐️ Coupon/Badge
+        rating: 5, // Giữ nguyên rating tĩnh
+        time: timeString, // ⭐️ Thời gian chế biến
+    } as Deal;
+};
+
+interface DealCardProps {
+    deal: Deal;
+}
+
 
 // Hàm hỗ trợ format tiền tệ
 const formatCurrency = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0₫';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+    return new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(value);
+};
+
+const DealCard: React.FC<DealCardProps> = ({deal}) => {
+    const hasDiscount = deal.discountPrice < deal.originalPrice;
+    const finalPrice = hasDiscount ? deal.discountPrice : deal.originalPrice;
+
+    return (
+        <Card className="h-100 shadow-sm border-0 position-relative mb-3">
+            {/* Ảnh và Badge */}
+            <div className="position-relative overflow-hidden">
+                <Card.Img
+                    variant="top"
+                    src={deal.image || 'default-dish.jpg'}
+                    alt={deal.title}
+                    style={{height: '180px', objectFit: 'cover'}}
+                />
+
+                {/* Badge Discount (Nếu có % giảm giá) */}
+                {hasDiscount && (
+                    <Badge bg="danger" className="position-absolute top-0 start-0 m-2 px-2 py-1 fs-6 fw-bold">
+                        {deal.discount}
+                    </Badge>
+                )}
+
+                {/* Badge Coupon */}
+                <Badge
+                    bg={hasDiscount ? "warning" : "primary"}
+                    text={hasDiscount ? "dark" : "white"}
+                    className="position-absolute top-0 end-0 m-2 px-2 py-1 fw-bold d-flex align-items-center"
+                >
+                    <Tag size={14} className="me-1"/> {deal.badge}
+                </Badge>
+            </div>
+
+            <Card.Body className="d-flex flex-column p-3">
+                {/* Tên món */}
+                <Card.Title className="h6 fw-bold mb-2 text-truncate" title={deal.title}>
+                    {deal.title}
+                </Card.Title>
+
+                {/* Địa chỉ */}
+                <div className="d-flex align-items-start justify-content-between mb-1">
+                    <div className="small text-muted d-flex align-items-center flex-grow-1 me-2">
+                        <MapPin size={14} className="me-1 text-primary flex-shrink-0"/>
+                        <span className="text-truncate">{deal.restaurant}</span>
+                    </div>
+                    <div className="text-end flex-shrink-0">
+                        <div className="fw-bold text-danger" style={{fontSize: '0.95rem'}}>
+                            {formatCurrency(finalPrice)}
+                        </div>
+                        {hasDiscount && (
+                            <div className="text-muted text-decoration-line-through" style={{fontSize: '0.7rem'}}>
+                                {formatCurrency(deal.originalPrice)}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {/* Thời gian chế biến */}
+                <div className="small text-muted mb-3 d-flex align-items-center">
+                    <Clock size={14} className="me-1 text-success"/>
+                    Thời gian: <strong>{deal.time}</strong>
+                </div>
+            </Card.Body>
+
+            <Card.Footer className="bg-white border-top-0 pt-0 pb-3 px-3">
+                <Button variant="danger" className="w-100 fw-bold shadow-sm">
+                    Đặt ngay
+                </Button>
+            </Card.Footer>
+        </Card>
+    );
 };
 
 
@@ -77,6 +185,7 @@ const HomePage: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState<number>(0);
     const [discountSlideIndex, setDiscountSlideIndex] = useState<number>(0);
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
+    const [suggestedSlideIndex, setSuggestedSlideIndex] = useState<number>(0);
 
     // Dữ liệu Food Categories
     const foodCategories: Category[] = [
@@ -150,8 +259,82 @@ const HomePage: React.FC = () => {
         return () => clearInterval(timer);
     }, [nextCategorySlide]);
 
+    // ⭐ 1. SỬ DỤNG HOOK ĐỂ LẤY DỮ LIỆU THỰC TẾ
+    const {data: suggestedDishes, isLoading, error} = useSuggestedDishes();
 
-    // Dữ liệu Discount Deals
+    // ⭐ 2. ÁNH XẠ DỮ LIỆU API SANG CẤU TRÚC DEAL[] CŨ
+    const dealsToRender: Deal[] = suggestedDishes.map(mapSuggestedDishToDeal);
+
+    // Hàm render phần món ăn gợi ý (Slider)
+    const renderSuggestedDishesSlider = () => {
+
+        // --- Xử lý Loading/Error ---
+        if (isLoading) {
+            return (
+                <Container className="my-5">
+                    <h2 className="fw-bold mb-4">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
+                    <Alert variant="info">Đang tải 8 món ăn gợi ý...</Alert>
+                </Container>
+            );
+        }
+
+        if (error) {
+            return (
+                <Container className="my-5">
+                    <h2 className="fw-bold mb-4">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
+                    <Alert variant="danger">Lỗi tải dữ liệu: {error}</Alert>
+                </Container>
+            );
+        }
+        // --- Render Slider Thực Tế (Sử dụng dữ liệu đã map) ---
+        return (
+            <Container className="py-5">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2 className="fw-bold">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
+                    {/* ⭐ 3. CẬP NHẬT NÚT ĐIỀU HƯỚNG VÀ LOGIC DISABLE */}
+                    <div className="d-flex gap-2">
+                        <Button
+                            variant="light"
+                            onClick={prevSuggestedSlide}
+                            disabled={suggestedSlideIndex === 0}
+                            className="rounded-circle shadow-sm"
+                        >
+                            <ChevronLeft size={24} className="text-primary"/>
+                        </Button>
+                        <Button
+                            variant="light"
+                            onClick={nextSuggestedSlide}
+                            disabled={suggestedSlideIndex >= dealsToRender.length - 4}
+                            className="rounded-circle shadow-sm"
+                        >
+                            <ChevronRight size={24} className="text-primary"/>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Cấu trúc slide/carousel cũ của bạn (dùng flex-nowrap để cuộn ngang) */}
+                <div className="overflow-hidden">
+                    <div
+                        className="d-flex flex-row flex-nowrap gap-3"
+                        style={{
+                            transform: `translateX(-${suggestedSlideIndex * (25)}%)`,
+                            transition: 'transform 0.5s ease-in-out'
+                        }}
+                    >
+                        {dealsToRender.map((deal: Deal) => (
+                            <div
+                                key={deal.id}
+                                className="flex-shrink-0"
+                                style={{width: 'calc(25% - 9px)'}}
+                            >
+                                <DealCard deal={deal}/>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Container>
+        );
+    };
     const discountDeals: Deal[] = [
         {
             id: 1,
@@ -339,12 +522,22 @@ const HomePage: React.FC = () => {
 
     // Logic cho Slider ưu đãi
     const nextDiscountSlide = useCallback(() => {
-        setDiscountSlideIndex((prev) => Math.min(prev + 1, discountDeals.length - 3));
+        setDiscountSlideIndex((prev) => Math.min(prev + 1, discountDeals.length - 4));
     }, [discountDeals.length]);
 
     const prevDiscountSlide = useCallback(() => {
         setDiscountSlideIndex((prev) => Math.max(prev - 1, 0));
     }, []);
+
+    const nextSuggestedSlide = () => {
+        setSuggestedSlideIndex(prev =>
+            Math.min(prev + 1, Math.max(0, dealsToRender.length - 4))
+        );
+    };
+    const prevSuggestedSlide = useCallback(() => {
+        setSuggestedSlideIndex((prev) => Math.max(prev - 1, 0));
+    }, []);
+
 
     return (
         <div className="homepage-wrapper bg-light">
@@ -419,7 +612,8 @@ const HomePage: React.FC = () => {
 
                         {/* Food Categories Horizontal Slider */}
                         <div className="mt-4">
-                            <p className="text-white text-center mb-3" style={{fontSize: '0.95rem', textShadow: '1px 1px 2px rgba(0,0,0,0.5)'}}>
+                            <p className="text-white text-center mb-3"
+                               style={{fontSize: '0.95rem', textShadow: '1px 1px 2px rgba(0,0,0,0.5)'}}>
                                 Bún, Phở, Đồ chay, Gà Rán, Pizza, Bugger, Cafe, Sinh tố, Nước ép,...
                             </p>
                             <div className="position-relative">
@@ -448,10 +642,11 @@ const HomePage: React.FC = () => {
                                                 className="flex-shrink-0 text-center"
                                                 style={{width: `${itemWidth}px`, cursor: 'pointer'}}
                                             >
-                                                <Card className="border-0 shadow-sm bg-white rounded-4 overflow-hidden h-100"
-                                                      style={{transition: 'transform 0.2s'}}
-                                                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                                                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                                <Card
+                                                    className="border-0 shadow-sm bg-white rounded-4 overflow-hidden h-100"
+                                                    style={{transition: 'transform 0.2s'}}
+                                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                                                 >
                                                     <div className="p-3">
                                                         <div style={{fontSize: '52px', marginBottom: '10px'}}>
@@ -483,6 +678,10 @@ const HomePage: React.FC = () => {
                         </div>
                     </Container>
                 </div>
+                {/* ⭐ PHẦN MÓN ĂN GỢI Ý (TASK 40) */}
+                <section id="suggested-dishes">
+                    {renderSuggestedDishesSlider()}
+                </section>
 
                 {/* Discount Deals Section */}
                 <Container className="py-5">
@@ -514,24 +713,22 @@ const HomePage: React.FC = () => {
                     {/* Horizontal Card Slider */}
                     <div className="overflow-hidden">
                         <div
-                            className="d-flex flex-row flex-nowrap gap-4 pb-3"
+                            className="d-flex flex-row flex-nowrap gap-3"
                             style={{
-                                transform: `translateX(-${discountSlideIndex * (33.333)}%)`,
+                                transform: `translateX(-${discountSlideIndex * (25)}%)`,
                                 transition: 'transform 0.5s ease-in-out'
                             }}
                         >
                             {discountDeals.map((deal) => (
                                 <Card
                                     key={deal.id}
-                                    className="shadow-sm rounded-4 flex-shrink-0"
-                                    style={{minWidth: '320px', width: '320px'}}
+                                    className="flex-shrink-0 h-100"
+                                    style={{width: 'calc(25% - 12px)'}}
                                 >
-                                    <div className="position-relative">
-                                        <Image
+                                    <div className="position-relative overflow-hidden ">
+                                        <Card.Img
                                             src={deal.image}
                                             alt={deal.title}
-                                            fluid
-                                            className="rounded-top-4"
                                             style={{height: '180px', objectFit: 'cover'}}
                                         />
                                         <Badge bg="danger"
@@ -781,7 +978,8 @@ const HomePage: React.FC = () => {
                         </Row>
                         <div className="border-top pt-4 mt-4 text-center" style={{borderColor: '#495057 !important'}}>
                             <p className="small mb-0" style={{color: '#adb5bd'}}>
-                                © {new Date().getFullYear()} LunchBot. Đã đăng ký bản quyền. Được phát triển bởi CodeGym.
+                                © {new Date().getFullYear()} LunchBot. Đã đăng ký bản quyền. Được phát triển bởi
+                                CodeGym.
                             </p>
                         </div>
                     </Container>

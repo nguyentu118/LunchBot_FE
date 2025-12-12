@@ -3,7 +3,6 @@
 import axiosInstance from '../../../config/axiosConfig';
 import { UserMeDTO } from '../types/user.type';
 
-// ⭐ BỎ /api ở đầu vì baseURL đã có /api rồi
 const USER_API = '/users';
 
 export const UserApiService = {
