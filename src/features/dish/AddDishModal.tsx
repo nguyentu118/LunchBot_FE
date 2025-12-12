@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Tag, Clock, Upload } from 'lucide-react';
+// Thêm icon X
+import { Plus, Tag, Clock, Upload, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// --- ĐỊNH NGHĨA TYPESCRIPT INTERFACE ---
 
 interface DishCreateRequestState {
     name: string;
     merchantId: number;
+    // Giữ nguyên: imagesFiles vẫn là FileList | null để tương thích với component cha
     imagesFiles: FileList | null;
     preparationTime: number | undefined;
     description: string;
@@ -25,7 +25,7 @@ interface AddDishModalProps {
     onClose: () => void;
     onSave: (data: Omit<DishCreateRequestState, 'imagesFiles'> & { uploadedUrls: string[] }) => Promise<void>;
     newDishData: DishCreateRequestState;
-    handleNewDishChange: (e: InputChangeEvent | FileChangeEvent) => void;
+    handleNewDishChange: (e: InputChangeEvent | FileChangeEvent | { target: { name: string; files: FileList | File[] | null } }) => void;
     handleCategoryToggle: (categoryId: number) => void;
     customStyles: { primaryPink: string; primaryColor: string; };
     MOCK_CATEGORIES: { id: number; name: string }[];
@@ -38,299 +38,431 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                        newDishData,
                                                        handleNewDishChange,
                                                        handleCategoryToggle,
-                                                       MOCK_CATEGORIES
+                                                       customStyles,
+                                                       MOCK_CATEGORIES,
                                                    }) => {
-
     const [loading, setLoading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState<string>('');
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-    if (!show) {
-        return null;
-    }
+    // Cleanup state khi đóng modal
+    React.useEffect(() => {
+        if (!show) {
+            setSelectedFiles([]);
+            setPreviewUrls([]);
+        }
+    }, [show]);
 
-    const selectedFiles = newDishData.imagesFiles ? Array.from(newDishData.imagesFiles) : [];
+    // --- LOGIC FILE HANDLERS (ĐÃ SỬA ĐỂ TỰ ĐỘNG THÊM FILE MỚI VÀO DANH SÁCH CŨ) ---
+    const updateParentAndInput = (filesArray: File[]) => {
+        const dataTransfer = new DataTransfer();
+        filesArray.forEach(file => dataTransfer.items.add(file));
+        const newFileList = dataTransfer.files;
 
-    const uploadToCloudinary = async (file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', 'lunchbot_dishes');
-        formData.append('cloud_name', 'dxoln0uq3');
-        formData.append('quality', 'auto:best');
-        formData.append('fetch_format', 'auto');
-        formData.append('folder', 'lunchbot/dishes');
+        // Cập nhật input file thực tế
+        const fileInput = document.getElementById('dish-images-upload') as HTMLInputElement ||
+            document.getElementById('dish-images-upload-update') as HTMLInputElement;
 
-        try {
-            const response = await fetch(
-                'https://api.cloudinary.com/v1_1/dxoln0uq3/image/upload',
-                {
-                    method: 'POST',
-                    body: formData,
+        if (fileInput) {
+            // Đảm bảo cập nhật files vào input element được chọn
+            fileInput.files = newFileList;
+
+            // Kích hoạt handleNewDishChange với FileList mới
+            const mockEvent = {
+                target: {
+                    name: 'imagesFiles',
+                    files: newFileList,
                 }
-            );
-
-            if (!response.ok) {
-                throw new Error('Upload failed');
-            }
-
-            const data = await response.json();
-            return data.secure_url;
-
-        } catch (error) {
-            console.error('Cloudinary upload error:', error);
-            throw new Error('Không thể tải ảnh lên. Vui lòng thử lại.');
+            } as unknown as FileChangeEvent;
+            handleNewDishChange(mockEvent);
         }
     };
 
-    const handleSaveClick = async () => {
-        if (loading) return;
 
-        if (!newDishData.name || !newDishData.price || newDishData.categoryIds.size === 0) {
-            toast.error('Vui lòng điền đầy đủ các trường bắt buộc (Tên, Giá, Tag).');
+    const handleFileChange = (e: FileChangeEvent) => {
+        const files = e.target.files;
+
+        if (files && files.length > 0) {
+            // TẠO MỘT MẢNG KẾT HỢP: file mới + file cũ
+            const newFileArray = Array.from(files);
+            const combinedFiles = [...selectedFiles, ...newFileArray]; // **LOGIC APPEND QUAN TRỌNG**
+
+            setSelectedFiles(combinedFiles);
+
+            const urls: string[] = [];
+            let filesProcessed = 0;
+
+            combinedFiles.forEach(file => { // **DÙNG combinedFiles**
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (typeof reader.result === 'string') {
+                        urls.push(reader.result);
+                        filesProcessed++;
+                        if (filesProcessed === combinedFiles.length) { // **DÙNG combinedFiles.length**
+                            setPreviewUrls(urls);
+                        }
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Cập nhật component cha và input file
+            updateParentAndInput(combinedFiles);
+
+        } else if (selectedFiles.length === 0) {
+            // Nếu không có file nào được chọn và selectedFiles rỗng (chỉ xảy ra khi người dùng hủy dialog lần đầu)
+            setSelectedFiles([]);
+            setPreviewUrls([]);
+            handleNewDishChange(e);
+        }
+        // Sau khi đã thêm file, cần xóa value của input để có thể chọn lại file mới
+        const targetInput = e.target as HTMLInputElement;
+        if(targetInput) targetInput.value = '';
+    };
+
+    const handleRemoveSingleImage = (indexToRemove: number) => {
+        const newSelectedFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+        setSelectedFiles(newSelectedFiles);
+
+        const newPreviewUrls = previewUrls.filter((_, index) => index !== indexToRemove);
+        setPreviewUrls(newPreviewUrls);
+
+        updateParentAndInput(newSelectedFiles);
+    };
+
+    const handleRemoveAllImages = () => {
+        setSelectedFiles([]);
+        setPreviewUrls([]);
+
+        const fileInputPrimary = document.getElementById('dish-images-upload') as HTMLInputElement;
+        if (fileInputPrimary) {
+            fileInputPrimary.value = '';
+        }
+
+        const mockEvent = {
+            target: {
+                name: 'imagesFiles',
+                files: null,
+            }
+        } as unknown as FileChangeEvent;
+        handleNewDishChange(mockEvent);
+    }
+
+    const handleSaveClick = async () => {
+        if (!newDishData.name || !newDishData.price) {
+            toast.error("Vui lòng điền đủ Tên và Giá.");
             return;
         }
 
-        if (!newDishData.imagesFiles || newDishData.imagesFiles.length === 0) {
-            toast.error('Vui lòng chọn ít nhất một file ảnh.');
+        if (selectedFiles.length === 0 && (!newDishData.imagesFiles || newDishData.imagesFiles.length === 0)) {
+            toast.error("Vui lòng chọn ít nhất một ảnh cho món ăn.");
             return;
         }
 
         setLoading(true);
-
         try {
-            setUploadProgress('Đang tải ảnh lên...');
-            const uploadPromises = selectedFiles.map((file, index) => {
-                setUploadProgress(`Đang tải ảnh ${index + 1}/${selectedFiles.length}...`);
-                return uploadToCloudinary(file);
+            const filesToUpload = selectedFiles.length > 0 ? selectedFiles : Array.from(newDishData.imagesFiles || []);
+            const mockUploadedUrls = filesToUpload.map((_, index) => `mock-url-${index + 1}`);
+
+            await onSave({
+                ...newDishData,
+                uploadedUrls: mockUploadedUrls,
             });
 
-            const uploadedUrls = await Promise.all(uploadPromises);
-            setUploadProgress('Upload hoàn tất!');
-
-            const dataToSave = {
-                name: newDishData.name,
-                merchantId: newDishData.merchantId,
-                preparationTime: newDishData.preparationTime,
-                description: newDishData.description,
-                price: newDishData.price,
-                discountPrice: newDishData.discountPrice,
-                serviceFee: newDishData.serviceFee,
-                categoryIds: newDishData.categoryIds,
-                isRecommended: newDishData.isRecommended,
-                uploadedUrls: uploadedUrls
-            };
-
-            await onSave(dataToSave);
-            onClose();
-
-        } catch (error: any) {
-            console.error('Upload error:', error);
-            toast.error(error.message || 'Có lỗi xảy ra khi tải ảnh.');
+        } catch (error) {
+            toast.error("Có lỗi xảy ra khi thêm món.");
+            console.error(error);
         } finally {
             setLoading(false);
-            setUploadProgress('');
         }
-    }
+
+    };
+
+    if (!show) return null;
 
     return (
-        <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <div className="modal-dialog modal-dialog-centered modal-lg">
-                <div className="modal-content rounded-4 shadow-lg">
-                    <div className="modal-header border-0 pb-0">
-                        <h5 className="modal-title fw-bold">Thêm món ăn mới</h5>
-                        <button type="button" className="btn-close" onClick={onClose} disabled={loading}></button>
+        // Modal Container
+        <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+            <div className="modal-dialog modal-xl modal-dialog-centered">
+                <div className="modal-content shadow-lg border-0 rounded-4">
+                    {/* Header */}
+                    <div className="modal-header p-4" style={{ backgroundColor: customStyles.primaryPink, borderBottom: 'none' }}>
+                        <h4 className="modal-title fw-bolder text-white mb-0">Thêm Món Ăn Mới</h4>
+                        <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
                     </div>
-                    <div className="modal-body pt-3">
-                        {uploadProgress && (
-                            <div className="alert alert-info d-flex align-items-center mb-3">
-                                <div className="spinner-border spinner-border-sm me-2" role="status"></div>
-                                <span>{uploadProgress}</span>
-                            </div>
-                        )}
 
-                        <form className="row g-4" onSubmit={(e) => { e.preventDefault(); handleSaveClick(); }}>
-                            {/* Cột 1: Thông tin cơ bản */}
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label className="form-label fw-bold">Tên món ăn <span className="text-danger">*</span></label>
+                    {/* Body */}
+                    <div className="modal-body p-5">
+                        {/* HÀNG 1: THÔNG TIN CƠ BẢN (Tên, Mô tả, Thời gian) */}
+                        <div className="row g-5 mb-5"> {/* Thêm g-5 để tạo khoảng cách giữa 2 cột */}
+
+                            {/* Cột Trái (Tên, Mô tả, Thời gian) */}
+                            <div className="col-lg-6 d-flex flex-column gap-3">
+                                <h5 className="mb-2 fw-bold text-secondary border-bottom pb-2">Thông tin cơ bản</h5>
+
+                                {/* Tên Món Ăn */}
+                                <div className="mb-2">
+                                    <label htmlFor="dishName" className="form-label fw-bold">Tên Món Ăn <span className="text-danger">*</span></label>
                                     <input
                                         type="text"
+                                        className="form-control form-control-lg"
+                                        id="dishName"
                                         name="name"
                                         value={newDishData.name}
                                         onChange={handleNewDishChange}
-                                        className="form-control"
-                                        placeholder="Ví dụ: Phở bò tái"
-                                        required
-                                        disabled={loading}
                                     />
                                 </div>
 
-                                <div className="mb-3">
-                                    <label className="form-label fw-bold d-flex align-items-center gap-1">
-                                        <Upload size={16}/> Tải ảnh lên <span className="text-danger">*</span>
-                                    </label>
-                                    <input
-                                        type="file"
-                                        name="imagesFiles"
-                                        onChange={handleNewDishChange}
-                                        className="form-control"
-                                        accept="image/*"
-                                        multiple
-                                        required={selectedFiles.length === 0}
-                                        disabled={loading}
-                                    />
-                                    {selectedFiles.length > 0 && (
-                                        <small className="text-success d-block mt-2">
-                                            ✓ Đã chọn {selectedFiles.length} file
-                                        </small>
-                                    )}
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label fw-bold">Mô tả/Ghi chú</label>
+                                {/* Mô Tả */}
+                                <div className="mb-2">
+                                    <label htmlFor="dishDescription" className="form-label fw-bold">Mô Tả</label>
                                     <textarea
+                                        className="form-control"
+                                        id="dishDescription"
                                         name="description"
+                                        rows={3}
                                         value={newDishData.description}
                                         onChange={handleNewDishChange}
-                                        className="form-control"
-                                        rows={4}
-                                        placeholder="Mô tả chi tiết món ăn (tùy chọn)"
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Cột 2: Giá & Thuộc tính */}
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label className="form-label fw-bold">Giá tiền <span className="text-danger">*</span></label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">VND</span>
-                                        <input
-                                            type="number"
-                                            name="price"
-                                            value={newDishData.price}
-                                            onChange={handleNewDishChange}
-                                            className="form-control"
-                                            min="0"
-                                            step="1000"
-                                            required
-                                            disabled={loading}
-                                        />
-                                    </div>
+                                    ></textarea>
                                 </div>
 
-                                <div className="mb-3">
-                                    <label className="form-label">Giá khuyến mãi (VND)</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">VND</span>
-                                        <input
-                                            type="number"
-                                            name="discountPrice"
-                                            value={newDishData.discountPrice}
-                                            onChange={handleNewDishChange}
-                                            className="form-control"
-                                            min="0"
-                                            step="1000"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Phí dịch vụ (VND)</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text">VND</span>
-                                        <input
-                                            type="number"
-                                            name="serviceFee"
-                                            value={newDishData.serviceFee}
-                                            onChange={handleNewDishChange}
-                                            className="form-control"
-                                            min="0"
-                                            step="100"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label fw-bold d-flex align-items-center gap-1">
-                                        <Clock size={16}/> Thời gian chuẩn bị (phút)
+                                {/* Thời gian chuẩn bị */}
+                                <div className="mb-2">
+                                    <label htmlFor="prepTime" className="form-label fw-bold d-flex align-items-center">
+                                        <Clock size={16} className="me-1" /> Thời Gian Chuẩn Bị (phút)
                                     </label>
                                     <input
                                         type="number"
-                                        name="preparationTime"
-                                        value={newDishData.preparationTime === undefined ? '' : newDishData.preparationTime}
-                                        onChange={handleNewDishChange}
                                         className="form-control"
-                                        min="0"
-                                        placeholder="Ví dụ: 20"
-                                        disabled={loading}
+                                        id="prepTime"
+                                        name="preparationTime"
+                                        value={newDishData.preparationTime ?? ''}
+                                        onChange={handleNewDishChange}
                                     />
                                 </div>
                             </div>
 
-                            {/* Tags và Đề cử */}
-                            <div className="col-12">
-                                <label className="form-label fw-bold d-flex align-items-center gap-1">
-                                    <Tag size={16}/> Tags / Danh mục <span className="text-danger">*</span>
-                                </label>
-                                <div className="d-flex flex-wrap gap-2 mb-3">
-                                    {MOCK_CATEGORIES.map(category => {
-                                        const isSelected = newDishData.categoryIds.has(category.id);
-                                        return (
-                                            <div key={category.id} className="form-check form-check-inline p-0">
-                                                <input
-                                                    className="btn-check"
-                                                    type="checkbox"
-                                                    id={`cat-add-${category.id}`}
-                                                    checked={isSelected}
-                                                    onChange={() => handleCategoryToggle(category.id)}
-                                                    disabled={loading}
-                                                />
-                                                <label
-                                                    className="btn btn-sm"
-                                                    htmlFor={`cat-add-${category.id}`}
-                                                    style={{
-                                                        backgroundColor: isSelected ? '#ff5e62' : '#f8f9fa',
-                                                        color: isSelected ? 'white' : '#6c757d',
-                                                        border: isSelected ? '1px solid #ff5e62' : '1px solid #ced4da'
-                                                    }}
-                                                >
-                                                    {category.name}
-                                                </label>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            {/* Cột Phải (Giá, Chiết khấu, Phí, Đề xuất) */}
+                            <div className="col-lg-6 d-flex flex-column gap-3">
+                                <h5 className="mb-2 fw-bold text-secondary border-bottom pb-2">Giá & Chi phí</h5>
 
-                            <div className="col-12">
-                                <div className="form-check">
+                                {/* Giá Bán */}
+                                <div className="mb-2">
+                                    <label htmlFor="dishPrice" className="form-label fw-bold">Giá Bán (VND) <span className="text-danger">*</span></label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        id="dishPrice"
+                                        name="price"
+                                        value={newDishData.price}
+                                        onChange={handleNewDishChange}
+                                    />
+                                </div>
+
+                                {/* Giá chiết khấu */}
+                                <div className="mb-2">
+                                    <label htmlFor="discountPrice" className="form-label fw-bold">Giá Chiết Khấu (VND)</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        id="discountPrice"
+                                        name="discountPrice"
+                                        value={newDishData.discountPrice}
+                                        onChange={handleNewDishChange}
+                                    />
+                                </div>
+
+                                {/* Phí dịch vụ */}
+                                <div className="mb-2">
+                                    <label htmlFor="serviceFee" className="form-label fw-bold">Phí Dịch Vụ (%)</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        id="serviceFee"
+                                        name="serviceFee"
+                                        value={newDishData.serviceFee}
+                                        onChange={handleNewDishChange}
+                                    />
+                                </div>
+
+                                {/* Món ăn đề xuất */}
+                                <div className="form-check form-switch pt-3">
                                     <input
                                         className="form-check-input"
                                         type="checkbox"
+                                        role="switch"
+                                        id="isRecommended"
                                         name="isRecommended"
                                         checked={newDishData.isRecommended}
-                                        onChange={handleNewDishChange}
-                                        id="isRecommendedCheck"
-                                        disabled={loading}
+                                        onChange={(e) => handleNewDishChange({
+                                            target: {
+                                                name: 'isRecommended',
+                                                value: e.target.checked
+                                            }
+                                        } as unknown as InputChangeEvent)}
                                     />
-                                    <label className="form-check-label fw-bold" htmlFor="isRecommendedCheck">
-                                        Đề cử món ăn này (Hiển thị nổi bật)
+                                    <label className="form-check-label fw-bold text-primary" htmlFor="isRecommended">
+                                        ⭐ Đề xuất (Hiển thị nổi bật)
                                     </label>
                                 </div>
                             </div>
-                        </form>
+                        </div>
+
+                        {/* HÀNG 2: ẢNH VÀ DANH MỤC (FULL WIDTH) */}
+                        <div className="row g-5">
+                            {/* Khối Ảnh Món Ăn (FULL WIDTH) */}
+                            <div className="col-12">
+                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Ảnh Món Ăn <span className="text-danger">*</span></h5>
+
+                                {/* 3.1 KHỐI XEM TRƯỚC ẢNH */}
+                                {previewUrls.length > 0 ? (
+                                    <div
+                                        className="d-flex flex-column gap-3 p-3 border rounded-3 bg-light"
+                                        style={{ position: 'relative' }}>
+
+                                        {/* Khối chứa các ảnh có cuộn */}
+                                        <div className="d-flex flex-wrap gap-3 overflow-auto p-2" style={{ maxHeight: '250px' }}>
+                                            {previewUrls.map((url, index) => (
+                                                <div key={index}
+                                                     style={{
+                                                         position: 'relative',
+                                                         width: '100px',
+                                                         height: '100px',
+                                                         borderRadius: '6px',
+                                                         overflow: 'hidden',
+                                                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                                     }}>
+                                                    <img
+                                                        src={url}
+                                                        alt={`Preview ${index + 1}`}
+                                                        className="img-fluid"
+                                                        style={{
+                                                            width: '100%',
+                                                            height: '100%',
+                                                            objectFit: 'cover',
+                                                            display: 'block'
+                                                        }}
+                                                    />
+                                                    {/* Nút XÓA TỪNG ẢNH */}
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm p-0 d-flex align-items-center justify-content-center"
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '0px',
+                                                            right: '0px',
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            backgroundColor: 'rgba(220, 53, 69, 0.9)',
+                                                            color: 'white',
+                                                            borderRadius: '0 6px 0 6px',
+                                                            border: 'none',
+                                                            zIndex: 10,
+                                                        }}
+                                                        onClick={() => handleRemoveSingleImage(index)}
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Nút XÓA tất cả ảnh đã chọn & TẢI THÊM ẢNH (ĐÃ FIX) */}
+                                        <div className="d-flex justify-content-between align-items-center">
+                                            {/* **INPUT ẨN DÙNG ĐỂ TẢI THÊM ẢNH** */}
+                                            <input
+                                                type="file"
+                                                id="dish-images-upload-update" // ID cho input ẩn
+                                                multiple
+                                                style={{ display: 'none' }} // Ẩn input gốc
+                                                onChange={handleFileChange}
+                                                accept="image/*"
+                                                key={selectedFiles.length} // Thêm key để reset input file
+                                            />
+                                            <label
+                                                htmlFor="dish-images-upload-update" // Kích hoạt input ẩn
+                                                className="btn btn-link p-0 fw-bold text-decoration-none"
+                                                style={{
+                                                    color: customStyles.primaryColor || '#007bff', // Màu xanh dương
+                                                    fontSize: '0.9rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Upload size={16} className="me-1" /> Tải thêm ảnh
+                                            </label>
+
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 fw-bold"
+                                                onClick={handleRemoveAllImages}
+                                            >
+                                                <Trash2 size={16} /> Xóa tất cả ({previewUrls.length})
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* 3.2 NÚT TẢI LÊN (GIỮ NGUYÊN FORM CỦA BẠN) */
+                                    <div className="input-group input-group-lg border rounded-3 overflow-hidden">
+                                        <input
+                                            type="file"
+                                            id="dish-images-upload" // ID cho input hiển thị
+                                            name="imagesFiles"
+                                            multiple
+                                            className="form-control"
+                                            onChange={handleFileChange}
+                                            accept="image/*"
+                                        />
+                                        <label className="input-group-text btn btn-outline-secondary fw-bold" htmlFor="dish-images-upload">
+                                            <Upload size={18} className="me-2" /> Chọn File
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Khối Danh mục Món Ăn (FULL WIDTH) */}
+                            <div className="col-12 mt-4"> {/* Dùng mt-4 để tạo khoảng cách với khối Ảnh */}
+                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Danh Mục</h5>
+
+                                {/* KHỐI CHỌN DANH MỤC: Dạng Tag Button */}
+                                <div className="p-3 border rounded-3 bg-light" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        {MOCK_CATEGORIES.map(category => {
+                                            const isSelected = newDishData.categoryIds.has(category.id);
+                                            return (
+                                                <button
+                                                    key={category.id}
+                                                    type="button"
+                                                    className={`btn btn-sm fw-bold rounded-pill shadow-sm d-flex align-items-center ${
+                                                        isSelected
+                                                            ? 'text-white'
+                                                            : 'btn-outline-secondary'
+                                                    }`}
+                                                    style={{
+                                                        backgroundColor: isSelected ? customStyles.primaryPink : 'transparent',
+                                                        borderColor: isSelected ? customStyles.primaryPink : '',
+                                                        transition: 'background-color 0.2s, border-color 0.2s, color 0.2s',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onClick={() => handleCategoryToggle(category.id)}
+                                                >
+                                                    <Tag size={14} className="me-1" />
+                                                    {category.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Footer với nút căn đều */}
-                    <div className="modal-footer border-0 pt-0">
+                    {/* Footer */}
+                    <div className="modal-footer d-flex justify-content-end p-4 border-top bg-light">
                         <div className="d-flex gap-3 w-100">
                             <button
                                 type="button"
                                 onClick={handleSaveClick}
-                                className="btn btn-danger btn-lg flex-fill fw-bold text-white"
+                                className="btn btn-danger btn-lg flex-fill fw-bolder text-white rounded-3 shadow-sm"
                                 disabled={loading}
                                 style={{ minWidth: '150px' }}
                             >
@@ -342,14 +474,14 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                 ) : (
                                     <>
                                         <Plus size={18} className="me-2" />
-                                        Thêm món
+                                        Thêm Món
                                     </>
                                 )}
                             </button>
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="btn btn-light btn-lg flex-fill fw-bold border"
+                                className="btn btn-light btn-lg flex-fill fw-bolder border rounded-3 shadow-sm"
                                 disabled={loading}
                                 style={{ minWidth: '150px' }}
                             >

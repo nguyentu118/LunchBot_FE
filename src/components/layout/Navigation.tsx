@@ -1,17 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
-import {
-    Briefcase,
-    Home,
-    LogIn,
-    LogOut,
-    Settings,
-    ShoppingCart,
-    Sparkles,
-    User,
-    UserCircle,
-    UtensilsCrossed
+import {Briefcase, Home, LogIn, LogOut, Settings, ShoppingCart, Sparkles, User, UserCircle, UtensilsCrossed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
