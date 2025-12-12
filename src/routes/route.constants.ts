@@ -25,5 +25,6 @@ export const ROUTES = {
 
     USER: {
         PROFILE: 'user/update',
+        DISH_DETAILS: 'dish/detail/{dishId}'
     }
 };

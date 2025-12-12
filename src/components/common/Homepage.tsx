@@ -187,7 +187,6 @@ const HomePage: React.FC = () => {
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
     const [suggestedSlideIndex, setSuggestedSlideIndex] = useState<number>(0);
 
-    // Dữ liệu Food Categories
     const foodCategories: Category[] = [
         {name: 'Burger', image: '🍔', colorClass: 'bg-warning text-dark', restaurantCount: 145},
         {name: 'Pizza', image: '🍕', colorClass: 'bg-danger text-white', restaurantCount: 128},
