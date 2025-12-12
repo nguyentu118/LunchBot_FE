@@ -22,6 +22,7 @@ interface Dish {
 interface DishCreateRequestState {
     name: string;
     merchantId: number | undefined;
+    address: string;
     imagesFiles: FileList | null;
     preparationTime: number | undefined;
     description: string;
@@ -83,6 +84,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>({
         name: '',
         merchantId: undefined,
+        address: '',
         imagesFiles: null,
         preparationTime: undefined,
         description: '',
@@ -137,6 +139,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
         const requestBody = {
             name: data.name,
             imagesUrls: imagesUrlsJson,
+            address: data.address,
             preparationTime: data.preparationTime,
             description: data.description,
             price: parseFloat(data.price),
@@ -158,6 +161,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
             setNewDishData({
                 name: '',
                 merchantId: undefined,
+                address:'',
                 imagesFiles: null,
                 preparationTime: undefined,
                 description: '',

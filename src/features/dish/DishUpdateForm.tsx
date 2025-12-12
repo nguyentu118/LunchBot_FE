@@ -1,12 +1,12 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-import { Clock, Tag, X, Upload, Trash2 } from 'lucide-react';
+import { Clock, Tag, X, Upload, Trash2, MapPin } from 'lucide-react';
 import { AxiosError } from 'axios';
 import axiosInstance from "../../config/axiosConfig.ts";
 import useCategories from "../../features/category/useCategories.ts";
 import toast from "react-hot-toast";
 
 // ----------------------------------------------------------------------
-// 💡 PROPS INTERFACE (Dùng trong Modal)
+// PROPS INTERFACE
 // ----------------------------------------------------------------------
 interface DishUpdateFormProps {
     dishId: number;
@@ -15,12 +15,13 @@ interface DishUpdateFormProps {
 }
 
 // ----------------------------------------------------------------------
-// 💡 TYPE DEFINITIONS
+// TYPE DEFINITIONS
 // ----------------------------------------------------------------------
 interface DishFormData {
     name: string;
     merchantId: number;
-    imagesUrls: string; // Vẫn là string cho data to send
+    address: string; // ✅ THÊM TRƯỜNG ĐỊA CHỈ
+    imagesUrls: string;
     preparationTime: number | undefined;
     description: string;
     price: string;
@@ -39,11 +40,13 @@ interface DishDetailResponse extends Omit<DishFormData, 'categoryIds' | 'price' 
     serviceFee: number;
     preparationTime: number;
     categories: CategoryResponse[];
+    merchantAddress: string;
 }
 
 const initialFormData: DishFormData = {
     name: '',
     merchantId: 0,
+    address: '', // ✅ THÊM DEFAULT
     imagesUrls: '',
     preparationTime: 15,
     description: '',
@@ -54,6 +57,10 @@ const initialFormData: DishFormData = {
     isRecommended: false
 };
 
+// ⚙️ CẤU HÌNH CLOUDINARY
+const CLOUDINARY_CLOUD_NAME = 'dxoln0uq3';
+const CLOUDINARY_UPLOAD_PRESET = 'lunchbot_dishes';
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCancel }) => {
     const id = dishId;
@@ -63,10 +70,10 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // NEW STATES for image handling
-    const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]); // URLs from API (string[])
-    const [newFiles, setNewFiles] = useState<File[]>([]); // Newly uploaded files (File[])
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]); // All URLs (existing + new file previews)
+    // States for image handling
+    const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+    const [newFiles, setNewFiles] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
     // --- BƯỚC 1: GET (Lấy thông tin cũ) ---
     useEffect(() => {
@@ -82,19 +89,19 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                 let initialUrls: string[] = [];
                 if (dishData.imagesUrls) {
                     try {
-                        // Giả định imagesUrls là một chuỗi JSON của mảng URLs
                         initialUrls = JSON.parse(dishData.imagesUrls);
-                        if (!Array.isArray(initialUrls)) initialUrls = [dishData.imagesUrls]; // Fallback cho URL đơn
+                        if (!Array.isArray(initialUrls)) initialUrls = [dishData.imagesUrls];
                     } catch {
-                        initialUrls = [dishData.imagesUrls]; // Xử lý nếu không phải JSON
+                        initialUrls = [dishData.imagesUrls];
                     }
                 }
                 setExistingImageUrls(initialUrls);
-                setPreviewUrls(initialUrls); // Thiết lập URL xem trước ban đầu
+                setPreviewUrls(initialUrls);
 
                 setFormData({
                     name: dishData.name,
                     merchantId: dishData.merchant.id,
+                    address: dishData.address || '', // ✅ LẤY ĐỊA CHỈ TỪ API
                     imagesUrls: dishData.imagesUrls || '',
                     preparationTime: dishData.preparationTime,
                     description: dishData.description || '',
@@ -122,19 +129,15 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
             fetchDishData();
         }
 
-        // Cleanup: Revoke Object URLs khi component unmount
-        // Lỗi logic cleanup: cần revoke URL của newFiles hiện tại.
         return () => {
-            // Chỉ revoke URLs của các file mới đã được tạo trong phiên hiện tại
             newFiles.forEach(file => {
-                const url = URL.createObjectURL(file); // Tái tạo URL để revoke
+                const url = URL.createObjectURL(file);
                 URL.revokeObjectURL(url);
             });
         };
     }, [id]);
 
-
-    // Xử lý thay đổi input (GIỮ NGUYÊN)
+    // Xử lý thay đổi input
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
 
@@ -146,7 +149,7 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
         }));
     };
 
-    // Xử lý thay đổi Category IDs (Tags) (GIỮ NGUYÊN)
+    // Xử lý thay đổi Category IDs (Tags)
     const handleCategoryToggle = (categoryId: number) => {
         setFormData(prevData => {
             const newCategoryIds = new Set(prevData.categoryIds);
@@ -159,51 +162,97 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
         });
     };
 
-    // HÀM XỬ LÝ TẢI LÊN FILE MỚI (GIỮ NGUYÊN)
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    // ✅ HÀM XỬ LÝ TẢI FILE MỚI - CÓ UPLOAD CLOUDINARY THẬT
+    const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (files && files.length > 0) {
-            const fileArray = Array.from(files);
-            setNewFiles(prev => [...prev, ...fileArray]); // Thêm files mới
+        if (!files || files.length === 0) return;
 
-            const newUrls: string[] = fileArray.map(file => URL.createObjectURL(file));
+        const fileArray = Array.from(files);
 
-            setPreviewUrls(prev => [...prev, ...newUrls]); // Thêm previews mới
-
-            // Đặt lại giá trị input để có thể chọn lại file sau
+        // ✅ VALIDATE KÍCH THƯỚC
+        const oversizedFiles = fileArray.filter(file => file.size > MAX_FILE_SIZE);
+        if (oversizedFiles.length > 0) {
+            toast.error(`${oversizedFiles.length} ảnh vượt quá 10MB`);
             e.target.value = '';
+            return;
         }
+
+        // ✅ VALIDATE ĐỊNH DẠNG
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const invalidFiles = fileArray.filter(file => !allowedTypes.includes(file.type));
+        if (invalidFiles.length > 0) {
+            toast.error('Chỉ chấp nhận JPG, PNG, GIF, WEBP');
+            e.target.value = '';
+            return;
+        }
+
+        // ✅ UPLOAD LÊN CLOUDINARY
+        const uploadedUrls: string[] = [];
+        setLoading(true);
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
+
+            try {
+                const formDataUpload = new FormData();
+                formDataUpload.append('file', file);
+                formDataUpload.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+                console.log(`📤 Đang upload ${i + 1}/${fileArray.length}: ${file.name}`);
+
+                const response = await fetch(
+                    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+                    {
+                        method: 'POST',
+                        body: formDataUpload
+                    }
+                );
+
+                const data = await response.json();
+
+                if (data.secure_url) {
+                    uploadedUrls.push(data.secure_url);
+                    console.log(`✅ Upload thành công: ${data.secure_url}`);
+                    toast.success(`Upload ${i + 1}/${fileArray.length}`, { duration: 1000 });
+                } else {
+                    console.error(`❌ Upload failed:`, data);
+                    toast.error(`Lỗi upload: ${file.name}`);
+                }
+
+            } catch (error) {
+                console.error('❌ Upload error:', error);
+                toast.error(`Lỗi mạng: ${file.name}`);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        setLoading(false);
+
+        if (uploadedUrls.length > 0) {
+            setExistingImageUrls(prev => [...prev, ...uploadedUrls]);
+            setPreviewUrls(prev => [...prev, ...uploadedUrls]);
+        }
+
+        e.target.value = '';
     };
 
-    // HÀM XÓA TỪNG ẢNH (GIỮ NGUYÊN)
+    // HÀM XÓA TỪNG ẢNH
     const handleRemoveSingleImage = (indexToRemove: number) => {
         setPreviewUrls(prevUrls => {
             const urlToRemove = prevUrls[indexToRemove];
             const updatedUrls = prevUrls.filter((_, index) => index !== indexToRemove);
 
-            // 1. Kiểm tra xem đó là ảnh cũ (URL từ API)
             if (existingImageUrls.includes(urlToRemove)) {
-                // Là ảnh cũ -> Xóa khỏi danh sách existing
                 setExistingImageUrls(prevExisting => prevExisting.filter(url => url !== urlToRemove));
-            } else {
-                // Là ảnh mới (Object URL) -> Xóa khỏi danh sách newFiles và revoke Object URL
-                setNewFiles(prevNewFiles => {
-                    const updatedNewFiles = prevNewFiles.filter(file => URL.createObjectURL(file) !== urlToRemove);
-                    // Revoke Object URL để giải phóng bộ nhớ (Chỉ revoke cái đang bị xóa)
-                    URL.revokeObjectURL(urlToRemove);
-                    return updatedNewFiles;
-                });
             }
 
             return updatedUrls;
         });
     };
 
-    // HÀM XÓA TẤT CẢ ẢNH (GIỮ NGUYÊN)
+    // HÀM XÓA TẤT CẢ ẢNH
     const handleRemoveAllImages = () => {
-        // Revoke tất cả Object URLs của files mới
-        newFiles.forEach(file => URL.revokeObjectURL(URL.createObjectURL(file)));
-
         setExistingImageUrls([]);
         setNewFiles([]);
         setPreviewUrls([]);
@@ -212,45 +261,53 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
         if (fileInput) fileInput.value = '';
     };
 
-
-    // --- BƯỚC 2: PUT (Gửi dữ liệu cập nhật) --- (GIỮ NGUYÊN)
+    // --- BƯỚC 2: PUT (Gửi dữ liệu cập nhật) ---
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        if (!formData.name || !formData.price || formData.categoryIds.size === 0) {
-            setError("Vui lòng điền đủ các trường bắt buộc (*).");
+        // ✅ VALIDATION ĐẦY ĐỦ THEO MÔ TẢ
+        const errors: string[] = [];
+
+        if (!formData.name.trim()) {
+            errors.push("Tên món ăn");
+        }
+
+        if (!formData.address.trim()) {
+            errors.push("Địa chỉ");
+        }
+
+        if (previewUrls.length === 0) {
+            errors.push("Ảnh món ăn");
+        }
+
+        if (!formData.price.trim()) {
+            errors.push("Giá tiền");
+        }
+
+        if (!formData.discountPrice.trim()) {
+            errors.push("Giá khuyến mãi");
+        }
+
+        if (formData.categoryIds.size === 0) {
+            errors.push("Danh mục (Tag)");
+        }
+
+        if (errors.length > 0) {
+            toast.error(`Vui lòng điền đầy đủ: ${errors.join(', ')}`, {
+                duration: 4000
+            });
             setLoading(false);
-            toast.error("Vui lòng điền đủ Tên, Giá và Tags.");
             return;
         }
 
-        // Xử lý URL ảnh: Mock quá trình upload các file mới (newFiles)
-        let finalImageUrls = existingImageUrls; // Ảnh cũ còn lại
-
-        if (newFiles.length > 0) {
-            // MOCK UPLOAD: Tạo mock URLs cho các file mới (GIẢ LẬP)
-            const mockNewUrls = newFiles.map((_, index) => `mock-uploaded-url-${Date.now()}-${index}`);
-            finalImageUrls = [...finalImageUrls, ...mockNewUrls];
-
-            // Sau khi "upload" xong, ta giải phóng Object URLs của files mới
-            // LƯU Ý: Việc này có thể cần được xử lý cẩn thận hơn trong môi trường thực tế
-            // newFiles.forEach(file => URL.revokeObjectURL(URL.createObjectURL(file))); // Comment dòng này để tránh bug double revoke
-        }
-
-        if (finalImageUrls.length === 0) {
-            setError("Món ăn phải có ít nhất một ảnh.");
-            setLoading(false);
-            toast.error("Món ăn phải có ít nhất một ảnh.");
-            return;
-        }
-
+        // Chuẩn bị dữ liệu gửi đi
         const dataToSend = {
             name: formData.name,
             merchantId: formData.merchantId,
-            // Chuyển mảng URL cuối cùng thành chuỗi JSON
-            imagesUrls: JSON.stringify(finalImageUrls),
+            address: formData.address, // ✅ GỬI ĐỊA CHỈ
+            imagesUrls: JSON.stringify(existingImageUrls),
             preparationTime: formData.preparationTime || 0,
             description: formData.description,
             price: parseFloat(formData.price),
@@ -262,11 +319,8 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
 
         try {
             await axiosInstance.put(`/dishes/${id}`, dataToSend);
-            toast.success('Cập nhật món ăn thành công!');
+            toast.success('🎉 Cập nhật món ăn thành công!', { duration: 3000 });
 
-            setTimeout(() => {
-                onSuccess();
-            }, 500);
 
         } catch (err) {
             const axiosError = err as AxiosError;
@@ -282,8 +336,13 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
 
     const generalLoading = loading || isLoadingCategories;
 
-    if (generalLoading && !error && !formData.name) return <div className="loading text-center p-5">Đang tải thông tin món ăn...</div>;
-    if (error && !formData.name) return <div className="error alert alert-danger p-3">Lỗi tải dữ liệu: {error}</div>;
+    if (generalLoading && !error && !formData.name) {
+        return <div className="loading text-center p-5">Đang tải thông tin món ăn...</div>;
+    }
+
+    if (error && !formData.name) {
+        return <div className="error alert alert-danger p-3">Lỗi tải dữ liệu: {error}</div>;
+    }
 
     return (
         <div className="p-5" style={{
@@ -291,22 +350,20 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
             maxWidth: "1400px",
             margin: "0 auto"
         }}>
-
-            {/* Hiển thị lỗi validation/API */}
             {error && <div className="alert alert-danger mb-4">{error}</div>}
 
-            {/* BỐ CỤC THEO MẪU 2 CỘT/FULL-WIDTH */}
             <form onSubmit={handleSubmit} className="row g-5">
-
-                {/* HÀNG 1: THÔNG TIN CƠ BẢN VÀ GIÁ (CHIA 2 CỘT) */}
+                {/* HÀNG 1: THÔNG TIN CƠ BẢN VÀ GIÁ (2 CỘT) */}
 
                 {/* Cột Trái: THÔNG TIN CƠ BẢN */}
                 <div className="col-lg-6 d-flex flex-column gap-3">
                     <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Thông tin cơ bản</h5>
 
-                    {/* 1. Tên món ăn (*) */}
+                    {/* ✅ TÊN MÓN ĂN (*) */}
                     <div className="mb-2">
-                        <label className="form-label fw-bold">Tên món ăn <span className="text-danger">*</span></label>
+                        <label className="form-label fw-bold">
+                            Tên món ăn <span className="text-danger">*</span>
+                        </label>
                         <input
                             type="text"
                             className="form-control form-control-lg"
@@ -320,9 +377,26 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                         />
                     </div>
 
-                    {/* 2. Mô tả / Ghi chú */}
+                    {/* ✅ ĐỊA CHỈ (*) - TRƯỜNG MỚI */}
                     <div className="mb-2">
-                        <label className="form-label fw-bold">Mô tả/Ghi chú</label>
+                        <label className="form-label fw-bold d-flex align-items-center">
+                            <MapPin size={16} className="me-1" /> Địa Chỉ <span className="text-danger">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                            required
+                            disabled={generalLoading}
+                            placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM"
+                        />
+                    </div>
+
+                    {/* ✅ GHI CHÚ (MÔ TẢ) */}
+                    <div className="mb-2">
+                        <label className="form-label fw-bold">Ghi chú (Mô tả)</label>
                         <textarea
                             className="form-control"
                             name="description"
@@ -334,7 +408,7 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                         />
                     </div>
 
-                    {/* 3. Thời gian chuẩn bị */}
+                    {/* ✅ THỜI GIAN CHUẨN BỊ */}
                     <div className="mb-2">
                         <label className="form-label fw-bold d-flex align-items-center gap-1">
                             <Clock size={16}/> Thời gian chuẩn bị (phút)
@@ -356,9 +430,11 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                 <div className="col-lg-6 d-flex flex-column gap-3">
                     <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Giá & Chi phí</h5>
 
-                    {/* 4. Giá tiền (*) */}
+                    {/* ✅ GIÁ TIỀN (*) */}
                     <div className="mb-2">
-                        <label className="form-label fw-bold">Giá bán <span className="text-danger">*</span></label>
+                        <label className="form-label fw-bold">
+                            Giá Tiền (VND) <span className="text-danger">*</span>
+                        </label>
                         <div className="input-group">
                             <span className="input-group-text">VND</span>
                             <input
@@ -376,9 +452,11 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                         </div>
                     </div>
 
-                    {/* 5. Giá khuyến mãi */}
+                    {/* ✅ GIÁ KHUYẾN MÃI (*) */}
                     <div className="mb-2">
-                        <label className="form-label">Giá khuyến mãi (VND)</label>
+                        <label className="form-label fw-bold">
+                            Giá Khuyến Mãi (VND) <span className="text-danger">*</span>
+                        </label>
                         <div className="input-group">
                             <span className="input-group-text">VND</span>
                             <input
@@ -389,17 +467,18 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                 onChange={handleChange}
                                 min="0"
                                 step="1000"
+                                required
                                 disabled={generalLoading}
-                                placeholder="Giá sau giảm (nếu có)"
+                                placeholder="45000 (Nếu không KM thì điền = Giá tiền)"
                             />
                         </div>
                     </div>
 
-                    {/* 6. Phí dịch vụ */}
+                    {/* ✅ PHÍ DỊCH VỤ (MẶC ĐỊNH 0) */}
                     <div className="mb-2">
-                        <label className="form-label">Phí dịch vụ (VND)</label>
+                        <label className="form-label fw-bold">Phí Dịch Vụ (%) - Mặc định: 0</label>
                         <div className="input-group">
-                            <span className="input-group-text">VND</span>
+                            <span className="input-group-text">%</span>
                             <input
                                 type="number"
                                 className="form-control"
@@ -407,14 +486,15 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                 value={formData.serviceFee}
                                 onChange={handleChange}
                                 min="0"
-                                step="100"
+                                max="100"
+                                step="0.1"
                                 disabled={generalLoading}
-                                placeholder="5"
+                                placeholder="0"
                             />
                         </div>
                     </div>
 
-                    {/* 7. Đề cử */}
+                    {/* ✅ ĐỀ CỬ */}
                     <div className="form-check form-switch pt-3">
                         <input
                             className="form-check-input"
@@ -427,24 +507,21 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                             disabled={generalLoading}
                         />
                         <label className="form-check-label fw-bold text-primary" htmlFor="isRecommended">
-                            ⭐ Đề cử món ăn này (Hiển thị nổi bật)
+                            ⭐ Đề cử món ăn này (Hiển thị ưu tiên trong tìm kiếm)
                         </label>
                     </div>
                 </div>
 
-                {/* HÀNG 2: ẢNH VÀ DANH MỤC (FULL WIDTH BLOCKS) */}
+                {/* HÀNG 2: ẢNH VÀ DANH MỤC (FULL WIDTH) */}
 
-                {/* 8. Tải ảnh lên (FULL WIDTH) */}
+                {/* ✅ ẢNH MÓN ĂN (*) */}
                 <div className="col-12 mt-4">
-                    <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Ảnh Món Ăn <span className="text-danger">*</span></h5>
+                    <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">
+                        Ảnh Món Ăn <span className="text-danger">*</span>
+                    </h5>
 
-                    {/* UI TẢI ẢNH: Đã tối ưu cho cả trường hợp có và không có ảnh */}
                     {previewUrls.length > 0 ? (
-                        <div
-                            className="d-flex flex-column gap-3 p-3 border rounded-3 bg-light"
-                            style={{ position: 'relative' }}>
-
-                            {/* Khối chứa các ảnh có cuộn */}
+                        <div className="d-flex flex-column gap-3 p-3 border rounded-3 bg-light">
                             <div className="d-flex flex-wrap gap-3 overflow-auto p-2" style={{ maxHeight: '300px' }}>
                                 {previewUrls.map((url, index) => (
                                     <div key={index}
@@ -459,7 +536,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                         <img
                                             src={url}
                                             alt={`Preview ${index + 1}`}
-                                            className="img-fluid"
                                             style={{
                                                 width: '100%',
                                                 height: '100%',
@@ -467,10 +543,8 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                                 display: 'block'
                                             }}
                                         />
-                                        {/* Nút XÓA TỪNG ẢNH */}
                                         <button
                                             type="button"
-                                            className="btn btn-sm p-0 d-flex align-items-center justify-content-center"
                                             style={{
                                                 position: 'absolute',
                                                 top: '0px',
@@ -482,6 +556,10 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                                 borderRadius: '0 6px 0 6px',
                                                 border: 'none',
                                                 zIndex: 10,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer'
                                             }}
                                             onClick={() => handleRemoveSingleImage(index)}
                                             disabled={generalLoading}
@@ -492,24 +570,21 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                 ))}
                             </div>
 
-                            {/* Nút Tải thêm ảnh & Xóa tất cả */}
                             <div className="d-flex justify-content-between align-items-center pt-2">
                                 <input
                                     type="file"
                                     id="dish-images-upload-update"
                                     multiple
-                                    className="d-none" // Ẩn input gốc
+                                    className="d-none"
                                     onChange={handleFileChange}
                                     accept="image/*"
                                     disabled={generalLoading}
                                 />
                                 <label
                                     htmlFor="dish-images-upload-update"
-                                    // Đã cập nhật: Xóa các class btn/outline và thêm text-danger/text-decoration-none
                                     className="fw-bold d-flex align-items-center gap-1 text-danger text-decoration-none"
                                     style={{
                                         cursor: generalLoading ? 'not-allowed' : 'pointer',
-                                        // Thêm style để loại bỏ khung bao quanh/outline
                                         outline: 'none',
                                         boxShadow: 'none',
                                         border: 'none',
@@ -531,7 +606,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                             </div>
                         </div>
                     ) : (
-                        // Khối khi chưa có ảnh nào (giống như ảnh bạn gửi)
                         <div className="input-group input-group-lg border rounded-3 overflow-hidden">
                             <input
                                 type="file"
@@ -550,9 +624,11 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                     )}
                 </div>
 
-                {/* 9. Tag (Danh mục) (FULL WIDTH) */}
+                {/* ✅ TAG (DANH MỤC) (*) */}
                 <div className="col-12 mt-4">
-                    <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Danh Mục <span className="text-danger">*</span></h5>
+                    <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">
+                        Tag (Danh Mục) <span className="text-danger">*</span>
+                    </h5>
 
                     <div className="p-3 border rounded-3 bg-light" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {(isLoadingCategories || categoriesError) ? (
@@ -566,12 +642,9 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                             key={cat.id}
                                             type="button"
                                             className={`btn btn-sm fw-bold rounded-pill shadow-sm d-flex align-items-center ${
-                                                isSelected
-                                                    ? 'text-white'
-                                                    : 'btn-outline-secondary'
+                                                isSelected ? 'text-white' : 'btn-outline-secondary'
                                             }`}
                                             style={{
-                                                // Dùng màu danger #dc3545 cho tag được chọn
                                                 backgroundColor: isSelected ? '#dc3545' : 'transparent',
                                                 borderColor: isSelected ? '#dc3545' : '',
                                                 transition: 'background-color 0.2s',
@@ -588,9 +661,12 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                             </div>
                         )}
                     </div>
+                    <small className="text-muted mt-2 d-block">
+                        💡 Có thể chọn nhiều danh mục cho 1 món ăn
+                    </small>
                 </div>
 
-                {/* Footer với nút full width */}
+                {/* Footer */}
                 <div className="col-12 mt-4 pt-3 border-top">
                     <div className="d-flex gap-3 w-100">
                         <button
@@ -611,7 +687,7 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                             onClick={onCancel}
                             disabled={generalLoading}
                         >
-                            Hủy
+                            Đóng
                         </button>
                     </div>
                 </div>

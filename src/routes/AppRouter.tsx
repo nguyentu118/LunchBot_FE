@@ -13,6 +13,7 @@ import HomePage from "../components/common/Homepage.tsx";
 import MerchantRegistrationForm from "../features/merchants/MerchantRegistrationForm.tsx";
 import ProtectedRoute from "./ProtectedRoute.tsx";
 import MerchantDashboard from "../components/layout/MerchantDashBoard.tsx";
+import DishDetailPage from "../features/dish/DishDetailPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -41,6 +42,10 @@ const router = createBrowserRouter([
     {
         path: 'merchant/dashboard',
         element: <MerchantDashboard/>,
+    },
+    {
+        path: 'dish/detail/{dishId}',
+        element: <DishDetailPage/>,
     },
 
 

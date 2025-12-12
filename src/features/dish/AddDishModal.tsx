@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-// Thêm icon X
-import { Plus, Tag, Clock, Upload, Trash2, X } from 'lucide-react';
+import { Plus, Tag, Clock, Upload, Trash2, X, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DishCreateRequestState {
     name: string;
     merchantId: number;
-    // Giữ nguyên: imagesFiles vẫn là FileList | null để tương thích với component cha
+    address: string; // ✅ THÊM TRƯỜNG ĐỊA CHỈ
     imagesFiles: FileList | null;
     preparationTime: number | undefined;
-    description: string;
+    description: string; // Ghi chú
     price: string;
     discountPrice: string;
     serviceFee: string;
@@ -45,7 +44,11 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-    // Cleanup state khi đóng modal
+    // ⚙️ CẤU HÌNH CLOUDINARY
+    const CLOUDINARY_CLOUD_NAME = 'dxoln0uq3';
+    const CLOUDINARY_UPLOAD_PRESET = 'lunchbot_dishes';
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
     React.useEffect(() => {
         if (!show) {
             setSelectedFiles([]);
@@ -53,21 +56,16 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         }
     }, [show]);
 
-    // --- LOGIC FILE HANDLERS (ĐÃ SỬA ĐỂ TỰ ĐỘNG THÊM FILE MỚI VÀO DANH SÁCH CŨ) ---
     const updateParentAndInput = (filesArray: File[]) => {
         const dataTransfer = new DataTransfer();
         filesArray.forEach(file => dataTransfer.items.add(file));
         const newFileList = dataTransfer.files;
 
-        // Cập nhật input file thực tế
         const fileInput = document.getElementById('dish-images-upload') as HTMLInputElement ||
             document.getElementById('dish-images-upload-update') as HTMLInputElement;
 
         if (fileInput) {
-            // Đảm bảo cập nhật files vào input element được chọn
             fileInput.files = newFileList;
-
-            // Kích hoạt handleNewDishChange với FileList mới
             const mockEvent = {
                 target: {
                     name: 'imagesFiles',
@@ -78,27 +76,25 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         }
     };
 
-
     const handleFileChange = (e: FileChangeEvent) => {
         const files = e.target.files;
 
         if (files && files.length > 0) {
-            // TẠO MỘT MẢNG KẾT HỢP: file mới + file cũ
             const newFileArray = Array.from(files);
-            const combinedFiles = [...selectedFiles, ...newFileArray]; // **LOGIC APPEND QUAN TRỌNG**
+            const combinedFiles = [...selectedFiles, ...newFileArray];
 
             setSelectedFiles(combinedFiles);
 
             const urls: string[] = [];
             let filesProcessed = 0;
 
-            combinedFiles.forEach(file => { // **DÙNG combinedFiles**
+            combinedFiles.forEach(file => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     if (typeof reader.result === 'string') {
                         urls.push(reader.result);
                         filesProcessed++;
-                        if (filesProcessed === combinedFiles.length) { // **DÙNG combinedFiles.length**
+                        if (filesProcessed === combinedFiles.length) {
                             setPreviewUrls(urls);
                         }
                     }
@@ -106,16 +102,13 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                 reader.readAsDataURL(file);
             });
 
-            // Cập nhật component cha và input file
             updateParentAndInput(combinedFiles);
-
         } else if (selectedFiles.length === 0) {
-            // Nếu không có file nào được chọn và selectedFiles rỗng (chỉ xảy ra khi người dùng hủy dialog lần đầu)
             setSelectedFiles([]);
             setPreviewUrls([]);
             handleNewDishChange(e);
         }
-        // Sau khi đã thêm file, cần xóa value của input để có thể chọn lại file mới
+
         const targetInput = e.target as HTMLInputElement;
         if(targetInput) targetInput.value = '';
     };
@@ -146,42 +139,154 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
             }
         } as unknown as FileChangeEvent;
         handleNewDishChange(mockEvent);
-    }
+    };
 
+    // ✅ VALIDATION ĐẦY ĐỦ THEO MÔ TẢ
     const handleSaveClick = async () => {
-        if (!newDishData.name || !newDishData.price) {
-            toast.error("Vui lòng điền đủ Tên và Giá.");
-            return;
+        // ✅ VALIDATE TẤT CẢ CÁC TRƯỜNG BẮT BUỘC
+        const errors: string[] = [];
+
+        if (!newDishData.name.trim()) {
+            errors.push("Tên món ăn");
+        }
+
+        if (!newDishData.address.trim()) {
+            errors.push("Địa chỉ");
         }
 
         if (selectedFiles.length === 0 && (!newDishData.imagesFiles || newDishData.imagesFiles.length === 0)) {
-            toast.error("Vui lòng chọn ít nhất một ảnh cho món ăn.");
+            errors.push("Ảnh món ăn");
+        }
+
+        if (!newDishData.price.trim()) {
+            errors.push("Giá tiền");
+        }
+
+        if (!newDishData.discountPrice.trim()) {
+            errors.push("Giá khuyến mãi");
+        }
+
+        if (newDishData.categoryIds.size === 0) {
+            errors.push("Danh mục (Tag)");
+        }
+
+        // ✅ HIỂN THỊ LỖI NẾU CÓ
+        if (errors.length > 0) {
+            toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${errors.join(', ')}`, {
+                duration: 4000,
+                style: {
+                    minWidth: '400px'
+                }
+            });
             return;
         }
 
         setLoading(true);
+
         try {
             const filesToUpload = selectedFiles.length > 0 ? selectedFiles : Array.from(newDishData.imagesFiles || []);
-            const mockUploadedUrls = filesToUpload.map((_, index) => `mock-url-${index + 1}`);
 
+            // KIỂM TRA KÍCH THƯỚC FILE
+            const oversizedFiles = filesToUpload.filter(file => file.size > MAX_FILE_SIZE);
+
+            if (oversizedFiles.length > 0) {
+                const fileNames = oversizedFiles.map(f => f.name).join(', ');
+                toast.error(`${oversizedFiles.length} ảnh vượt quá 10MB: ${fileNames}`);
+                setLoading(false);
+                return;
+            }
+
+            // KIỂM TRA ĐỊNH DẠNG FILE
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            const invalidFiles = filesToUpload.filter(file => !allowedTypes.includes(file.type));
+
+            if (invalidFiles.length > 0) {
+                const fileNames = invalidFiles.map(f => f.name).join(', ');
+                toast.error(`Định dạng không hợp lệ: ${fileNames}. Chỉ chấp nhận JPG, PNG, GIF, WEBP.`);
+                setLoading(false);
+                return;
+            }
+
+            const uploadedUrls: string[] = [];
+            const failedFiles: { name: string; reason: string }[] = [];
+
+            // UPLOAD TỪNG FILE
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const file = filesToUpload[i];
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+
+                    const response = await fetch(
+                        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+                        {
+                            method: 'POST',
+                            body: formData
+                        }
+                    );
+
+                    const data = await response.json();
+
+                    if (data.secure_url) {
+                        uploadedUrls.push(data.secure_url);
+                    } else {
+                        const errorMsg = data.error?.message || 'Unknown error';
+                        failedFiles.push({ name: file.name, reason: errorMsg });
+                        toast.error(`Lỗi: ${file.name} - ${errorMsg}`);
+                    }
+
+                } catch (error) {
+                    console.error(`❌ Network error uploading ${file.name}:`, error);
+                    failedFiles.push({ name: file.name, reason: 'Lỗi mạng' });
+                    toast.error(`Lỗi mạng: ${file.name}`);
+                }
+
+                if (i < filesToUpload.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            if (uploadedUrls.length === 0) {
+                toast.error("❌ Không upload được ảnh nào. Vui lòng thử lại hoặc kiểm tra cấu hình Cloudinary.");
+                console.error("Failed files:", failedFiles);
+                setLoading(false);
+                return;
+            }
+
+            if (failedFiles.length > 0) {
+                const failedList = failedFiles.map(f => `${f.name} (${f.reason})`).join(', ');
+                toast.warning(`⚠️ Upload thành công ${uploadedUrls.length}/${filesToUpload.length}. Thất bại: ${failedList}`,
+                    { duration: 5000 }
+                );
+            }
+
+            // ✅ LƯU DỮ LIỆU
             await onSave({
                 ...newDishData,
-                uploadedUrls: mockUploadedUrls,
+                uploadedUrls,
             });
 
+            toast.success(`🎉 Đã thêm món "${newDishData.name}" với ${uploadedUrls.length} ảnh!`, {
+                duration: 3000
+            });
+
+            // ✅ KHÔNG ĐÓNG MODAL - GIỮ NGUYÊN NỘI DUNG ĐỂ KHÁCH HÀNG XEM LẠI
+            // onClose(); // BỎ DÒNG NÀY ĐỂ GIỮ NGUYÊN FORM
+
         } catch (error) {
-            toast.error("Có lỗi xảy ra khi thêm món.");
-            console.error(error);
+            toast.error("❌ Có lỗi xảy ra khi thêm món.");
+            console.error("Save error:", error);
         } finally {
             setLoading(false);
         }
-
     };
 
     if (!show) return null;
 
     return (
-        // Modal Container
         <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
             <div className="modal-dialog modal-xl modal-dialog-centered">
                 <div className="modal-content shadow-lg border-0 rounded-4">
@@ -193,16 +298,17 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
 
                     {/* Body */}
                     <div className="modal-body p-5">
-                        {/* HÀNG 1: THÔNG TIN CƠ BẢN (Tên, Mô tả, Thời gian) */}
-                        <div className="row g-5 mb-5"> {/* Thêm g-5 để tạo khoảng cách giữa 2 cột */}
-
-                            {/* Cột Trái (Tên, Mô tả, Thời gian) */}
+                        {/* HÀNG 1: THÔNG TIN CƠ BẢN */}
+                        <div className="row g-5 mb-5">
+                            {/* Cột Trái */}
                             <div className="col-lg-6 d-flex flex-column gap-3">
                                 <h5 className="mb-2 fw-bold text-secondary border-bottom pb-2">Thông tin cơ bản</h5>
 
-                                {/* Tên Món Ăn */}
+                                {/* ✅ TÊN MÓN ĂN (*) */}
                                 <div className="mb-2">
-                                    <label htmlFor="dishName" className="form-label fw-bold">Tên Món Ăn <span className="text-danger">*</span></label>
+                                    <label htmlFor="dishName" className="form-label fw-bold">
+                                        Tên Món Ăn <span className="text-danger">*</span>
+                                    </label>
                                     <input
                                         type="text"
                                         className="form-control form-control-lg"
@@ -210,12 +316,29 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         name="name"
                                         value={newDishData.name}
                                         onChange={handleNewDishChange}
+                                        placeholder="VD: Phở bò đặc biệt"
                                     />
                                 </div>
 
-                                {/* Mô Tả */}
+                                {/* ✅ ĐỊA CHỈ (*) - TRƯỜNG MỚI */}
                                 <div className="mb-2">
-                                    <label htmlFor="dishDescription" className="form-label fw-bold">Mô Tả</label>
+                                    <label htmlFor="dishAddress" className="form-label fw-bold d-flex align-items-center">
+                                        <MapPin size={16} className="me-1" /> Địa Chỉ <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        id="dishAddress"
+                                        name="address"
+                                        value={newDishData.address}
+                                        onChange={handleNewDishChange}
+                                        placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM"
+                                    />
+                                </div>
+
+                                {/* ✅ GHI CHÚ (MÔ TẢ) */}
+                                <div className="mb-2">
+                                    <label htmlFor="dishDescription" className="form-label fw-bold">Ghi Chú (Mô Tả)</label>
                                     <textarea
                                         className="form-control"
                                         id="dishDescription"
@@ -223,10 +346,11 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         rows={3}
                                         value={newDishData.description}
                                         onChange={handleNewDishChange}
+                                        placeholder="Mô tả về món ăn..."
                                     ></textarea>
                                 </div>
 
-                                {/* Thời gian chuẩn bị */}
+                                {/* ✅ THỜI GIAN CHUẨN BỊ */}
                                 <div className="mb-2">
                                     <label htmlFor="prepTime" className="form-label fw-bold d-flex align-items-center">
                                         <Clock size={16} className="me-1" /> Thời Gian Chuẩn Bị (phút)
@@ -238,54 +362,70 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         name="preparationTime"
                                         value={newDishData.preparationTime ?? ''}
                                         onChange={handleNewDishChange}
+                                        placeholder="VD: 15"
+                                        min="0"
                                     />
                                 </div>
                             </div>
 
-                            {/* Cột Phải (Giá, Chiết khấu, Phí, Đề xuất) */}
+                            {/* Cột Phải */}
                             <div className="col-lg-6 d-flex flex-column gap-3">
                                 <h5 className="mb-2 fw-bold text-secondary border-bottom pb-2">Giá & Chi phí</h5>
 
-                                {/* Giá Bán */}
+                                {/* ✅ GIÁ TIỀN (*) */}
                                 <div className="mb-2">
-                                    <label htmlFor="dishPrice" className="form-label fw-bold">Giá Bán (VND) <span className="text-danger">*</span></label>
+                                    <label htmlFor="dishPrice" className="form-label fw-bold">
+                                        Giá Tiền (VND) <span className="text-danger">*</span>
+                                    </label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="form-control"
                                         id="dishPrice"
                                         name="price"
                                         value={newDishData.price}
                                         onChange={handleNewDishChange}
+                                        placeholder="VD: 50000"
+                                        min="0"
                                     />
                                 </div>
 
-                                {/* Giá chiết khấu */}
+                                {/* ✅ GIÁ KHUYẾN MÃI (*) */}
                                 <div className="mb-2">
-                                    <label htmlFor="discountPrice" className="form-label fw-bold">Giá Chiết Khấu (VND)</label>
+                                    <label htmlFor="discountPrice" className="form-label fw-bold">
+                                        Giá Khuyến Mãi (VND) <span className="text-danger">*</span>
+                                    </label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="form-control"
                                         id="discountPrice"
                                         name="discountPrice"
                                         value={newDishData.discountPrice}
                                         onChange={handleNewDishChange}
+                                        placeholder="VD: 45000 (Nếu không KM thì điền = Giá tiền)"
+                                        min="0"
                                     />
                                 </div>
 
-                                {/* Phí dịch vụ */}
+                                {/* ✅ PHÍ DỊCH VỤ (MẶC ĐỊNH 0) */}
                                 <div className="mb-2">
-                                    <label htmlFor="serviceFee" className="form-label fw-bold">Phí Dịch Vụ (%)</label>
+                                    <label htmlFor="serviceFee" className="form-label fw-bold">
+                                        Phí Dịch Vụ (%) - Mặc định: 0
+                                    </label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         className="form-control"
                                         id="serviceFee"
                                         name="serviceFee"
-                                        value={newDishData.serviceFee}
+                                        value={newDishData.serviceFee || '0'}
                                         onChange={handleNewDishChange}
+                                        placeholder="0"
+                                        min="0"
+                                        max="100"
+                                        step="0.1"
                                     />
                                 </div>
 
-                                {/* Món ăn đề xuất */}
+                                {/* ✅ ĐỀ CỬ (HIỂN THỊ ƯU TIÊN) */}
                                 <div className="form-check form-switch pt-3">
                                     <input
                                         className="form-check-input"
@@ -302,25 +442,22 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         } as unknown as InputChangeEvent)}
                                     />
                                     <label className="form-check-label fw-bold text-primary" htmlFor="isRecommended">
-                                        ⭐ Đề xuất (Hiển thị nổi bật)
+                                        ⭐ Đề xuất (Hiển thị ưu tiên trong tìm kiếm)
                                     </label>
                                 </div>
                             </div>
                         </div>
 
-                        {/* HÀNG 2: ẢNH VÀ DANH MỤC (FULL WIDTH) */}
+                        {/* HÀNG 2: ẢNH VÀ DANH MỤC */}
                         <div className="row g-5">
-                            {/* Khối Ảnh Món Ăn (FULL WIDTH) */}
+                            {/* ✅ ẢNH MÓN ĂN (*) */}
                             <div className="col-12">
-                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Ảnh Món Ăn <span className="text-danger">*</span></h5>
+                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">
+                                    Ảnh Món Ăn <span className="text-danger">*</span>
+                                </h5>
 
-                                {/* 3.1 KHỐI XEM TRƯỚC ẢNH */}
                                 {previewUrls.length > 0 ? (
-                                    <div
-                                        className="d-flex flex-column gap-3 p-3 border rounded-3 bg-light"
-                                        style={{ position: 'relative' }}>
-
-                                        {/* Khối chứa các ảnh có cuộn */}
+                                    <div className="d-flex flex-column gap-3 p-3 border rounded-3 bg-light">
                                         <div className="d-flex flex-wrap gap-3 overflow-auto p-2" style={{ maxHeight: '250px' }}>
                                             {previewUrls.map((url, index) => (
                                                 <div key={index}
@@ -335,7 +472,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                     <img
                                                         src={url}
                                                         alt={`Preview ${index + 1}`}
-                                                        className="img-fluid"
                                                         style={{
                                                             width: '100%',
                                                             height: '100%',
@@ -343,10 +479,8 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                             display: 'block'
                                                         }}
                                                     />
-                                                    {/* Nút XÓA TỪNG ẢNH */}
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm p-0 d-flex align-items-center justify-content-center"
                                                         style={{
                                                             position: 'absolute',
                                                             top: '0px',
@@ -358,6 +492,10 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                             borderRadius: '0 6px 0 6px',
                                                             border: 'none',
                                                             zIndex: 10,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer'
                                                         }}
                                                         onClick={() => handleRemoveSingleImage(index)}
                                                     >
@@ -367,23 +505,21 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                             ))}
                                         </div>
 
-                                        {/* Nút XÓA tất cả ảnh đã chọn & TẢI THÊM ẢNH (ĐÃ FIX) */}
                                         <div className="d-flex justify-content-between align-items-center">
-                                            {/* **INPUT ẨN DÙNG ĐỂ TẢI THÊM ẢNH** */}
                                             <input
                                                 type="file"
-                                                id="dish-images-upload-update" // ID cho input ẩn
+                                                id="dish-images-upload-update"
                                                 multiple
-                                                style={{ display: 'none' }} // Ẩn input gốc
+                                                style={{ display: 'none' }}
                                                 onChange={handleFileChange}
                                                 accept="image/*"
-                                                key={selectedFiles.length} // Thêm key để reset input file
+                                                key={selectedFiles.length}
                                             />
                                             <label
-                                                htmlFor="dish-images-upload-update" // Kích hoạt input ẩn
+                                                htmlFor="dish-images-upload-update"
                                                 className="btn btn-link p-0 fw-bold text-decoration-none"
                                                 style={{
-                                                    color: customStyles.primaryColor || '#007bff', // Màu xanh dương
+                                                    color: customStyles.primaryColor || '#007bff',
                                                     fontSize: '0.9rem',
                                                     cursor: 'pointer'
                                                 }}
@@ -401,11 +537,10 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         </div>
                                     </div>
                                 ) : (
-                                    /* 3.2 NÚT TẢI LÊN (GIỮ NGUYÊN FORM CỦA BẠN) */
                                     <div className="input-group input-group-lg border rounded-3 overflow-hidden">
                                         <input
                                             type="file"
-                                            id="dish-images-upload" // ID cho input hiển thị
+                                            id="dish-images-upload"
                                             name="imagesFiles"
                                             multiple
                                             className="form-control"
@@ -419,11 +554,12 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                 )}
                             </div>
 
-                            {/* Khối Danh mục Món Ăn (FULL WIDTH) */}
-                            <div className="col-12 mt-4"> {/* Dùng mt-4 để tạo khoảng cách với khối Ảnh */}
-                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">Danh Mục</h5>
+                            {/* ✅ TAG (DANH MỤC) (*) */}
+                            <div className="col-12 mt-4">
+                                <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">
+                                    Tag (Danh Mục) <span className="text-danger">*</span>
+                                </h5>
 
-                                {/* KHỐI CHỌN DANH MỤC: Dạng Tag Button */}
                                 <div className="p-3 border rounded-3 bg-light" style={{ maxHeight: '180px', overflowY: 'auto' }}>
                                     <div className="d-flex flex-wrap gap-2">
                                         {MOCK_CATEGORIES.map(category => {
@@ -433,9 +569,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                     key={category.id}
                                                     type="button"
                                                     className={`btn btn-sm fw-bold rounded-pill shadow-sm d-flex align-items-center ${
-                                                        isSelected
-                                                            ? 'text-white'
-                                                            : 'btn-outline-secondary'
+                                                        isSelected ? 'text-white' : 'btn-outline-secondary'
                                                     }`}
                                                     style={{
                                                         backgroundColor: isSelected ? customStyles.primaryPink : 'transparent',
@@ -452,6 +586,9 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         })}
                                     </div>
                                 </div>
+                                <small className="text-muted mt-2 d-block">
+                                    💡 Có thể chọn nhiều danh mục cho 1 món ăn
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -485,7 +622,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                 disabled={loading}
                                 style={{ minWidth: '150px' }}
                             >
-                                Hủy
+                                Đóng
                             </button>
                         </div>
                     </div>
