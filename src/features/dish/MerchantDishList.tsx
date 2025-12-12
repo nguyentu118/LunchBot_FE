@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { Upload, Pencil, Trash2, Image as ImageIcon,  ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Pencil, Image as ImageIcon,  ChevronLeft, ChevronRight } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig.ts";
 import toast from "react-hot-toast";
+import DishDeleteButton from "./DishDeleteButton.tsx";
 
 // --- INTERFACES CẦN THIẾT ---
 interface Dish {
@@ -21,12 +22,19 @@ interface MerchantDishListProps {
     onDelete?: (dishId: number) => void;
 }
 
+interface MerchantDishListProps {
+    onDishCreatedToggle: boolean;
+    selectedDish: Dish | null;
+    setSelectedDish: (dish: Dish | null) => void;
+    onEdit?: (dish: Dish) => void;
+}
+
 const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     onDishCreatedToggle,
                                                                     selectedDish,
                                                                     setSelectedDish,
                                                                     onEdit,
-                                                                    onDelete
+
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -220,7 +228,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                         </p>
                                         <p className="h5 fw-bold text-danger mb-3">{dish.price}</p>
 
-                                        {/* Nút Sửa và Xóa */}
                                         <div className="d-flex gap-2 mt-3">
                                             <button
                                                 className="btn btn-sm btn-outline-primary flex-fill"
@@ -232,16 +239,16 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 <Pencil size={16} className="me-1" />
                                                 Sửa
                                             </button>
-                                            <button
-                                                className="btn btn-sm btn-outline-danger flex-fill"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDelete?.(dish.id);
+
+                                            <DishDeleteButton
+                                                dishId={dish.id}
+                                                dishName={dish.name}
+                                                className="btn-sm flex-fill"
+
+                                                onDeleteSuccess={() => {
+                                                    fetchMerchantDishes();
                                                 }}
-                                            >
-                                                <Trash2 size={16} className="me-1" />
-                                                Xóa
-                                            </button>
+                                            />
                                         </div>
                                     </div>
                                 </div>

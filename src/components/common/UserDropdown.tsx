@@ -1,8 +1,9 @@
 import React from 'react';
-import { Dropdown, Nav } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Briefcase, Settings, UserCircle } from 'lucide-react';
+import {Dropdown, Nav} from 'react-bootstrap';
+import {useNavigate} from 'react-router-dom';
+import {Briefcase, LogOut, Settings, User, UserCircle} from 'lucide-react';
 import toast from 'react-hot-toast';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 export type UserRole = string | null;
 
@@ -12,7 +13,7 @@ interface UserDropdownProps {
     fullName: string;
 }
 
-const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout, fullName }) => {
+const UserDropdown: React.FC<UserDropdownProps> = ({userRole, handleLogout, fullName}) => {
     const navigate = useNavigate();
 
     const normalizedRole = React.useMemo(() => {
@@ -23,8 +24,8 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout, ful
         return normalized;
     }, [userRole]);
 
-    const handleUpgrade = () => {
-        navigate('/register-merchant');
+    const handleMerchantDashboard = () => {
+        navigate('/merchant/dashboard');
     };
 
     const handleUpdateUserProfile = () => {
@@ -40,36 +41,36 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout, ful
         toast.success("Bạn đã đăng xuất thành công!");
     };
 
-    // Lấy tên đầu tiên để hiển thị
-    const displayName = fullName ? fullName.split(' ')[0] : 'User';
-
     return (
         <Dropdown as={Nav.Item} align="end">
-            {/* ⭐ DROPDOWN TOGGLE - Icon bên trái, Tên bên phải, tách biệt rõ ràng */}
+            {/* DROPDOWN TOGGLE - Chỉ icon và tên */}
             <Dropdown.Toggle
                 as={Nav.Link}
-                className="py-2 px-3 ms-md-3 rounded-pill bg-white text-primary border border-primary"
-                style={{ cursor: 'pointer' }}
+                className="d-flex align-items-center gap-2 text-white"
+                style={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
             >
-                <div className="d-flex align-items-center gap-2">
-                    {/* ICON USER - Bên trái */}
-                    <div className="d-flex align-items-center justify-content-center bg-primary rounded-circle"
-                         style={{ width: '32px', height: '32px' }}>
-                        <User size={18} className="text-white" />
-                    </div>
-
-                    {/* TÊN NGƯỜI DÙNG - Bên phải */}
-                    <span className="fw-bold" style={{ fontSize: '14px' }}>
-                        {displayName}
-                    </span>
+                {/* ICON USER */}
+                <div
+                    className="d-flex align-items-center justify-content-center bg-white rounded-circle"
+                    style={{width: '32px', height: '32px', minWidth: '32px'}}
+                >
+                    <User size={18} className="text-primary"/>
                 </div>
+
+                {/* TÊN NGƯỜI DÙNG - Hiển thị tên đầy đủ */}
+                <span className="fw-semibold" style={{fontSize: '15px'}}>
+                    {fullName || 'User'}
+                </span>
             </Dropdown.Toggle>
 
-            <Dropdown.Menu className="shadow-lg mt-2">
+            <Dropdown.Menu className="shadow-lg mt-2" style={{minWidth: '220px'}}>
                 {/* HEADER TRONG DROPDOWN */}
-                <Dropdown.Header className="d-flex align-items-center fw-bold border-bottom">
-                    <UserCircle size={20} className="me-2 text-primary" />
-                    {fullName}
+                <Dropdown.Header className="d-flex align-items-center fw-bold border-bottom pb-2">
+                    <UserCircle size={18} className="me-2 text-primary"/>
+                    <span className="text-truncate">{fullName}</span>
                 </Dropdown.Header>
 
                 {/* USER LOGIC */}
@@ -77,41 +78,43 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ userRole, handleLogout, ful
                     <>
                         <Dropdown.Item
                             onClick={handleUpdateUserProfile}
-                            className="d-flex align-items-center"
+                            className="d-flex align-items-center py-2"
                         >
-                            <Settings size={16} className="me-2 text-primary" />
+                            <Settings size={16} className="me-2 text-primary"/>
                             Cập nhật Thông tin User
-                        </Dropdown.Item>
-
-                        <Dropdown.Item
-                            onClick={handleUpgrade}
-                            className="d-flex align-items-center"
-                        >
-                            <Briefcase size={16} className="me-2 text-warning" />
-                            Đăng ký làm Đối tác/Nhà hàng
                         </Dropdown.Item>
                     </>
                 )}
 
                 {/* MERCHANT LOGIC */}
                 {normalizedRole === 'MERCHANT' && (
-                    <Dropdown.Item
-                        onClick={handleManageMerchant}
-                        className="d-flex align-items-center"
-                    >
-                        <Briefcase size={16} className="me-2 text-primary" />
-                        Quản lý Thông tin Nhà hàng
-                    </Dropdown.Item>
+                    <>
+                        <Dropdown.Item
+                            onClick={handleManageMerchant}
+                            className="d-flex align-items-center py-2"
+                        >
+                            <Briefcase size={16} className="me-2 text-primary"/>
+                            Quản lý Thông tin Nhà hàng
+                        </Dropdown.Item>
+
+                        <Dropdown.Item
+                            onClick={handleMerchantDashboard}
+                            className="d-flex align-items-center py-2"
+                        >
+                            <Briefcase size={16} className="me-2 text-primary"/>
+                            Nhà hàng của tôi
+                        </Dropdown.Item>
+                    </>
                 )}
 
-                <Dropdown.Divider />
+                <Dropdown.Divider/>
 
                 {/* Đăng xuất */}
                 <Dropdown.Item
                     onClick={handleLogoutWithToast}
-                    className="d-flex align-items-center text-danger"
+                    className="d-flex align-items-center text-danger py-2"
                 >
-                    <LogOut size={16} className="me-2" />
+                    <LogOut size={16} className="me-2"/>
                     Đăng xuất
                 </Dropdown.Item>
             </Dropdown.Menu>

@@ -1,27 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, List } from 'lucide-react';
-import { Modal } from "react-bootstrap"; // <-- Cần import Modal
+import {Plus, List} from 'lucide-react';
+import { Modal } from "react-bootstrap";
 import AddDishModal from "../../features/dish/AddDishModal.tsx";
 import MerchantDishList from "../../features/dish/MerchantDishList.tsx";
-import UserDropdown from "../common/UserDropdown.tsx";
-import { Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
-import axiosInstance from "../../config/axiosConfig.ts"; // <-- Sử dụng Axios Instance
+import axiosInstance from "../../config/axiosConfig.ts";
 import { AxiosResponse, AxiosError } from 'axios';
 import useCategories from "../../features/category/useCategories.ts";
 import toast from "react-hot-toast";
-
-
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
-// DishDeleteButton sẽ được dùng trong MerchantDishList, không cần import trực tiếp ở đây
-
+import Navigation from "./Navigation.tsx";
 // --- INTERFACES ---
 
 interface Dish {
     id: number;
     name: string;
     description: string;
-    price: string; // Tạm dùng string theo cấu trúc cũ, nhưng BE dùng BigDecimal
+    price: string;
     image: string | null;
 }
 
@@ -44,8 +38,6 @@ interface SidebarButtonProps {
     onClick: () => void;
     color?: string;
 }
-
-// ... (customStyles và SidebarButton giữ nguyên) ...
 
 const customStyles = {
     primaryPink: '#ff5e62',
@@ -88,7 +80,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [selectedDishIdToEdit, setSelectedDishIdToEdit] = useState<number | null>(null);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
 
-
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>({
         name: '',
         merchantId: undefined,
@@ -112,7 +103,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
             setIsLoadingId(true);
 
             try {
-                // SỬ DỤNG AXIOS INSTANCE
                 const response = await axiosInstance.get('/merchants/current/id');
                 setCurrentMerchantId(response.data.merchantId);
             } catch (error) {
@@ -122,7 +112,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
             }
 
             try {
-                // SỬ DỤNG AXIOS INSTANCE
                 const profileResponse = await axiosInstance.get('/merchants/profile');
                 merchantNameData = profileResponse.data.restaurantName || 'Cửa hàng của tôi';
                 setMerchantName(merchantNameData);
@@ -159,7 +148,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         };
 
         try {
-            // SỬ DỤNG AXIOS INSTANCE
             const response: AxiosResponse = await axiosInstance.post('/dishes/create', requestBody);
             const createdDish = response.data;
 
@@ -204,25 +192,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }, []);
 
 
-    // 💡 CHỨC NĂNG XÓA: Giữ lại hàm này để tương thích, nhưng khuyến nghị dùng DishDeleteButton
-    const handleDeleteDish = useCallback(async (dishId: number) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa món ăn này?')) {
-            return;
-        }
-
-        try {
-            // Logic này sẽ được thay thế bằng Component DishDeleteButton
-            await axiosInstance.delete(`/dishes/${dishId}`);
-            if (selectedDish?.id === dishId) {
-                setSelectedDish(null);
-            }
-            toast.success('Xóa món ăn thành công!');
-            setDishCreatedToggle(prev => !prev);
-        } catch (error) {
-            console.error('Lỗi khi xóa món ăn:', error);
-            toast.error('Không thể xóa món ăn. Vui lòng thử lại.');
-        }
-    }, [selectedDish]);
 
 
     type InputChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
@@ -271,33 +240,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
         <div className="min-vh-100 bg-light">
             {/* HEADER */}
             <header className="shadow-sm border-bottom" style={{ backgroundColor: customStyles.primaryPink }}>
-                <div className="container-fluid container-lg px-4 py-3 d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-3">
-                        <div className="d-flex align-items-center">
-                            <div className="bg-white p-2 rounded me-2 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px' }}>
-                                <svg className="text-danger" style={{width: '24px', height: '24px'}}
-                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                          d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 className="h5 fw-bold mb-0 text-white">Lunch<span
-                                    style={{ color: customStyles.secondaryYellow }}>Bot</span></h1>
-                                <p className="small mb-0 text-white-75">Gợi ý món ngon mỗi ngày</p>
-                            </div>
-                        </div>
-                    </div>
-                    {isLoggedIn && userRole ? (
-                        <UserDropdown userRole={userRole} handleLogout={handleLogout}/>
-                    ) : (
-                        <Button variant="light" className="ms-md-3 mt-2 mt-md-0 fw-bold">
-                            <Link to="/login" className="text-primary text-decoration-none fw-semibold">
-                                🔒 Đăng nhập
-                            </Link>
-                        </Button>
-                    )}
-                </div>
+                <Navigation />
             </header>
 
             <div className="container-fluid container-lg px-4 py-5">
@@ -336,15 +279,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 setSelectedDish={setSelectedDish}
                                 // TRUYỀN HÀM SỬA ĐỂ MỞ MODAL
                                 onEdit={handleEditDish}
-                                // TRUYỀN HÀM XÓA (Khuyến nghị dùng DishDeleteButton trực tiếp trong list)
-                                onDelete={handleDeleteDish}
                             />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ADD DISH MODAL (Giữ nguyên) */}
+            {/* ADD DISH MODAL */}
             <AddDishModal
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
@@ -356,29 +297,35 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 MOCK_CATEGORIES={categories}
             />
 
-            {/* 💡 EDIT DISH MODAL (MỚI: Bọc Component DishUpdateForm) */}
             <Modal
                 show={showEditModal}
                 onHide={() => {
                     setShowEditModal(false);
-                    setSelectedDishIdToEdit(null); // Reset ID khi đóng
+                    setSelectedDishIdToEdit(null);
                 }}
-                size="lg"
+                size="xl"
                 centered
+                dialogClassName="modal-dialog-short"
             >
-                <Modal.Header closeButton>
-                    <Modal.Title>Chỉnh Sửa Món Ăn</Modal.Title>
+                <Modal.Header
+                    closeButton
+                    style={{
+                        backgroundColor: 'rgb(255, 94, 98)',
+                        color: 'white',
+                        borderBottom: 'none',
+                        height: '84px'
+                    }}
+                >
+                    <Modal.Title style={{ fontWeight: 'bold', color: 'white' }}>Chỉnh Sửa Món Ăn</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {/* 💡 TÍCH HỢP DISHUPDATEFORM.TSX */}
                     {selectedDishIdToEdit ? (
                         <DishUpdateForm
-                            dishId={selectedDishIdToEdit} // Truyền ID qua props
+                            dishId={selectedDishIdToEdit}
                             onSuccess={() => {
-                                // Xử lý sau khi PUT thành công
                                 setShowEditModal(false);
                                 setSelectedDishIdToEdit(null);
-                                setDishCreatedToggle(prev => !prev); // Refresh list
+                                setDishCreatedToggle(prev => !prev);
                                 toast.success("Cập nhật món ăn thành công!");
                             }}
                             onCancel={() => setShowEditModal(false)}
