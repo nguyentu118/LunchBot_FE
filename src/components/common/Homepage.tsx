@@ -23,14 +23,14 @@ import {
     MapPin,
     Phone,
     Search,
-    Star, Tag,
+    Star,
     Twitter,
-    Youtube
+    Youtube, Zap
 } from 'lucide-react';
 // Import Navigation Component
 import Navigation from '../layout/Navigation';
-import useSuggestedDishes from "../../features/dish/hooks/useSuggestedDishes.ts";
-import {SuggestedDish} from "../../features/dish/types/suggestedDish.ts";
+import SuggestedDishesSection from '../../features/dish/SuggestedDishesSection.tsx';
+import TopDiscountsSection from '../../features/dish/TopDiscountsSection.tsx';
 
 
 interface Category {
@@ -38,19 +38,6 @@ interface Category {
     image: string;
     colorClass: string;
     restaurantCount: number;
-}
-
-interface Deal {
-    id: number;
-    title: string;
-    restaurant: string;
-    discount: string;
-    originalPrice: number;
-    discountPrice: number;
-    image: string;
-    badge: string;
-    rating: number;
-    time: string;
 }
 
 interface Restaurant {
@@ -66,126 +53,10 @@ interface Restaurant {
     deliveryFee: string;
 }
 
-const mapSuggestedDishToDeal = (dish: SuggestedDish): Deal => {
-
-    const hasDiscount = dish.discountPrice < dish.price;
-
-    // 1. Xử lý % giảm giá (number -> string "X% OFF")
-    const discountValue = dish.discountPercentage;
-    const discountString = (discountValue && discountValue > 0)
-        ? `${Math.round(discountValue)}% OFF` // Ví dụ: "11% OFF"
-        : '';
-
-    // 2. Xử lý Thời gian chế biến (number -> string "X phút")
-    const timeValue = dish.preparationTime;
-    const timeString = timeValue ? `${timeValue} phút` : '30 phút';
-
-    // 3. Xử lý Coupon/Badge
-    const badgeString = hasDiscount ? 'GIẢM GIÁ' : 'GỢI Ý';
-
-    return {
-        id: dish.id,
-        title: dish.name, // ⭐️ Tên món
-        restaurant: dish.merchantAddress, // ⭐️ Địa chỉ Merchant
-        discount: discountString, // ⭐️ % giảm giá
-        originalPrice: dish.price, // ⭐️ Giá gốc
-        discountPrice: dish.discountPrice, // Giá sau giảm
-        image: dish.imageUrl, // ⭐️ Ảnh đại diện
-        badge: badgeString, // ⭐️ Coupon/Badge
-        rating: 5, // Giữ nguyên rating tĩnh
-        time: timeString, // ⭐️ Thời gian chế biến
-    } as Deal;
-};
-
-interface DealCardProps {
-    deal: Deal;
-}
-
-
-// Hàm hỗ trợ format tiền tệ
-const formatCurrency = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return '0₫';
-    return new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(value);
-};
-
-const DealCard: React.FC<DealCardProps> = ({deal}) => {
-    const hasDiscount = deal.discountPrice < deal.originalPrice;
-    const finalPrice = hasDiscount ? deal.discountPrice : deal.originalPrice;
-
-    return (
-        <Card className="h-100 shadow-sm border-0 position-relative mb-3">
-            {/* Ảnh và Badge */}
-            <div className="position-relative overflow-hidden">
-                <Card.Img
-                    variant="top"
-                    src={deal.image || 'default-dish.jpg'}
-                    alt={deal.title}
-                    style={{height: '180px', objectFit: 'cover'}}
-                />
-
-                {/* Badge Discount (Nếu có % giảm giá) */}
-                {hasDiscount && (
-                    <Badge bg="danger" className="position-absolute top-0 start-0 m-2 px-2 py-1 fs-6 fw-bold">
-                        {deal.discount}
-                    </Badge>
-                )}
-
-                {/* Badge Coupon */}
-                <Badge
-                    bg={hasDiscount ? "warning" : "primary"}
-                    text={hasDiscount ? "dark" : "white"}
-                    className="position-absolute top-0 end-0 m-2 px-2 py-1 fw-bold d-flex align-items-center"
-                >
-                    <Tag size={14} className="me-1"/> {deal.badge}
-                </Badge>
-            </div>
-
-            <Card.Body className="d-flex flex-column p-3">
-                {/* Tên món */}
-                <Card.Title className="h6 fw-bold mb-2 text-truncate" title={deal.title}>
-                    {deal.title}
-                </Card.Title>
-
-                {/* Địa chỉ */}
-                <div className="d-flex align-items-start justify-content-between mb-1">
-                    <div className="small text-muted d-flex align-items-center flex-grow-1 me-2">
-                        <MapPin size={14} className="me-1 text-primary flex-shrink-0"/>
-                        <span className="text-truncate">{deal.restaurant}</span>
-                    </div>
-                    <div className="text-end flex-shrink-0">
-                        <div className="fw-bold text-danger" style={{fontSize: '0.95rem'}}>
-                            {formatCurrency(finalPrice)}
-                        </div>
-                        {hasDiscount && (
-                            <div className="text-muted text-decoration-line-through" style={{fontSize: '0.7rem'}}>
-                                {formatCurrency(deal.originalPrice)}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                {/* Thời gian chế biến */}
-                <div className="small text-muted mb-3 d-flex align-items-center">
-                    <Clock size={14} className="me-1 text-success"/>
-                    Thời gian: <strong>{deal.time}</strong>
-                </div>
-            </Card.Body>
-
-            <Card.Footer className="bg-white border-top-0 pt-0 pb-3 px-3">
-                <Button variant="danger" className="w-100 fw-bold shadow-sm">
-                    Đặt ngay
-                </Button>
-            </Card.Footer>
-        </Card>
-    );
-};
-
-
 const HomePage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [currentSlide, setCurrentSlide] = useState<number>(0);
-    const [discountSlideIndex, setDiscountSlideIndex] = useState<number>(0);
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
-    const [suggestedSlideIndex, setSuggestedSlideIndex] = useState<number>(0);
 
     // Dữ liệu Food Categories
     const foodCategories: Category[] = [
@@ -255,160 +126,10 @@ const HomePage: React.FC = () => {
     useEffect(() => {
         const timer = setInterval(() => {
             nextCategorySlide();
-        }, 1500);
+        }, 3000);
         return () => clearInterval(timer);
     }, [nextCategorySlide]);
 
-    // ⭐ 1. SỬ DỤNG HOOK ĐỂ LẤY DỮ LIỆU THỰC TẾ
-    const {data: suggestedDishes, isLoading, error} = useSuggestedDishes();
-
-    // ⭐ 2. ÁNH XẠ DỮ LIỆU API SANG CẤU TRÚC DEAL[] CŨ
-    const dealsToRender: Deal[] = suggestedDishes.map(mapSuggestedDishToDeal);
-
-    // Hàm render phần món ăn gợi ý (Slider)
-    const renderSuggestedDishesSlider = () => {
-
-        // --- Xử lý Loading/Error ---
-        if (isLoading) {
-            return (
-                <Container className="my-5">
-                    <h2 className="fw-bold mb-4">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
-                    <Alert variant="info">Đang tải 8 món ăn gợi ý...</Alert>
-                </Container>
-            );
-        }
-
-        if (error) {
-            return (
-                <Container className="my-5">
-                    <h2 className="fw-bold mb-4">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
-                    <Alert variant="danger">Lỗi tải dữ liệu: {error}</Alert>
-                </Container>
-            );
-        }
-        // --- Render Slider Thực Tế (Sử dụng dữ liệu đã map) ---
-        return (
-            <Container className="py-5">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h2 className="fw-bold">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
-                    {/* ⭐ 3. CẬP NHẬT NÚT ĐIỀU HƯỚNG VÀ LOGIC DISABLE */}
-                    <div className="d-flex gap-2">
-                        <Button
-                            variant="light"
-                            onClick={prevSuggestedSlide}
-                            disabled={suggestedSlideIndex === 0}
-                            className="rounded-circle shadow-sm"
-                        >
-                            <ChevronLeft size={24} className="text-primary"/>
-                        </Button>
-                        <Button
-                            variant="light"
-                            onClick={nextSuggestedSlide}
-                            disabled={suggestedSlideIndex >= dealsToRender.length - 4}
-                            className="rounded-circle shadow-sm"
-                        >
-                            <ChevronRight size={24} className="text-primary"/>
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Cấu trúc slide/carousel cũ của bạn (dùng flex-nowrap để cuộn ngang) */}
-                <div className="overflow-hidden">
-                    <div
-                        className="d-flex flex-row flex-nowrap gap-3"
-                        style={{
-                            transform: `translateX(-${suggestedSlideIndex * (25)}%)`,
-                            transition: 'transform 0.5s ease-in-out'
-                        }}
-                    >
-                        {dealsToRender.map((deal: Deal) => (
-                            <div
-                                key={deal.id}
-                                className="flex-shrink-0"
-                                style={{width: 'calc(25% - 9px)'}}
-                            >
-                                <DealCard deal={deal}/>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </Container>
-        );
-    };
-    const discountDeals: Deal[] = [
-        {
-            id: 1,
-            title: 'Burger Combo Deal',
-            restaurant: 'Burger King Express',
-            discount: '50% OFF',
-            originalPrice: 250000,
-            discountPrice: 125000,
-            image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&h=350&fit=crop',
-            badge: 'HOT DEAL',
-            rating: 4.5,
-            time: '15-20 min'
-        },
-        {
-            id: 2,
-            title: 'Pizza Feast',
-            restaurant: 'Pizza Hut Deluxe',
-            discount: '40% OFF',
-            originalPrice: 350000,
-            discountPrice: 210000,
-            image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&h=350&fit=crop',
-            badge: 'POPULAR',
-            rating: 4.7,
-            time: '25-30 min'
-        },
-        {
-            id: 3,
-            title: 'Sushi Premium Set',
-            restaurant: 'Tokyo Sushi Bar',
-            discount: '35% OFF',
-            originalPrice: 450000,
-            discountPrice: 292500,
-            image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=500&h=350&fit=crop',
-            badge: 'NEW',
-            rating: 4.8,
-            time: '20-25 min'
-        },
-        {
-            id: 4,
-            title: 'Pasta Italiano',
-            restaurant: 'Italian Kitchen',
-            discount: '45% OFF',
-            originalPrice: 280000,
-            discountPrice: 154000,
-            image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=500&h=350&fit=crop',
-            badge: 'TRENDING',
-            rating: 4.6,
-            time: '18-22 min'
-        },
-        {
-            id: 5,
-            title: 'Healthy Bowl',
-            restaurant: 'Fresh & Green',
-            discount: '30% OFF',
-            originalPrice: 180000,
-            discountPrice: 126000,
-            image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=350&fit=crop',
-            badge: 'HEALTHY',
-            rating: 4.4,
-            time: '10-15 min'
-        },
-        {
-            id: 6,
-            title: 'BBQ Ribs Special',
-            restaurant: 'Smokehouse BBQ',
-            discount: '55% OFF',
-            originalPrice: 500000,
-            discountPrice: 225000,
-            image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&h=350&fit=crop',
-            badge: 'BEST SELLER',
-            rating: 4.9,
-            time: '30-35 min'
-        },
-    ];
 
     // Dữ liệu Popular Restaurants
     const popularRestaurants: Restaurant[] = [
@@ -520,24 +241,6 @@ const HomePage: React.FC = () => {
         setFavorites(prev => ({...prev, [id]: !prev[id]}));
     }, []);
 
-    // Logic cho Slider ưu đãi
-    const nextDiscountSlide = useCallback(() => {
-        setDiscountSlideIndex((prev) => Math.min(prev + 1, discountDeals.length - 4));
-    }, [discountDeals.length]);
-
-    const prevDiscountSlide = useCallback(() => {
-        setDiscountSlideIndex((prev) => Math.max(prev - 1, 0));
-    }, []);
-
-    const nextSuggestedSlide = () => {
-        setSuggestedSlideIndex(prev =>
-            Math.min(prev + 1, Math.max(0, dealsToRender.length - 4))
-        );
-    };
-    const prevSuggestedSlide = useCallback(() => {
-        setSuggestedSlideIndex((prev) => Math.max(prev - 1, 0));
-    }, []);
-
 
     return (
         <div className="homepage-wrapper bg-light">
@@ -570,7 +273,10 @@ const HomePage: React.FC = () => {
                         <div className="text-center text-white mb-5">
                             <Alert variant="light"
                                    className="d-inline-block rounded-pill mb-4 py-2 px-4 shadow-sm">
-                                <span className="small fw-semibold text-danger">🎉 Giảm giá đến 50% hôm nay!</span>
+                                <span className="small fw-semibold text-danger">
+                                    <Zap size={20} className="me-2 text-danger" fill="currentColor" />
+                                    Giảm giá đến 50% hôm nay!
+                                </span>
                             </Alert>
                             <h1 className="display-4 fw-bold mb-3" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>
                                 Khám phá món ăn ngon nhất tại <span className="text-warning">Hà Nội</span> VN
@@ -678,102 +384,11 @@ const HomePage: React.FC = () => {
                         </div>
                     </Container>
                 </div>
+                {/*  ƯU ĐÃI (TASK 41)*/ }
+                <TopDiscountsSection />
+
                 {/* ⭐ PHẦN MÓN ĂN GỢI Ý (TASK 40) */}
-                <section id="suggested-dishes">
-                    {renderSuggestedDishesSlider()}
-                </section>
-
-                {/* Discount Deals Section */}
-                <Container className="py-5">
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h2 className="h3 fw-bold text-dark mb-1">🔥 Ưu đãi hôm nay</h2>
-                            <p className="text-muted">Món ăn giảm giá hot nhất - Đặt ngay kẻo lỡ!</p>
-                        </div>
-                        <div className="d-flex gap-2">
-                            <Button
-                                variant="light"
-                                onClick={prevDiscountSlide}
-                                disabled={discountSlideIndex === 0}
-                                className="rounded-circle shadow-sm"
-                            >
-                                <ChevronLeft size={24} className="text-primary"/>
-                            </Button>
-                            <Button
-                                variant="light"
-                                onClick={nextDiscountSlide}
-                                disabled={discountSlideIndex >= discountDeals.length - 3}
-                                className="rounded-circle shadow-sm"
-                            >
-                                <ChevronRight size={24} className="text-primary"/>
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Horizontal Card Slider */}
-                    <div className="overflow-hidden">
-                        <div
-                            className="d-flex flex-row flex-nowrap gap-3"
-                            style={{
-                                transform: `translateX(-${discountSlideIndex * (25)}%)`,
-                                transition: 'transform 0.5s ease-in-out'
-                            }}
-                        >
-                            {discountDeals.map((deal) => (
-                                <Card
-                                    key={deal.id}
-                                    className="flex-shrink-0 h-100"
-                                    style={{width: 'calc(25% - 12px)'}}
-                                >
-                                    <div className="position-relative overflow-hidden ">
-                                        <Card.Img
-                                            src={deal.image}
-                                            alt={deal.title}
-                                            style={{height: '180px', objectFit: 'cover'}}
-                                        />
-                                        <Badge bg="danger"
-                                               className="position-absolute top-0 start-0 m-2 fw-bold p-2 shadow-sm">
-                                            {deal.badge}
-                                        </Badge>
-                                        <Badge bg="warning"
-                                               className="position-absolute top-0 end-0 m-2 fw-bold p-2 shadow-lg fs-6">
-                                            {deal.discount}
-                                        </Badge>
-                                        <Badge bg="white"
-                                               className="position-absolute bottom-0 start-0 m-2 p-2 shadow-sm text-dark">
-                                            <Star size={14} fill="#FFA500" className="text-warning me-1"/>
-                                            {deal.rating}
-                                        </Badge>
-                                    </div>
-
-                                    <Card.Body className="p-3">
-                                        <Card.Title className="h5 fw-bold mb-1">{deal.title}</Card.Title>
-                                        <Card.Text className="text-muted small mb-3">{deal.restaurant}</Card.Text>
-
-                                        <div className="d-flex align-items-center justify-content-between mb-3">
-                                            <div className="d-flex align-items-center gap-1 text-muted small">
-                                                <Clock size={16} className="text-primary"/>
-                                                {deal.time}
-                                            </div>
-                                            <div className="text-end">
-                                                <div className="text-muted small text-decoration-line-through">
-                                                    {formatCurrency(deal.originalPrice)}
-                                                </div>
-                                                <div className="text-danger fw-bold h6 mb-0">
-                                                    {formatCurrency(deal.discountPrice)}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <Button variant="danger" className="w-100 fw-bold shadow-sm">
-                                            Đặt ngay
-                                        </Button>
-                                    </Card.Body>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                </Container>
+                <SuggestedDishesSection />
 
                 {/* Popular Restaurants Section */}
                 <div className="bg-white py-5">
