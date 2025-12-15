@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {Plus, List} from 'lucide-react';
+import { Plus, List, Ticket, Grid } from 'lucide-react';
 import { Modal } from "react-bootstrap";
 import AddDishModal from "../../features/dish/AddDishModal.tsx";
+import AddCouponModal from "../../features/coupon/components/AddCouponModal.tsx";
 import MerchantDishList from "../../features/dish/MerchantDishList.tsx";
+import MerchantCouponManager from "../../features/coupon/components/MerchantCouponManager.tsx";
 import axiosInstance from "../../config/axiosConfig.ts";
 import { AxiosResponse, AxiosError } from 'axios';
 import useCategories from "../../features/category/useCategories.ts";
 import toast from "react-hot-toast";
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
 import Navigation from "./Navigation.tsx";
-// --- INTERFACES ---
 
+// --- INTERFACES ---
 interface Dish {
     id: number;
     name: string;
@@ -38,6 +40,7 @@ interface SidebarButtonProps {
     text: string;
     onClick: () => void;
     color?: string;
+    isActive?: boolean;
 }
 
 const customStyles = {
@@ -49,17 +52,27 @@ const customStyles = {
     },
 };
 
-const SidebarButton: React.FC<SidebarButtonProps> = ({ icon: Icon, text, onClick, color = 'danger' }) => (
+const SidebarButton: React.FC<SidebarButtonProps> = ({
+                                                         icon: Icon,
+                                                         text,
+                                                         onClick,
+                                                         color = 'danger',
+                                                         isActive = false
+                                                     }) => (
     <button
         onClick={onClick}
-        className={`btn btn-light text-${color} w-100 py-3 mb-3 fw-bold d-flex justify-content-center align-items-center gap-2`}
-        style={{ borderRadius: '0.75rem' }}
+        className={`btn w-100 py-3 mb-3 fw-bold d-flex justify-content-center align-items-center gap-2`}
+        style={{
+            borderRadius: '0.75rem',
+            backgroundColor: isActive ? 'white' : 'transparent',
+            color: isActive ? customStyles.primaryPink : 'white',
+            border: isActive ? 'none' : '2px solid rgba(255, 255, 255, 0.3)'
+        }}
     >
         <Icon size={20} />
         {text}
     </button>
 );
-
 
 const MerchantDashboardBootstrap: React.FC = () => {
     const { categories, isLoading: isLoadingCategories, error: categoriesError } = useCategories();
@@ -68,16 +81,15 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [merchantName, setMerchantName] = useState<string>('Đang tải...');
     const [isLoadingId, setIsLoadingId] = useState<boolean>(true);
 
-    const [showListView, setShowListView] = useState<boolean>(true);
+    // State cho view type: 'dishes' | 'coupons'
+    const [activeView, setActiveView] = useState<'dishes' | 'coupons'>('dishes');
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
 
-    const [isLoggedIn, setIsLoggedIn] = useState(true);
-    const [userRole, setUserRole] = useState('MERCHANT');
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
 
+    // Modal states
     const [showAddModal, setShowAddModal] = useState<boolean>(false);
-
-    // 💡 STATE MỚI ĐỂ QUẢN LÝ CHỨC NĂNG SỬA
+    const [showCouponModal, setShowCouponModal] = useState<boolean>(false);
     const [selectedDishIdToEdit, setSelectedDishIdToEdit] = useState<number | null>(null);
     const [showEditModal, setShowEditModal] = useState<boolean>(false);
 
@@ -94,10 +106,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         categoryIds: new Set<number>(),
         isRecommended: false,
     });
-
-    const handleLogout = () => {
-        console.log('Logging out...');
-    };
 
     useEffect(() => {
         const fetchMerchantId = async () => {
@@ -126,7 +134,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         };
         fetchMerchantId();
     }, []);
-
 
     const handleAddDish = useCallback(async (data: Omit<DishCreateRequestState, 'imagesFiles' | 'merchantId'> & { uploadedUrls: string[] }) => {
         if (isLoadingId || currentMerchantId === null) {
@@ -157,7 +164,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
             toast.success(`Thêm món ăn "${createdDish.name}" thành công!`);
             setDishCreatedToggle(prev => !prev);
 
-            // Reset form
             setNewDishData({
                 name: '',
                 merchantId: undefined,
@@ -188,15 +194,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
         }
     }, [currentMerchantId, isLoadingId]);
 
-
-    // 💡 CHỨC NĂNG SỬA: Thay thế logic cũ bằng việc mở Modal và truyền ID
     const handleEditDish = useCallback((dish: Dish) => {
         setSelectedDishIdToEdit(dish.id);
         setShowEditModal(true);
     }, []);
-
-
-
 
     type InputChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
     type FileChangeEvent = React.ChangeEvent<HTMLInputElement>;
@@ -218,7 +219,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         }
     };
 
-
     const handleCategoryToggle = (categoryId: number) => {
         setNewDishData(prev => {
             const newSet = new Set(prev.categoryIds);
@@ -239,7 +239,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
         return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng đăng nhập lại.</div>;
     }
 
-
     return (
         <div className="min-vh-100 bg-light">
             {/* HEADER */}
@@ -251,7 +250,9 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 {/* BANNER DASHBOARD */}
                 <div className="rounded-4 p-5 mb-5 shadow" style={{ backgroundColor: customStyles.primaryPink, color: 'white' }}>
                     <h2 className="display-6 fw-bold mb-2">{merchantName}</h2>
-                    <p className="lead">Quản lý món ăn</p>
+                    <p className="lead">
+                        {activeView === 'dishes' ? 'Quản lý món ăn' : 'Quản lý mã giảm giá'}
+                    </p>
                 </div>
 
                 <div className="row g-4">
@@ -261,34 +262,52 @@ const MerchantDashboardBootstrap: React.FC = () => {
                             <h3 className="h5 fw-bold text-white mb-4">Chức năng</h3>
                             <div className="d-grid gap-3">
                                 <SidebarButton
-                                    icon={Plus}
-                                    text={isLoadingCategories ? "Đang tải danh mục..." : "Thêm món ăn"}
-                                    onClick={() => !isLoadingCategories && setShowAddModal(true)}
-                                />
-                                <SidebarButton
-                                    icon={Plus}
-                                    text={isLoadingCategories ? "Đang tải..." : "Thêm mã giảm giá"}
-                                    onClick={() => setShowListView(prev => !prev)}
-                                />
-                                <SidebarButton
                                     icon={List}
-                                    text={showListView ? "Ẩn danh sách" : "Xem danh sách món"}
-                                    onClick={() => setShowListView(prev => !prev)}
+                                    text="Quản lý món ăn"
+                                    onClick={() => setActiveView('dishes')}
+                                    isActive={activeView === 'dishes'}
                                 />
+                                <SidebarButton
+                                    icon={Grid}
+                                    text="Quản lý mã giảm giá"
+                                    onClick={() => setActiveView('coupons')}
+                                    isActive={activeView === 'coupons'}
+                                />
+
+                                <div className="border-top border-white border-opacity-25 my-2"></div>
+
+                                {activeView === 'dishes' && (
+                                    <SidebarButton
+                                        icon={Plus}
+                                        text="Thêm món ăn"
+                                        onClick={() => setShowAddModal(true)}
+                                    />
+                                )}
+
+                                {activeView === 'coupons' && (
+                                    <SidebarButton
+                                        icon={Ticket}
+                                        text="Thêm mã giảm giá"
+                                        onClick={() => setShowCouponModal(true)}
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Main Content */}
                     <div className="col-lg-8 col-xl-9">
-                        {showListView && (
+                        {activeView === 'dishes' && (
                             <MerchantDishList
                                 onDishCreatedToggle={dishCreatedToggle}
                                 selectedDish={selectedDish}
                                 setSelectedDish={setSelectedDish}
-                                // TRUYỀN HÀM SỬA ĐỂ MỞ MODAL
                                 onEdit={handleEditDish}
                             />
+                        )}
+
+                        {activeView === 'coupons' && (
+                            <MerchantCouponManager brandColor={customStyles.primaryPink} />
                         )}
                     </div>
                 </div>
@@ -306,6 +325,18 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 MOCK_CATEGORIES={categories}
             />
 
+            {/* ADD COUPON MODAL */}
+            <AddCouponModal
+                show={showCouponModal}
+                onClose={() => setShowCouponModal(false)}
+                onSuccess={() => {
+                    setShowCouponModal(false);
+                    toast.success("Tạo mã khuyến mãi thành công!");
+                }}
+                customStyles={customStyles}
+            />
+
+            {/* EDIT DISH MODAL */}
             <Modal
                 show={showEditModal}
                 onHide={() => {
