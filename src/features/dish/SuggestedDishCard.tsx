@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Badge } from 'react-bootstrap';
-import {MapPin, Clock, Tag, Plus} from 'lucide-react';
+import {MapPin, Clock, Tag, ShoppingCart} from 'lucide-react';
 import { SuggestedDish } from './types/suggestedDish';
 import {useCart} from "../cart/hooks/useCart.ts";
 
@@ -8,16 +8,14 @@ interface SuggestedDishCardProps {
     dish: SuggestedDish;
 }
 
-// Hàm định dạng tiền tệ Việt Nam (VND) - Giống DealCard
+// Hàm định dạng tiền tệ Việt Nam (VND)
 const formatCurrency = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 };
 
 const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
-    const { addToCart } = useCart();
-
-    // Logic giống DealCard trong Homepage
+    // Logic giá
     const hasDiscount = dish.discountPrice < dish.price;
     const finalPrice = hasDiscount ? dish.discountPrice : dish.price;
 
@@ -48,7 +46,21 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
     };
 
     return (
-        <Card className="h-100 shadow-sm border-0 position-relative mb-3">
+        <Card
+            className="h-100 shadow-sm border-0 position-relative mb-3"
+            style={{
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+            }}
+        >
             {/* Ảnh và Badge */}
             <div className="position-relative overflow-hidden">
                 <Card.Img
@@ -82,12 +94,31 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
                     {dish.name}
                 </Card.Title>
 
-                {/* Địa chỉ và Giá */}
+                {/* ⭐ FIX: Địa chỉ và Giá - GIỐNG CŨ NHƯNG TRUNCATE ĐỊA CHỈ */}
                 <div className="d-flex align-items-start justify-content-between mb-1">
-                    <div className="small text-muted d-flex align-items-center flex-grow-1 me-2">
+                    {/* Địa chỉ - Truncate với ... khi dài quá */}
+                    <div
+                        className="small text-muted d-flex align-items-center me-3"
+                        style={{
+                            minWidth: 0, // ⭐ Quan trọng: Cho phép flex item shrink
+                            flex: '1 1 auto'
+                        }}
+                    >
                         <MapPin size={14} className="me-1 text-primary flex-shrink-0" />
-                        <span className="text-truncate">{dish.merchantAddress}</span>
+                        <span
+                            className="text-truncate"
+                            title={dish.merchantAddress}
+                            style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {dish.merchantAddress}
+                        </span>
                     </div>
+
+                    {/* Giá - Luôn hiển thị đầy đủ, không bị đẩy */}
                     <div className="text-end flex-shrink-0">
                         <div className="fw-bold text-danger" style={{ fontSize: '0.95rem' }}>
                             {formatCurrency(finalPrice)}
@@ -100,19 +131,28 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
                     </div>
                 </div>
 
-                {/* Thời gian chế biến */}
+                {/* Thời gian chế biến và nút giỏ hàng */}
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="small text-muted d-flex align-items-center">
                         <Clock size={14} className="me-1 text-success" />
                         Thời gian: <strong>{timeString}</strong>
                     </div>
                     <button
-                        className="btn btn-sm btn-warning rounded-circle d-flex align-items-center justify-content-center p-0"
-                        style={{ width: '36px', height: '36px' }}
+                        className="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            transition: 'transform 0.2s'
+                        }}
                         title="Thêm vào giỏ hàng"
-                        onClick={handleAddToCart}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Thêm vào giỏ:', dish.id);
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        <Plus size={20} strokeWidth={3} color="black" />
+                        <ShoppingCart size={16} style={{ color: "#FF5E62" }} />
                     </button>
                 </div>
             </Card.Body>
