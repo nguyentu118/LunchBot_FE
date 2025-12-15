@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Badge } from 'react-bootstrap';
 import {MapPin, Clock, Tag, ShoppingCart} from 'lucide-react';
 import { SuggestedDish } from './types/suggestedDish';
+import {useCart} from "../cart/hooks/useCart.ts";
 
 interface SuggestedDishCardProps {
     dish: SuggestedDish;
@@ -28,6 +29,21 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
 
     // Badge text
     const badgeText = hasDiscount ? 'GIẢM GIÁ' : 'GỢI Ý';
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Chặn sự kiện click lan ra ngoài (để không bị nhảy trang)
+
+        // 🔥 CẬP NHẬT: Truyền đầy đủ thông tin món để cache
+        addToCart(
+            dish.id,
+            1,
+            {
+                name: dish.name,
+                image: dish.imageUrl || 'default-dish.jpg',
+                price: finalPrice // Sử dụng giá sau giảm (nếu có)
+            }
+        );
+    };
 
     return (
         <Card

@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Badge } from 'react-bootstrap';
 import {MapPin, Clock, Tag, ShoppingCart} from 'lucide-react';
 import { DishDiscount } from './types/DishDiscount';
+import { useCart } from "../cart/hooks/useCart.ts";
 
 interface DiscountDishCardProps {
     dish: DishDiscount;
 }
 
-// Hàm định dạng tiền tệ Việt Nam (VND)
 const formatCurrency = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0₫';
     return new Intl.NumberFormat('vi-VN', {
@@ -19,20 +19,20 @@ const formatCurrency = (value: number | undefined | null): string => {
 
 const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
     const navigate = useNavigate();
+    const { addToCart, isLoading } = useCart();
 
     const hasDiscount = dish.discountedPrice < dish.originalPrice;
     const finalPrice = hasDiscount ? dish.discountedPrice : dish.originalPrice;
 
-    // ✅ Handler để navigate đến trang chi tiết
+    // ✅ Navigate đến trang chi tiết
     const handleCardClick = () => {
         navigate(`/dishes/${dish.id}`);
     };
 
-    // ✅ Handler cho nút thêm giỏ hàng (prevent propagation)
-    const handleAddToCart = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        console.log('Thêm vào giỏ:', dish.id);
-        // Logic thêm giỏ hàng ở đây
+    // ✅ Thêm vào giỏ hàng (prevent propagation)
+    const handleAddToCart = async (e: React.MouseEvent) => {
+        e.stopPropagation(); // Ngăn trigger onClick của Card
+        await addToCart(dish.id, 1);
     };
 
     return (
@@ -56,12 +56,12 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
             <div className="position-relative overflow-hidden">
                 <Card.Img
                     variant="top"
-                    src={dish.imageUrl || 'default-dish.jpg'}
+                    src={dish.imageUrl || 'https://placehold.co/300x200?text=No+Image'}
                     alt={dish.name}
                     style={{ height: '180px', objectFit: 'cover' }}
                 />
 
-                {/* Badge Discount (Nếu có % giảm giá) */}
+                {/* Badge Discount */}
                 {hasDiscount && (
                     <Badge bg="danger" className="position-absolute top-0 start-0 m-2 px-2 py-1 fs-6 fw-bold">
                         {Math.round(dish.discountPercentage)}% OFF
@@ -126,7 +126,7 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="small text-muted d-flex align-items-center">
                         <Clock size={14} className="me-1 text-success" />
-                        Thời gian: <strong>{dish.preparationTime} phút</strong>
+                        Thời gian: <strong className="ms-1">{dish.preparationTime} phút</strong>
                     </div>
                     <button
                         onClick={handleAddToCart}
@@ -134,9 +134,14 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                         style={{
                             width: '36px',
                             height: '36px',
-                            transition: 'transform 0.2s'
+                            transition: 'transform 0.2s',
+                            opacity: isLoading ? 0.6 : 1
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseEnter={(e) => {
+                            if (!isLoading) {
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }
+                        }}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         title="Thêm vào giỏ hàng"
                     >
@@ -144,9 +149,6 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                     </button>
                 </div>
             </Card.Body>
-
-            <Card.Footer className="bg-white border-top-0 pt-0 pb-3 px-3">
-            </Card.Footer>
         </Card>
     );
 };
