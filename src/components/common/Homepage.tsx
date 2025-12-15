@@ -393,11 +393,8 @@ const HomePage: React.FC = () => {
                 {/* Popular Restaurants Section */}
                 <div className="bg-white py-5">
                     <Container>
-                        <div className="text-center mb-5">
-                            <h2 className="h3 fw-bold text-dark mb-2">⭐ Nhà hàng nổi tiếng</h2>
-                            <p className="text-muted">Được yêu thích nhất tại Hà Nội</p>
-                            <div className="bg-primary mx-auto mt-3 rounded-pill"
-                                 style={{width: '60px', height: '3px'}}></div>
+                        <div className="mb-5">
+                            <h2 className="fw-bold mb-3 d-flex align-items-center">⭐ Nhà hàng nổi tiếng</h2>
                         </div>
 
                         <Row className="g-4">
