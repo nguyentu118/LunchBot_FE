@@ -2,6 +2,7 @@ import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import toast from 'react-hot-toast';
+import {CartApiService} from "../cart/services/CartApi.service.ts";
 
 import {Form, Button, Card, Alert, Spinner, InputGroup} from 'react-bootstrap';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -144,6 +145,15 @@ const LoginForm: React.FC = () => {
             if (token && role) {
                 localStorage.setItem('token', token);
                 localStorage.setItem('userRole', role);
+
+                try {
+                    // Nếu là User (Khách hàng) thì mới đồng bộ
+                    if (role === 'ROLE_USER' || role === 'USER') {
+                        await CartApiService.syncGuestCart(); // <--- Gọi hàm đồng bộ
+                    }
+                } catch (syncError) {
+                    console.error("Lỗi đồng bộ giỏ hàng:", syncError);
+                }
 
                 toast.success('Đăng nhập thành công!');
 

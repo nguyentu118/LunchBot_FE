@@ -14,6 +14,7 @@ import MerchantRegistrationForm from "../features/merchants/MerchantRegistration
 import ProtectedRoute from "./ProtectedRoute.tsx";
 import MerchantDashboard from "../components/layout/MerchantDashBoard.tsx";
 import DishDetailPage from "../features/dish/DishDetailPage.tsx";
+import CartPage from "../features/cart/CartPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -46,6 +47,10 @@ const router = createBrowserRouter([
     {
         path: "/dishes/:dishId",
         element: <DishDetailPage/>,
+    },
+    {
+        path: "/cart",
+        element: <CartPage/>,
     },
 
 

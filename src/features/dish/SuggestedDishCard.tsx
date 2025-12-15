@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Badge } from 'react-bootstrap';
 import {MapPin, Clock, Tag, Plus} from 'lucide-react';
 import { SuggestedDish } from './types/suggestedDish';
+import {useCart} from "../cart/hooks/useCart.ts";
 
 interface SuggestedDishCardProps {
     dish: SuggestedDish;
@@ -14,6 +15,8 @@ const formatCurrency = (value: number | undefined | null): string => {
 };
 
 const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
+    const { addToCart } = useCart();
+
     // Logic giống DealCard trong Homepage
     const hasDiscount = dish.discountPrice < dish.price;
     const finalPrice = hasDiscount ? dish.discountPrice : dish.price;
@@ -28,6 +31,21 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
 
     // Badge text
     const badgeText = hasDiscount ? 'GIẢM GIÁ' : 'GỢI Ý';
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Chặn sự kiện click lan ra ngoài (để không bị nhảy trang)
+
+        // 🔥 CẬP NHẬT: Truyền đầy đủ thông tin món để cache
+        addToCart(
+            dish.id,
+            1,
+            {
+                name: dish.name,
+                image: dish.imageUrl || 'default-dish.jpg',
+                price: finalPrice // Sử dụng giá sau giảm (nếu có)
+            }
+        );
+    };
 
     return (
         <Card className="h-100 shadow-sm border-0 position-relative mb-3">
@@ -92,6 +110,7 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
                         className="btn btn-sm btn-warning rounded-circle d-flex align-items-center justify-content-center p-0"
                         style={{ width: '36px', height: '36px' }}
                         title="Thêm vào giỏ hàng"
+                        onClick={handleAddToCart}
                     >
                         <Plus size={20} strokeWidth={3} color="black" />
                     </button>

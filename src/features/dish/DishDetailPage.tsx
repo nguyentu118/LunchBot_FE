@@ -1,8 +1,7 @@
-// src/features/dish/DishDetailPage.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Button, Badge, Spinner, Alert } from 'react-bootstrap';
+import toast from 'react-hot-toast';
 import {
     ArrowLeft, Eye, Clock, ShoppingCart, CreditCard,
     ChevronLeft, ChevronRight, Store
@@ -10,6 +9,7 @@ import {
 import axiosInstance from "../../config/axiosConfig";
 import Navigation from "../../components/layout/Navigation";
 import DishGrid from "./DishGrid.tsx";
+import { useCart } from "../cart/hooks/useCart.ts";
 
 interface DishImage {
     id: number;
@@ -53,14 +53,13 @@ interface SuggestedDish {
 const DishDetailPage: React.FC = () => {
     const { dishId } = useParams<{ dishId: string }>();
     const navigate = useNavigate();
+    const { addToCart, isLoading: isAddingToCart } = useCart();
 
-    // State cho dish chính
     const [dish, setDish] = useState<DishDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-    // State cho danh sách gợi ý
     const [relatedDishes, setRelatedDishes] = useState<SuggestedDish[]>([]);
     const [mostViewedDishes, setMostViewedDishes] = useState<SuggestedDish[]>([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
@@ -125,14 +124,37 @@ const DishDetailPage: React.FC = () => {
         }
     };
 
-    const handleAddToCart = (dishId?: number) => {
-        console.log('Thêm vào giỏ:', dishId || dish?.id);
-        // Logic thêm giỏ hàng ở đây
+    // ✅ Xử lý thêm vào giỏ hàng
+    const handleAddToCart = async (selectedDishId?: number) => {
+        const targetDishId = selectedDishId || dish?.id;
+
+        if (!targetDishId) {
+            toast.error('Không tìm thấy món ăn');
+            return;
+        }
+
+        await addToCart(targetDishId, 1);
     };
 
-    const handleBuyNow = () => {
-        console.log('Mua ngay:', dish?.id);
-        // Logic mua ngay ở đây
+    // ✅ Xử lý mua ngay
+    const handleBuyNow = async () => {
+        if (!dish?.id) {
+            toast.error('Không tìm thấy món ăn');
+            return;
+        }
+
+        // Thêm vào giỏ hàng trước
+        await addToCart(dish.id, 1);
+
+        // Sau đó chuyển đến trang giỏ hàng/thanh toán
+        toast.success('Đang chuyển đến giỏ hàng...', {
+            icon: '🚀',
+            duration: 1500,
+        });
+
+        setTimeout(() => {
+            navigate('/cart'); // Hoặc /checkout tùy theo flow của bạn
+        }, 1500);
     };
 
     if (loading) {
@@ -161,7 +183,6 @@ const DishDetailPage: React.FC = () => {
             <Navigation />
             <div className="bg-light min-vh-100 py-4">
                 <Container>
-                    {/* Nút quay lại */}
                     <Button
                         variant="link"
                         className="text-decoration-none mb-3 p-0 d-flex align-items-center"
@@ -172,12 +193,10 @@ const DishDetailPage: React.FC = () => {
                         Quay lại danh sách
                     </Button>
 
-                    {/* CHI TIẾT MÓN ĂN */}
                     <div className="bg-white rounded-4 shadow-sm overflow-hidden">
                         <div className="row g-0">
                             {/* CỘT TRÁI: ẢNH */}
                             <div className="col-lg-6 p-4">
-                                {/* Ảnh chính */}
                                 <div
                                     className="position-relative mb-3 rounded-4 overflow-hidden"
                                     style={{ height: '400px', backgroundColor: '#f8f9fa' }}
@@ -193,7 +212,6 @@ const DishDetailPage: React.FC = () => {
                                         style={{ transition: 'all 0.3s ease' }}
                                     />
 
-                                    {/* Nút Previous/Next */}
                                     {dish.images && dish.images.length > 1 && (
                                         <>
                                             <button
@@ -229,7 +247,6 @@ const DishDetailPage: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* Thumbnails */}
                                 <div className="d-flex gap-2 overflow-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
                                     {dish.images?.map((img, index) => (
                                         <div
@@ -267,7 +284,6 @@ const DishDetailPage: React.FC = () => {
 
                                     <h1 className="h2 fw-bold mb-3 text-dark">{dish.name}</h1>
 
-                                    {/* DANH MỤC */}
                                     {dish.categories && dish.categories.length > 0 && (
                                         <div className="d-flex flex-wrap gap-2 mb-3">
                                             {dish.categories.map((category) => (
@@ -296,7 +312,6 @@ const DishDetailPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Giá tiền */}
                                     <div className="mb-4 p-3 bg-light rounded-3">
                                         {dish.discountPrice && dish.discountPrice < dish.price ? (
                                             <div className="d-flex align-items-end gap-2">
@@ -340,35 +355,45 @@ const DishDetailPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Nút hành động */}
+                                {/* NÚT HÀNH ĐỘNG */}
                                 <div className="d-grid gap-2 d-md-flex mt-3">
                                     <Button
                                         variant="outline-light"
                                         size="lg"
                                         onClick={() => handleAddToCart()}
+                                        disabled={isAddingToCart}
                                         className="flex-grow-1 d-flex align-items-center justify-content-center fw-bold"
                                         style={{
                                             borderColor: brandColor,
                                             color: brandColor,
                                             backgroundColor: 'white'
                                         }}
-                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fff0f0'}
+                                        onMouseOver={(e) => {
+                                            if (!isAddingToCart) {
+                                                e.currentTarget.style.backgroundColor = '#fff0f0';
+                                            }
+                                        }}
                                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
                                     >
                                         <ShoppingCart size={20} className="me-2" />
-                                        Thêm vào giỏ
+                                        {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ'}
                                     </Button>
 
                                     <Button
                                         variant="primary"
                                         size="lg"
                                         onClick={handleBuyNow}
+                                        disabled={isAddingToCart}
                                         className="flex-grow-1 d-flex align-items-center justify-content-center fw-bold text-white"
                                         style={{
                                             backgroundColor: brandColor,
                                             borderColor: brandColor
                                         }}
-                                        onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                                        onMouseOver={(e) => {
+                                            if (!isAddingToCart) {
+                                                e.currentTarget.style.opacity = '0.9';
+                                            }
+                                        }}
                                         onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
                                     >
                                         <CreditCard size={20} className="me-2" />
@@ -379,7 +404,6 @@ const DishDetailPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* MÓN DÀNH RIÊNG CHO BẠN - Có nút bấm */}
                     <DishGrid
                         title="Món dành riêng cho bạn"
                         dishes={relatedDishes}
@@ -390,7 +414,6 @@ const DishDetailPage: React.FC = () => {
                         autoScroll={false}
                     />
 
-                    {/* MỌI NGƯỜI CŨNG THÍCH - Tự động scroll */}
                     <DishGrid
                         title="Mọi người cũng thích"
                         dishes={mostViewedDishes}

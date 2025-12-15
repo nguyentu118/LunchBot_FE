@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import { useNavigate } from 'react-router-dom';
 import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row} from 'react-bootstrap';
 import './Homepage.css';
 import {ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram, Mail, MapPin, Phone, Search, Star, Twitter, Youtube, Zap
