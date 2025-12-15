@@ -1,15 +1,16 @@
 import React from 'react';
-import { Card, Badge} from 'react-bootstrap';
-import {MapPin, Clock, Tag, Plus} from 'lucide-react';
-import { DishDiscount } from './types/DishDiscount'; // Đảm bảo đường dẫn chính xác
+import { useNavigate } from 'react-router-dom';
+import { Card, Badge } from 'react-bootstrap';
+import { MapPin, Clock, Tag, Plus } from 'lucide-react';
+import { DishDiscount } from './types/DishDiscount';
 
 interface DiscountDishCardProps {
     dish: DishDiscount;
 }
 
 // Hàm định dạng tiền tệ Việt Nam (VND)
-const formatCurrency = (value: number| undefined|null): string => {
-    if(value === undefined || value === null ) return '0₫';
+const formatCurrency = (value: number | undefined | null): string => {
+    if (value === undefined || value === null) return '0₫';
     return new Intl.NumberFormat('vi-VN', {
         style: 'currency',
         currency: 'VND'
@@ -17,11 +18,40 @@ const formatCurrency = (value: number| undefined|null): string => {
 };
 
 const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
+    const navigate = useNavigate();
+
     const hasDiscount = dish.discountedPrice < dish.originalPrice;
     const finalPrice = hasDiscount ? dish.discountedPrice : dish.originalPrice;
 
+    // ✅ Handler để navigate đến trang chi tiết
+    const handleCardClick = () => {
+        navigate(`/dishes/${dish.id}`);
+    };
+
+    // ✅ Handler cho nút thêm giỏ hàng (prevent propagation)
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('Thêm vào giỏ:', dish.id);
+        // Logic thêm giỏ hàng ở đây
+    };
+
     return (
-        <Card className="h-100 shadow-sm border-0 position-relative mb-3">
+        <Card
+            className="h-100 shadow-sm border-0 position-relative mb-3"
+            onClick={handleCardClick}
+            style={{
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+            }}
+        >
             {/* Ảnh và Badge */}
             <div className="position-relative overflow-hidden">
                 <Card.Img
@@ -80,8 +110,15 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                         Thời gian: <strong>{dish.preparationTime} phút</strong>
                     </div>
                     <button
+                        onClick={handleAddToCart}
                         className="btn btn-sm btn-warning rounded-circle d-flex align-items-center justify-content-center p-0"
-                        style={{ width: '36px', height: '36px' }}
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            transition: 'transform 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         title="Thêm vào giỏ hàng"
                     >
                         <Plus size={20} strokeWidth={3} color="black" />
