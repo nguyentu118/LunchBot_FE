@@ -10,6 +10,7 @@ import axiosInstance from "../../config/axiosConfig";
 import Navigation from "../../components/layout/Navigation";
 import DishGrid from "./DishGrid.tsx";
 import { useCart } from "../cart/hooks/useCart.ts";
+import UserCouponSection from "../coupon/components/UserCouponSection.tsx";
 
 interface DishImage {
     id: number;
@@ -124,7 +125,6 @@ const DishDetailPage: React.FC = () => {
         }
     };
 
-    // ✅ Xử lý thêm vào giỏ hàng
     const handleAddToCart = async (selectedDishId?: number) => {
         const targetDishId = selectedDishId || dish?.id;
 
@@ -136,24 +136,21 @@ const DishDetailPage: React.FC = () => {
         await addToCart(targetDishId, 1);
     };
 
-    // ✅ Xử lý mua ngay
     const handleBuyNow = async () => {
         if (!dish?.id) {
             toast.error('Không tìm thấy món ăn');
             return;
         }
 
-        // Thêm vào giỏ hàng trước
         await addToCart(dish.id, 1);
 
-        // Sau đó chuyển đến trang giỏ hàng/thanh toán
         toast.success('Đang chuyển đến giỏ hàng...', {
             icon: '🚀',
             duration: 1500,
         });
 
         setTimeout(() => {
-            navigate('/cart'); // Hoặc /checkout tùy theo flow của bạn
+            navigate('/cart');
         }, 1500);
     };
 
@@ -403,6 +400,15 @@ const DishDetailPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* SECTION MÃ GIẢM GIÁ */}
+                    {dish?.merchantId && (
+                        <UserCouponSection
+                            merchantId={dish.merchantId}
+                            merchantName={dish.merchantName}
+                            brandColor={brandColor}
+                        />
+                    )}
 
                     <DishGrid
                         title="Món dành riêng cho bạn"
