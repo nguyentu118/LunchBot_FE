@@ -30,6 +30,10 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
+    // 🔥 PHÂN TRANG
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const ITEMS_PER_PAGE = 6; // Số món ăn mỗi trang
+
     // State cho Image Gallery Modal
     const [showGallery, setShowGallery] = useState(false);
     const [currentImages, setCurrentImages] = useState<string[]>([]);
@@ -125,6 +129,26 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         fetchMerchantDishes();
     }, [fetchMerchantDishes, onDishCreatedToggle]);
 
+    // 🔥 TÍNH TOÁN PHÂN TRANG
+    const totalPages = Math.ceil(dishes.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentDishes = dishes.slice(startIndex, endIndex);
+
+    // Reset về trang 1 khi dishes thay đổi
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(1);
+        }
+    }, [dishes.length, currentPage, totalPages]);
+
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     const openGallery = (images: string[], startIndex: number = 0) => {
         setCurrentImages(images);
         setCurrentImageIndex(startIndex);
@@ -139,7 +163,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
     };
 
-    // ✅ HÀM XỬ LÝ KHI ẢNH BỊ LỖI
     const handleImageError = (imageUrl: string) => {
         console.error('❌ Failed to load image:', imageUrl);
         setImageErrors(prev => new Set(prev).add(imageUrl));
@@ -161,15 +184,23 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     return (
         <>
             <div className="bg-white rounded-4 p-4 shadow">
-                <h3 className="h4 fw-bold text-dark mb-4">Danh sách món ăn đã thêm</h3>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h3 className="h4 fw-bold text-dark mb-0">Danh sách món ăn đã thêm</h3>
+                    {dishes.length > 0 && (
+                        <span className="badge bg-danger fs-6">
+                            Tổng: {dishes.length} món
+                        </span>
+                    )}
+                </div>
+
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-                    {dishes.length === 0 ? (
+                    {currentDishes.length === 0 ? (
                         <div className="col-12 text-center py-5">
                             <h4 className="text-muted">Chưa có món ăn nào.</h4>
                             <p className="text-secondary">Hãy bấm "Thêm món ăn" để bắt đầu.</p>
                         </div>
                     ) : (
-                        dishes.map((dish: Dish) => (
+                        currentDishes.map((dish: Dish) => (
                             <div className="col" key={dish.id}>
                                 <div
                                     onClick={() => setSelectedDish(dish)}
@@ -181,7 +212,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    {/* ✅ OPTION 1: DÙNG <img> TAG THAY VÌ BACKGROUND */}
                                     <div
                                         className="card-img-top bg-light d-flex align-items-center justify-content-center position-relative overflow-hidden"
                                         style={{
@@ -214,7 +244,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                             </div>
                                         )}
 
-                                        {/* Badge hiển thị số lượng ảnh */}
                                         {dish.images && dish.images.length > 1 && (
                                             <button
                                                 className="position-absolute top-0 end-0 m-2 btn btn-sm btn-dark bg-opacity-75"
@@ -272,6 +301,47 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         ))
                     )}
                 </div>
+
+                {/* 🔥 PAGINATION UI */}
+                {totalPages > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 mt-4">
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+
+                        <div className="d-flex gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    className={`btn ${currentPage === page ? 'btn-danger' : 'btn-outline-danger'}`}
+                                    onClick={() => goToPage(page)}
+                                    style={{ minWidth: '40px' }}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Hiển thị thông tin trang */}
+                {totalPages > 1 && (
+                    <div className="text-center mt-3 text-muted small">
+                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, dishes.length)} của {dishes.length} món
+                    </div>
+                )}
             </div>
 
             {/* Image Gallery Modal */}

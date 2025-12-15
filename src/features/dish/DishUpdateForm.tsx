@@ -82,7 +82,7 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
             setError(null);
 
             try {
-                const response = await axiosInstance.get<DishDetailResponse>(`/dishes/${id}`);
+                const response = await axiosInstance.get<DishDetailResponse>(`/dishes/info/${id}`);
                 const dishData = response.data;
 
                 // Xử lý Image URLs

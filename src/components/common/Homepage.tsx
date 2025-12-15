@@ -1,16 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Container,
-    Form,
-    Image,
-    InputGroup,
-    Row
-} from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row} from 'react-bootstrap';
 import './Homepage.css';
 import {
     ChevronLeft,
@@ -77,10 +67,9 @@ const HomePage: React.FC = () => {
     const itemWidthWithGap = itemWidth + gap;
     const totalOriginalItems = foodCategories.length;
 
-    // ⭐ BẮT ĐẦU TỪ BẢN SAO THỨ 2 (giữa)
     useEffect(() => {
         setCurrentSlide(totalOriginalItems);
-    }, []);
+    }, [totalOriginalItems]);
 
     // ⭐ HÀM CHUYỂN SLIDE TIẾP THEO
     const nextCategorySlide = useCallback(() => {
