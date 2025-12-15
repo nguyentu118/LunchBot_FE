@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Badge } from 'react-bootstrap';
-import { MapPin, Clock, Tag, Plus } from 'lucide-react';
+import {MapPin, Clock, Tag, ShoppingCart} from 'lucide-react';
 import { DishDiscount } from './types/DishDiscount';
 
 interface DiscountDishCardProps {
@@ -85,12 +85,31 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                     {dish.name}
                 </Card.Title>
 
-                {/* Địa chỉ và Giá */}
+                {/* ⭐ FIX: Địa chỉ và Giá - Layout 2 cột với truncate */}
                 <div className="d-flex align-items-start justify-content-between mb-1">
-                    <div className="small text-muted d-flex align-items-center flex-grow-1 me-2">
+                    {/* Địa chỉ - Truncate với ... khi dài quá */}
+                    <div
+                        className="small text-muted d-flex align-items-center me-3"
+                        style={{
+                            minWidth: 0,      // ⭐ Cho phép shrink
+                            flex: '1 1 auto'  // ⭐ Grow nhưng vẫn shrink được
+                        }}
+                    >
                         <MapPin size={14} className="me-1 text-primary flex-shrink-0" />
-                        <span className="text-truncate">{dish.address}</span>
+                        <span
+                            className="text-truncate"
+                            title={dish.address}
+                            style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {dish.address}
+                        </span>
                     </div>
+
+                    {/* Giá - Luôn hiển thị đầy đủ, không bị đẩy */}
                     <div className="text-end flex-shrink-0">
                         <div className="fw-bold text-danger" style={{ fontSize: '0.95rem' }}>
                             {formatCurrency(finalPrice)}
@@ -103,7 +122,7 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                     </div>
                 </div>
 
-                {/* Thời gian chế biến */}
+                {/* Thời gian chế biến và nút giỏ hàng */}
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="small text-muted d-flex align-items-center">
                         <Clock size={14} className="me-1 text-success" />
@@ -111,7 +130,7 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                     </div>
                     <button
                         onClick={handleAddToCart}
-                        className="btn btn-sm btn-warning rounded-circle d-flex align-items-center justify-content-center p-0"
+                        className="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
                         style={{
                             width: '36px',
                             height: '36px',
@@ -121,7 +140,7 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         title="Thêm vào giỏ hàng"
                     >
-                        <Plus size={20} strokeWidth={3} color="black" />
+                        <ShoppingCart size={16} style={{ color: "#FF5E62" }} />
                     </button>
                 </div>
             </Card.Body>
