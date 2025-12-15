@@ -4,6 +4,8 @@ import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
 import {Briefcase, Home, LogIn, LogOut, Settings, ShoppingCart, Sparkles, User, UserCircle, UtensilsCrossed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { GuestCartHelper } from '../../features/cart/types/guestCart';
+
 
 // IMPORT SERVICES
 import {UserApiService} from '../../features/user/services/UserApi.service';
@@ -61,7 +63,8 @@ const Navigation: React.FC = () => {
     const fetchHeaderData = useCallback(async (isLoggedIn: boolean) => {
         if (!isLoggedIn) {
             setUserInfo(prev => ({...prev, fullName: 'Tài khoản Khách hàng'}));
-            setCartCount(0);
+            const guestCartCount = GuestCartHelper.getTotalCount();
+            setCartCount(guestCartCount);
             return;
         }
 
@@ -84,8 +87,37 @@ const Navigation: React.FC = () => {
             ...authData,
         }));
 
+
         fetchHeaderData(authData.isLoggedIn);
     }, [checkLocalAuth, fetchHeaderData]);
+
+    useEffect(() => {
+        const handleCartUpdate = async () => {
+            const token = localStorage.getItem('token');
+
+            if (token) {
+                // Logged in user
+                try {
+                    const cartData = await CartApiService.getCartCount();
+                    setCartCount(cartData.count || 0);
+                } catch (error) {
+                    console.error("Error fetching cart count:", error);
+                }
+            } else {
+                // Guest user
+                const guestCartCount = GuestCartHelper.getTotalCount();
+                setCartCount(guestCartCount);
+            }
+        };
+
+        // Lắng nghe event
+        window.addEventListener('cartUpdated', handleCartUpdate);
+
+        // Cleanup
+        return () => {
+            window.removeEventListener('cartUpdated', handleCartUpdate);
+        };
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('token');

@@ -266,6 +266,11 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     onClick={() => !isLoadingCategories && setShowAddModal(true)}
                                 />
                                 <SidebarButton
+                                    icon={Plus}
+                                    text={isLoadingCategories ? "Đang tải..." : "Thêm mã giảm giá"}
+                                    onClick={() => setShowListView(prev => !prev)}
+                                />
+                                <SidebarButton
                                     icon={List}
                                     text={showListView ? "Ẩn danh sách" : "Xem danh sách món"}
                                     onClick={() => setShowListView(prev => !prev)}

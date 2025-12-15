@@ -1,9 +1,9 @@
-// src/components/dish/DishCard.tsx
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from 'react-bootstrap';
+import { Badge, Spinner } from 'react-bootstrap'; // Thêm Spinner
 import { Store, Clock, ShoppingCart } from 'lucide-react';
+// 1. Import Hook useCart (Hãy đảm bảo đường dẫn đúng với nơi bạn tạo file hook)
+import { useCart } from '../cart/hooks/useCart.ts';
 
 interface DishCardProps {
     dish: {
@@ -27,6 +27,9 @@ const DishCard: React.FC<DishCardProps> = ({
                                            }) => {
     const navigate = useNavigate();
 
+    // 2. Sử dụng hook useCart
+    const { addToCart, isLoading } = useCart();
+
     const finalPrice = dish.discountPrice || dish.price;
     const hasDiscount = dish.discountPrice && dish.discountPrice < dish.price;
     const discountPercent = hasDiscount
@@ -37,12 +40,16 @@ const DishCard: React.FC<DishCardProps> = ({
         navigate(`/dishes/${dish.id}`);
     };
 
-    const handleAddToCartClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    // 3. Xử lý sự kiện thêm vào giỏ
+    const handleAddToCartClick = async (e: React.MouseEvent) => {
+        e.stopPropagation(); // Ngăn sự kiện click lan ra thẻ cha (không navigate)
+
+        // Nếu component cha truyền hàm xử lý riêng thì dùng nó
         if (onAddToCart) {
             onAddToCart(dish.id);
         } else {
-            console.log('Thêm vào giỏ:', dish.id);
+            // Nếu không, dùng mặc định gọi API
+            await addToCart(dish.id, 1);
         }
     };
 
@@ -143,24 +150,35 @@ const DishCard: React.FC<DishCardProps> = ({
                         )}
                     </div>
 
+                    {/* 4. Cập nhật nút Button: Thêm trạng thái Loading và Disabled */}
                     <button
                         className="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
                         onClick={handleAddToCartClick}
+                        disabled={isLoading} // Khóa nút khi đang gọi API
                         style={{
                             width: '36px',
                             height: '36px',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            opacity: isLoading ? 0.7 : 1
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = brandColor;
-                            e.currentTarget.style.transform = 'scale(1.1)';
+                            if (!isLoading) {
+                                e.currentTarget.style.backgroundColor = brandColor;
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '';
-                            e.currentTarget.style.transform = 'scale(1)';
+                            if (!isLoading) {
+                                e.currentTarget.style.backgroundColor = '';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }
                         }}
                     >
-                        <ShoppingCart size={16} style={{ color: brandColor }} />
+                        {isLoading ? (
+                            <Spinner animation="border" size="sm" style={{ width: '1rem', height: '1rem', color: brandColor }} />
+                        ) : (
+                            <ShoppingCart size={16} style={{ color: brandColor }} />
+                        )}
                     </button>
                 </div>
             </div>
