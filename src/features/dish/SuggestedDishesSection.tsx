@@ -1,25 +1,38 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Container, Alert, Button } from 'react-bootstrap';
-import {ChevronLeft, ChevronRight, Flame} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import useSuggestedDishes from './hooks/useSuggestedDishes';
 import { SuggestedDish } from './types/suggestedDish';
 import SuggestedDishCard from './SuggestedDishCard';
 
 const SuggestedDishesSection: React.FC = () => {
-    // ✅ Sử dụng hook có sẵn thay vì useState + useEffect
+    const navigate = useNavigate();
+
+    // ✅ Sử dụng hook có sẵn
     const { data: dishes, isLoading, error } = useSuggestedDishes();
 
     // State cho slider
     const [slideIndex, setSlideIndex] = useState<number>(0);
 
-    // Hàm điều hướng slider
-    const nextSlide = useCallback(() => {
-        setSlideIndex(prev => Math.min(prev + 1, Math.max(0, dishes.length - 4)));
+    // ✅ Tính toán maxSlideIndex bằng useMemo để tránh re-calculate mỗi lần render
+    const maxSlideIndex = useMemo(() => {
+        return Math.max(0, dishes.length - 4);
     }, [dishes.length]);
+
+    // ✅ Hàm điều hướng slider - dependency là maxSlideIndex thay vì dishes.length
+    const nextSlide = useCallback(() => {
+        setSlideIndex(prev => Math.min(prev + 1, maxSlideIndex));
+    }, [maxSlideIndex]);
 
     const prevSlide = useCallback(() => {
         setSlideIndex(prev => Math.max(prev - 1, 0));
     }, []);
+
+    // Hàm xử lý click vào dish card để xem chi tiết
+    const handleDishClick = useCallback((dishId: number) => {
+        navigate(`/dishes/${dishId}`);
+    }, [navigate]);
 
     // 1. Hiển thị Loading
     if (isLoading) {
@@ -29,7 +42,7 @@ const SuggestedDishesSection: React.FC = () => {
                     <Flame size={28} className="me-2 text-danger" fill="currentColor" />
                     Món Ăn Gợi Ý Hàng Đầu
                 </h2>
-                <Alert variant="info">Đang tải 8 món ăn gợi ý...</Alert>
+                <Alert variant="info">Đang tải món ăn gợi ý...</Alert>
             </Container>
         );
     }
@@ -80,7 +93,7 @@ const SuggestedDishesSection: React.FC = () => {
                     <Button
                         variant="light"
                         onClick={nextSlide}
-                        disabled={slideIndex >= dishes.length - 4}
+                        disabled={slideIndex >= maxSlideIndex}
                         className="rounded-circle shadow-sm"
                     >
                         <ChevronRight size={24} className="text-primary" />
@@ -101,7 +114,11 @@ const SuggestedDishesSection: React.FC = () => {
                         <div
                             key={dish.id}
                             className="flex-shrink-0"
-                            style={{ width: 'calc(25% - 9px)' }}
+                            style={{
+                                width: 'calc(25% - 9px)',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => handleDishClick(dish.id)}
                         >
                             <SuggestedDishCard dish={dish} />
                         </div>
