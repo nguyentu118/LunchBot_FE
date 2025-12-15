@@ -1,31 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Container,
-    Form,
-    Image,
-    InputGroup,
-    Row
-} from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row} from 'react-bootstrap';
 import './Homepage.css';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Facebook,
-    Heart,
-    Instagram,
-    Mail,
-    MapPin,
-    Phone,
-    Search,
-    Star,
-    Twitter,
-    Youtube, Zap
+import {ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram, Mail, MapPin, Phone, Search, Star, Twitter, Youtube, Zap
 } from 'lucide-react';
 // Import Navigation Component
 import Navigation from '../layout/Navigation';
@@ -58,7 +35,6 @@ const HomePage: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState<number>(0);
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
 
-    // Dữ liệu Food Categories
     const foodCategories: Category[] = [
         {name: 'Burger', image: '🍔', colorClass: 'bg-warning text-dark', restaurantCount: 145},
         {name: 'Pizza', image: '🍕', colorClass: 'bg-danger text-white', restaurantCount: 128},
@@ -78,10 +54,9 @@ const HomePage: React.FC = () => {
     const itemWidthWithGap = itemWidth + gap;
     const totalOriginalItems = foodCategories.length;
 
-    // ⭐ BẮT ĐẦU TỪ BẢN SAO THỨ 2 (giữa)
     useEffect(() => {
         setCurrentSlide(totalOriginalItems);
-    }, []);
+    }, [totalOriginalItems]);
 
     // ⭐ HÀM CHUYỂN SLIDE TIẾP THEO
     const nextCategorySlide = useCallback(() => {

@@ -49,7 +49,7 @@ export const MerchantListPage: React.FC = () => {
 
     const [currentPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-    const [pageSize] = useState(5);
+    const [pageSize] = useState(10);
 
     const [statusFilter, setStatusFilter] = useState<MerchantStatusEnum | 'ALL'>('ALL');
     const [searchKeyword, setSearchKeyword] = useState('');

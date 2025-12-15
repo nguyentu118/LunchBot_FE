@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { Upload, Pencil, Image as ImageIcon,  ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Pencil, Image as ImageIcon, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig.ts";
 import toast from "react-hot-toast";
 import DishDeleteButton from "./DishDeleteButton.tsx";
 
-// --- INTERFACES CẦN THIẾT ---
 interface Dish {
     id: number;
     name: string;
     description: string;
     price: string;
     image: string | null;
-    images?: string[]; // Thêm field này để lưu tất cả ảnh
+    images?: string[];
 }
 
 interface MerchantDishListProps {
@@ -22,30 +21,27 @@ interface MerchantDishListProps {
     onDelete?: (dishId: number) => void;
 }
 
-interface MerchantDishListProps {
-    onDishCreatedToggle: boolean;
-    selectedDish: Dish | null;
-    setSelectedDish: (dish: Dish | null) => void;
-    onEdit?: (dish: Dish) => void;
-}
-
 const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     onDishCreatedToggle,
                                                                     selectedDish,
                                                                     setSelectedDish,
                                                                     onEdit,
-
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // 🔥 PHÂN TRANG
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const ITEMS_PER_PAGE = 6; // Số món ăn mỗi trang
 
     // State cho Image Gallery Modal
     const [showGallery, setShowGallery] = useState(false);
     const [currentImages, setCurrentImages] = useState<string[]>([]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+    // State để track ảnh bị lỗi
+    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
-    // Hàm Tải Danh Sách Món Ăn
     const fetchMerchantDishes = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -109,7 +105,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     description: dish.description || 'Chưa có mô tả.',
                     price: formattedPrice,
                     image: images.length > 0 ? images[0] : null,
-                    images: images, // Lưu tất cả ảnh
+                    images: images,
                 };
             });
 
@@ -133,20 +129,43 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         fetchMerchantDishes();
     }, [fetchMerchantDishes, onDishCreatedToggle]);
 
-    // Hàm mở gallery
+    // 🔥 TÍNH TOÁN PHÂN TRANG
+    const totalPages = Math.ceil(dishes.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentDishes = dishes.slice(startIndex, endIndex);
+
+    // Reset về trang 1 khi dishes thay đổi
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(1);
+        }
+    }, [dishes.length, currentPage, totalPages]);
+
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     const openGallery = (images: string[], startIndex: number = 0) => {
         setCurrentImages(images);
         setCurrentImageIndex(startIndex);
         setShowGallery(true);
     };
 
-    // Hàm chuyển ảnh
     const nextImage = () => {
         setCurrentImageIndex((prev) => (prev + 1) % currentImages.length);
     };
 
     const prevImage = () => {
         setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+    };
+
+    const handleImageError = (imageUrl: string) => {
+        console.error('❌ Failed to load image:', imageUrl);
+        setImageErrors(prev => new Set(prev).add(imageUrl));
     };
 
     if (isLoading) {
@@ -165,15 +184,23 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     return (
         <>
             <div className="bg-white rounded-4 p-4 shadow">
-                <h3 className="h4 fw-bold text-dark mb-4">Danh sách món ăn đã thêm</h3>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h3 className="h4 fw-bold text-dark mb-0">Danh sách món ăn đã thêm</h3>
+                    {dishes.length > 0 && (
+                        <span className="badge bg-danger fs-6">
+                            Tổng: {dishes.length} món
+                        </span>
+                    )}
+                </div>
+
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-                    {dishes.length === 0 ? (
+                    {currentDishes.length === 0 ? (
                         <div className="col-12 text-center py-5">
                             <h4 className="text-muted">Chưa có món ăn nào.</h4>
                             <p className="text-secondary">Hãy bấm "Thêm món ăn" để bắt đầu.</p>
                         </div>
                     ) : (
-                        dishes.map((dish: Dish) => (
+                        currentDishes.map((dish: Dish) => (
                             <div className="col" key={dish.id}>
                                 <div
                                     onClick={() => setSelectedDish(dish)}
@@ -186,23 +213,41 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                     }}
                                 >
                                     <div
-                                        className="card-img-top bg-light d-flex align-items-center justify-content-center position-relative"
+                                        className="card-img-top bg-light d-flex align-items-center justify-content-center position-relative overflow-hidden"
                                         style={{
                                             height: '180px',
-                                            backgroundImage: dish.image ? `url(${dish.image})` : 'none',
-                                            backgroundSize: 'cover',
-                                            backgroundPosition: 'center',
                                             borderTopLeftRadius: '0.75rem',
                                             borderTopRightRadius: '0.75rem'
                                         }}
                                     >
-                                        {!dish.image && <Upload size={48} className="text-secondary" />}
+                                        {dish.image && !imageErrors.has(dish.image) ? (
+                                            <img
+                                                src={dish.image}
+                                                alt={dish.name}
+                                                className="w-100 h-100"
+                                                style={{
+                                                    objectFit: 'cover',
+                                                    objectPosition: 'center'
+                                                }}
+                                                onError={() => handleImageError(dish.image!)}
+                                            />
+                                        ) : (
+                                            <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                                                {imageErrors.has(dish.image!) ? (
+                                                    <>
+                                                        <AlertCircle size={48} className="text-danger" />
+                                                        <small className="text-danger fw-bold">Lỗi tải ảnh</small>
+                                                    </>
+                                                ) : (
+                                                    <Upload size={48} className="text-secondary" />
+                                                )}
+                                            </div>
+                                        )}
 
-                                        {/* Badge hiển thị số lượng ảnh */}
                                         {dish.images && dish.images.length > 1 && (
                                             <button
                                                 className="position-absolute top-0 end-0 m-2 btn btn-sm btn-dark bg-opacity-75"
-                                                style={{ borderRadius: '0.5rem' }}
+                                                style={{ borderRadius: '0.5rem', zIndex: 10 }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     openGallery(dish.images || [], 0);
@@ -214,6 +259,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                             </button>
                                         )}
                                     </div>
+
                                     <div className="card-body">
                                         <h4 className="card-title h6 fw-bold text-dark mb-2">{dish.name}</h4>
                                         <p className="card-text text-muted small mb-3"
@@ -244,7 +290,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 dishId={dish.id}
                                                 dishName={dish.name}
                                                 className="btn-sm flex-fill"
-
                                                 onDeleteSuccess={() => {
                                                     fetchMerchantDishes();
                                                 }}
@@ -256,6 +301,47 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         ))
                     )}
                 </div>
+
+                {/* 🔥 PAGINATION UI */}
+                {totalPages > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 mt-4">
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+
+                        <div className="d-flex gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    className={`btn ${currentPage === page ? 'btn-danger' : 'btn-outline-danger'}`}
+                                    onClick={() => goToPage(page)}
+                                    style={{ minWidth: '40px' }}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Hiển thị thông tin trang */}
+                {totalPages > 1 && (
+                    <div className="text-center mt-3 text-muted small">
+                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, dishes.length)} của {dishes.length} món
+                    </div>
+                )}
             </div>
 
             {/* Image Gallery Modal */}
@@ -270,7 +356,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="modal-content bg-transparent border-0">
-                            {/* Header */}
                             <div className="d-flex justify-content-between align-items-center p-3">
                                 <span className="text-white fw-bold">
                                     Ảnh {currentImageIndex + 1} / {currentImages.length}
@@ -281,16 +366,18 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                 ></button>
                             </div>
 
-                            {/* Image Display */}
                             <div className="position-relative" style={{ height: '70vh' }}>
                                 <img
                                     src={currentImages[currentImageIndex]}
                                     alt={`Image ${currentImageIndex + 1}`}
                                     className="w-100 h-100"
                                     style={{ objectFit: 'contain' }}
+                                    onError={(e) => {
+                                        console.error('❌ Gallery image failed to load:', currentImages[currentImageIndex]);
+                                        e.currentTarget.style.display = 'none';
+                                    }}
                                 />
 
-                                {/* Navigation Buttons */}
                                 {currentImages.length > 1 && (
                                     <>
                                         <button
@@ -311,7 +398,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                 )}
                             </div>
 
-                            {/* Thumbnails */}
                             {currentImages.length > 1 && (
                                 <div className="d-flex gap-2 p-3 overflow-auto" style={{ maxWidth: '100%' }}>
                                     {currentImages.map((img, idx) => (
@@ -328,6 +414,10 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 cursor: 'pointer'
                                             }}
                                             onClick={() => setCurrentImageIndex(idx)}
+                                            onError={(e) => {
+                                                console.error('❌ Thumbnail failed to load:', img);
+                                                e.currentTarget.style.opacity = '0.2';
+                                            }}
                                         />
                                     ))}
                                 </div>
