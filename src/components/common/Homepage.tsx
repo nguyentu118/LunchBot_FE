@@ -1,32 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Container,
-    Form,
-    Image,
-    InputGroup,
-    Row
-} from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row} from 'react-bootstrap';
 import './Homepage.css';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Facebook,
-    Heart,
-    Instagram,
-    Mail,
-    MapPin,
-    Phone,
-    Search,
-    Star, Tag,
-    Twitter,
-    Youtube
-} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram, Mail, MapPin, Phone, Search, Star, Tag, Twitter, Youtube} from 'lucide-react';
 // Import Navigation Component
 import Navigation from '../layout/Navigation';
 import useSuggestedDishes from "../../features/dish/hooks/useSuggestedDishes.ts";
@@ -102,76 +78,83 @@ interface DealCardProps {
 }
 
 
-// Hàm hỗ trợ format tiền tệ
 const formatCurrency = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0₫';
     return new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(value);
 };
 
 const DealCard: React.FC<DealCardProps> = ({deal}) => {
+    const navigate = useNavigate();
     const hasDiscount = deal.discountPrice < deal.originalPrice;
     const finalPrice = hasDiscount ? deal.discountPrice : deal.originalPrice;
 
+
     return (
-        <Card className="h-100 shadow-sm border-0 position-relative mb-3">
+        <Card
+            className="h-100 shadow-sm border-0 position-relative mb-3"
+            style={{ cursor: 'pointer' }}
+        >
             {/* Ảnh và Badge */}
             <div className="position-relative overflow-hidden">
                 <Card.Img
                     variant="top"
                     src={deal.image || 'default-dish.jpg'}
                     alt={deal.title}
-                    style={{height: '180px', objectFit: 'cover'}}
+                    style={{height: '180px', objectFit: 'cover',cursor: 'pointer'}}
+                    onClick={() => navigate(`/dishes/${deal.id}`)}
                 />
 
-                {/* Badge Discount (Nếu có % giảm giá) */}
                 {hasDiscount && (
                     <Badge bg="danger" className="position-absolute top-0 start-0 m-2 px-2 py-1 fs-6 fw-bold">
                         {deal.discount}
                     </Badge>
                 )}
 
-                {/* Badge Coupon */}
                 <Badge
                     bg={hasDiscount ? "warning" : "primary"}
                     text={hasDiscount ? "dark" : "white"}
                     className="position-absolute top-0 end-0 m-2 px-2 py-1 fw-bold d-flex align-items-center"
                 >
-                    <Tag size={14} className="me-1"/> {deal.badge}
+                    <Tag size={14} className="me-1" /> {deal.badge}
                 </Badge>
             </div>
 
             <Card.Body className="d-flex flex-column p-3">
-                {/* Tên món */}
                 <Card.Title className="h6 fw-bold mb-2 text-truncate" title={deal.title}>
                     {deal.title}
                 </Card.Title>
 
-                {/* Địa chỉ */}
                 <div className="d-flex align-items-start justify-content-between mb-1">
                     <div className="small text-muted d-flex align-items-center flex-grow-1 me-2">
-                        <MapPin size={14} className="me-1 text-primary flex-shrink-0"/>
+                        <MapPin size={14} className="me-1 text-primary flex-shrink-0" />
                         <span className="text-truncate">{deal.restaurant}</span>
                     </div>
-                    <div className="text-end flex-shrink-0">
-                        <div className="fw-bold text-danger" style={{fontSize: '0.95rem'}}>
-                            {formatCurrency(finalPrice)}
-                        </div>
-                        {hasDiscount && (
-                            <div className="text-muted text-decoration-line-through" style={{fontSize: '0.7rem'}}>
-                                {formatCurrency(deal.originalPrice)}
-                            </div>
-                        )}
-                    </div>
+
                 </div>
-                {/* Thời gian chế biến */}
                 <div className="small text-muted mb-3 d-flex align-items-center">
-                    <Clock size={14} className="me-1 text-success"/>
+                    <Clock size={14} className="me-1 text-success" />
                     Thời gian: <strong>{deal.time}</strong>
+                </div>
+                <div className="flex-shrink-0">
+                    <div className="fw-bold text-danger" style={{ fontSize: '0.95rem' }}>
+                        {formatCurrency(finalPrice)}
+                    </div>
+                    {hasDiscount && (
+                        <div className="text-muted text-decoration-line-through" style={{ fontSize: '0.7rem' }}>
+                            {formatCurrency(deal.originalPrice)}
+                        </div>
+                    )}
                 </div>
             </Card.Body>
 
             <Card.Footer className="bg-white border-top-0 pt-0 pb-3 px-3">
-                <Button variant="danger" className="w-100 fw-bold shadow-sm">
+                <Button
+                    variant="danger"
+                    className="w-100 fw-bold shadow-sm"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                    }}
+                >
                     Đặt ngay
                 </Button>
             </Card.Footer>
@@ -206,10 +189,9 @@ const HomePage: React.FC = () => {
     const itemWidthWithGap = itemWidth + gap;
     const totalOriginalItems = foodCategories.length;
 
-    // ⭐ BẮT ĐẦU TỪ BẢN SAO THỨ 2 (giữa)
     useEffect(() => {
         setCurrentSlide(totalOriginalItems);
-    }, []);
+    }, [totalOriginalItems]);
 
     // ⭐ HÀM CHUYỂN SLIDE TIẾP THEO
     const nextCategorySlide = useCallback(() => {
@@ -272,7 +254,7 @@ const HomePage: React.FC = () => {
             return (
                 <Container className="my-5">
                     <h2 className="fw-bold mb-4">🔥 Món Ăn Gợi Ý Hàng Đầu</h2>
-                    <Alert variant="info">Đang tải 8 món ăn gợi ý...</Alert>
+                    <Alert variant="info">Đang tải món ăn gợi ý...</Alert>
                 </Container>
             );
         }
@@ -298,7 +280,7 @@ const HomePage: React.FC = () => {
                             disabled={suggestedSlideIndex === 0}
                             className="rounded-circle shadow-sm"
                         >
-                            <ChevronLeft size={24} className="text-primary"/>
+                            <ChevronLeft size={20} className="text-primary"/>
                         </Button>
                         <Button
                             variant="light"
@@ -306,7 +288,7 @@ const HomePage: React.FC = () => {
                             disabled={suggestedSlideIndex >= dealsToRender.length - 4}
                             className="rounded-circle shadow-sm"
                         >
-                            <ChevronRight size={24} className="text-primary"/>
+                            <ChevronRight size={20} className="text-primary"/>
                         </Button>
                     </div>
                 </div>

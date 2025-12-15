@@ -44,7 +44,7 @@ const router = createBrowserRouter([
         element: <MerchantDashboard/>,
     },
     {
-        path: 'dish/detail/{dishId}',
+        path: "/dishes/:dishId",
         element: <DishDetailPage/>,
     },
 

@@ -1,217 +1,409 @@
+// src/features/dish/DishDetailPage.tsx
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios, { AxiosError } from 'axios';
-import axiosInstance from "../../config/axiosConfig.ts";
+import { Container, Button, Badge, Spinner, Alert } from 'react-bootstrap';
+import {
+    ArrowLeft, Eye, Clock, ShoppingCart, CreditCard,
+    ChevronLeft, ChevronRight, Store
+} from 'lucide-react';
+import axiosInstance from "../../config/axiosConfig";
+import Navigation from "../../components/layout/Navigation";
+import DishGrid from "./DishGrid.tsx";
 
-
-interface ProcessedDishImage {
+interface DishImage {
     id: number;
     imageUrl: string;
+    displayOrder: number;
+    isPrimary: boolean;
 }
 
-// Interface chi tiết món ăn (thêm address và sửa images)
+interface Category {
+    id: number;
+    name: string;
+    slug: string;
+}
+
 interface DishDetail {
-    dishId: number;
+    id: number;
     name: string;
     description: string;
     address: string;
     price: number;
     discountPrice: number | null;
-    preparationTime: number;
+    preparationTime: number | null;
     viewCount: number;
-    images: ProcessedDishImage[];
+    images: DishImage[];
     merchantId: number;
     merchantName: string;
+    categories: Category[];
+}
+
+interface SuggestedDish {
+    id: number;
+    name: string;
+    slug?: string;
+    price: number;
+    discountPrice: number | null;
+    imageUrl: string;
+    merchantName: string;
+    preparationTime: number;
 }
 
 const DishDetailPage: React.FC = () => {
     const { dishId } = useParams<{ dishId: string }>();
     const navigate = useNavigate();
+
+    // State cho dish chính
     const [dish, setDish] = useState<DishDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+    // State cho danh sách gợi ý
+    const [relatedDishes, setRelatedDishes] = useState<SuggestedDish[]>([]);
+    const [mostViewedDishes, setMostViewedDishes] = useState<SuggestedDish[]>([]);
+    const [loadingRelated, setLoadingRelated] = useState(false);
+    const [loadingMostViewed, setLoadingMostViewed] = useState(false);
+
+    const brandColor = '#FF5E62';
+
     useEffect(() => {
-        // Reset selected index khi ID thay đổi
-        setSelectedImageIndex(0);
-        fetchDishDetail();
+        window.scrollTo(0, 0);
+        if (dishId) {
+            fetchDishDetail();
+            fetchRelatedDishes();
+            fetchMostViewedDishes();
+        }
     }, [dishId]);
 
     const fetchDishDetail = async () => {
         try {
-            setLoading(true);
-
-            // ✅ SỬA LỖI 1 & 2: Dùng await và lấy data từ response.data
-            const response = await axiosInstance.get(`/dishes/${dishId}`);
-
-            // Dữ liệu thô từ backend (chứa imagesUrls: string và merchant DTO)
-            const rawData = response.data;
-
-            // --- XỬ LÝ ẢNH ---
-            let imageUrls: string[] = [];
-            try {
-                // ✅ SỬA LỖI 3: Parse chuỗi JSON ảnh thành mảng URL
-                if (rawData.imagesUrls) {
-                    const parsedUrls = JSON.parse(rawData.imagesUrls);
-                    if (Array.isArray(parsedUrls)) {
-                        imageUrls = parsedUrls.filter(url => typeof url === 'string');
-                    }
-                }
-            } catch (e) {
-                console.error("Lỗi khi parse imagesUrls:", e);
-                imageUrls = [];
-            }
-
-            // Chuyển mảng URL thành cấu trúc { id, imageUrl } để khớp với ProcessedDishImage[]
-            const processedImages: ProcessedDishImage[] = imageUrls.map((url, index) => ({
-                id: index + 1,
-                imageUrl: url,
-            }));
-
-            // --- XỬ LÝ DỮ LIỆU CUỐI CÙNG ---
-            const finalDishData: DishDetail = {
-                // Lấy các trường cơ bản từ rawData
-                ...rawData,
-
-                // Lấy tên Merchant từ MerchantResponseDTO (merchant object)
-                merchantName: rawData.merchant?.name || 'Không xác định',
-
-                // Gắn mảng ảnh đã xử lý
-                images: processedImages,
-
-                // Đảm bảo address được đưa vào
-                address: rawData.address || '',
-            };
-
-            setDish(finalDishData);
+            const response = await axiosInstance.get<DishDetail>(`/dishes/${dishId}`);
+            setDish(response.data);
+            setLoading(false);
         } catch (err) {
-            // ✅ SỬA LỖI XỬ LÝ AXIOS ERROR
-            let message = 'Đã có lỗi xảy ra. Vui lòng kiểm tra kết nối mạng hoặc server.';
-            if (axios.isAxiosError(err)) {
-                const axiosError = err as AxiosError;
-                // Cố gắng lấy message từ response data nếu có
-                message = (axiosError.response?.data as { message?: string })?.message
-                    || `Không tìm thấy món ăn (Lỗi ${axiosError.response?.status || 'mạng'})`;
-            } else if (err instanceof Error) {
-                message = err.message;
-            }
-            setError(message);
-        } finally {
+            console.error(err);
+            setError('Không thể tải thông tin món ăn');
             setLoading(false);
         }
     };
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(price);
+    const fetchRelatedDishes = async () => {
+        setLoadingRelated(true);
+        try {
+            const response = await axiosInstance.get<SuggestedDish[]>(`/dishes/${dishId}/related`);
+            setRelatedDishes(response.data);
+        } catch (err) {
+            console.error('Lỗi khi tải món ăn liên quan:', err);
+        } finally {
+            setLoadingRelated(false);
+        }
+    };
+
+    const fetchMostViewedDishes = async () => {
+        setLoadingMostViewed(true);
+        try {
+            const response = await axiosInstance.get<SuggestedDish[]>('/dishes/most-viewed');
+            setMostViewedDishes(response.data);
+        } catch (err) {
+            console.error('Lỗi khi tải món ăn phổ biến:', err);
+        } finally {
+            setLoadingMostViewed(false);
+        }
+    };
+
+    const handleNextImage = () => {
+        if (dish && dish.images && dish.images.length > 0) {
+            setSelectedImageIndex((prev) => (prev + 1) % dish.images.length);
+        }
+    };
+
+    const handlePrevImage = () => {
+        if (dish && dish.images && dish.images.length > 0) {
+            setSelectedImageIndex((prev) => (prev - 1 + dish.images.length) % dish.images.length);
+        }
+    };
+
+    const handleAddToCart = (dishId?: number) => {
+        console.log('Thêm vào giỏ:', dishId || dish?.id);
+        // Logic thêm giỏ hàng ở đây
+    };
+
+    const handleBuyNow = () => {
+        console.log('Mua ngay:', dish?.id);
+        // Logic mua ngay ở đây
     };
 
     if (loading) {
         return (
-            <div className="dish-detail-container">
-                <div className="loading">Đang tải...</div>
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" style={{ color: brandColor }} />
             </div>
         );
     }
 
-    if (error || !dish || dish.images.length === 0) {
+    if (error || !dish) {
         return (
-            <div className="dish-detail-container">
-                <div className="error">
-                    <p>{error || 'Không tìm thấy món ăn hoặc món ăn chưa có ảnh'}</p>
-                    <button onClick={() => navigate('/')}>Quay lại trang chủ</button>
-                </div>
-            </div>
+            <Container className="py-5 text-center">
+                <Alert variant="danger">{error || 'Không tìm thấy món ăn'}</Alert>
+                <Button variant="secondary" onClick={() => navigate(-1)}>Quay lại</Button>
+            </Container>
         );
     }
 
-    // Đảm bảo luôn có ảnh để hiển thị (đã kiểm tra ở if block trên)
-    const currentImage = dish.images[selectedImageIndex] || dish.images[0];
+    const discountPercent = (dish.price && dish.discountPrice)
+        ? Math.round(((dish.price - dish.discountPrice) / dish.price) * 100)
+        : 0;
 
     return (
-        <div className="dish-detail-container">
-            <button className="back-button" onClick={() => navigate(-1)}>
-                ← Quay lại
-            </button>
+        <>
+            <Navigation />
+            <div className="bg-light min-vh-100 py-4">
+                <Container>
+                    {/* Nút quay lại */}
+                    <Button
+                        variant="link"
+                        className="text-decoration-none mb-3 p-0 d-flex align-items-center"
+                        style={{ color: '#6c757d' }}
+                        onClick={() => navigate(-1)}
+                    >
+                        <ArrowLeft size={20} className="me-1" />
+                        Quay lại danh sách
+                    </Button>
 
-            <div className="dish-detail-content">
-                {/* Image Gallery */}
-                <div className="dish-images">
-                    <div className="main-image">
-                        <img
-                            src={currentImage.imageUrl}
-                            alt={dish.name}
-                        />
-                    </div>
-
-                    {dish.images.length > 1 && (
-                        <div className="thumbnail-list">
-                            {dish.images.map((image, index) => (
+                    {/* CHI TIẾT MÓN ĂN */}
+                    <div className="bg-white rounded-4 shadow-sm overflow-hidden">
+                        <div className="row g-0">
+                            {/* CỘT TRÁI: ẢNH */}
+                            <div className="col-lg-6 p-4">
+                                {/* Ảnh chính */}
                                 <div
-                                    key={image.id}
-                                    className={`thumbnail ${selectedImageIndex === index ? 'active' : ''}`}
-                                    onClick={() => setSelectedImageIndex(index)}
+                                    className="position-relative mb-3 rounded-4 overflow-hidden"
+                                    style={{ height: '400px', backgroundColor: '#f8f9fa' }}
                                 >
-                                    <img src={image.imageUrl} alt={`${dish.name} ${index + 1}`} />
+                                    <img
+                                        src={
+                                            (dish.images && dish.images.length > 0 && dish.images[selectedImageIndex])
+                                                ? dish.images[selectedImageIndex].imageUrl
+                                                : 'https://placehold.co/600x400?text=No+Image'
+                                        }
+                                        alt={dish.name}
+                                        className="w-100 h-100 object-fit-cover"
+                                        style={{ transition: 'all 0.3s ease' }}
+                                    />
+
+                                    {/* Nút Previous/Next */}
+                                    {dish.images && dish.images.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={handlePrevImage}
+                                                className="btn position-absolute top-50 start-0 translate-middle-y ms-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    backgroundColor: 'rgba(255,255,255,0.8)',
+                                                    border: 'none'
+                                                }}
+                                            >
+                                                <ChevronLeft size={24} color="#333" />
+                                            </button>
+
+                                            <button
+                                                onClick={handleNextImage}
+                                                className="btn position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                                                style={{
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    backgroundColor: 'rgba(255,255,255,0.8)',
+                                                    border: 'none'
+                                                }}
+                                            >
+                                                <ChevronRight size={24} color="#333" />
+                                            </button>
+
+                                            <div className="position-absolute bottom-0 end-0 m-3 px-2 py-1 rounded bg-dark bg-opacity-50 text-white small">
+                                                {selectedImageIndex + 1} / {dish.images.length}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                            ))}
+
+                                {/* Thumbnails */}
+                                <div className="d-flex gap-2 overflow-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+                                    {dish.images?.map((img, index) => (
+                                        <div
+                                            key={img.id || index}
+                                            onClick={() => setSelectedImageIndex(index)}
+                                            className="rounded-3 overflow-hidden flex-shrink-0"
+                                            style={{
+                                                width: '80px',
+                                                height: '80px',
+                                                border: selectedImageIndex === index
+                                                    ? `2px solid ${brandColor}`
+                                                    : '2px solid transparent',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <img
+                                                src={img.imageUrl}
+                                                alt={`View ${index + 1}`}
+                                                className="w-100 h-100 object-fit-cover"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* CỘT PHẢI: THÔNG TIN */}
+                            <div className="col-lg-6 p-4 d-flex flex-column">
+                                <div className="mb-auto">
+                                    <div className="d-flex justify-content-between align-items-start mb-2">
+                                        <div className="d-flex align-items-center text-muted small">
+                                            <Eye size={16} className="me-1" />
+                                            {dish.viewCount} lượt xem
+                                        </div>
+                                    </div>
+
+                                    <h1 className="h2 fw-bold mb-3 text-dark">{dish.name}</h1>
+
+                                    {/* DANH MỤC */}
+                                    {dish.categories && dish.categories.length > 0 && (
+                                        <div className="d-flex flex-wrap gap-2 mb-3">
+                                            {dish.categories.map((category) => (
+                                                <Badge
+                                                    key={category.id}
+                                                    bg="light"
+                                                    text="dark"
+                                                    className="px-3 py-2 fw-normal"
+                                                    style={{
+                                                        fontSize: '0.875rem',
+                                                        border: `1px solid ${brandColor}`,
+                                                        color: brandColor,
+                                                        backgroundColor: 'transparent'
+                                                    }}
+                                                >
+                                                    {category.name}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="d-flex gap-4 mb-4 text-secondary">
+                                        <div className="d-flex align-items-center">
+                                            <Clock size={18} className="me-2 text-warning" />
+                                            <span>{dish.preparationTime || 15} phút chuẩn bị</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Giá tiền */}
+                                    <div className="mb-4 p-3 bg-light rounded-3">
+                                        {dish.discountPrice && dish.discountPrice < dish.price ? (
+                                            <div className="d-flex align-items-end gap-2">
+                                                <span className="h2 fw-bold mb-0" style={{ color: brandColor }}>
+                                                    {new Intl.NumberFormat('vi-VN', {
+                                                        style: 'currency',
+                                                        currency: 'VND'
+                                                    }).format(dish.discountPrice)}
+                                                </span>
+                                                <span className="text-decoration-line-through text-muted mb-1">
+                                                    {new Intl.NumberFormat('vi-VN', {
+                                                        style: 'currency',
+                                                        currency: 'VND'
+                                                    }).format(dish.price)}
+                                                </span>
+                                                <Badge bg="danger" className="mb-1">-{discountPercent}%</Badge>
+                                            </div>
+                                        ) : (
+                                            <span className="h2 fw-bold mb-0" style={{ color: brandColor }}>
+                                                {new Intl.NumberFormat('vi-VN', {
+                                                    style: 'currency',
+                                                    currency: 'VND'
+                                                }).format(dish.price)}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h5 className="fw-semibold mb-2">Mô tả món ăn</h5>
+                                    <p className="text-muted mb-4" style={{ lineHeight: '1.6' }}>
+                                        {dish.description || 'Chưa có mô tả chi tiết cho món ăn này.'}
+                                    </p>
+
+                                    <div className="d-flex align-items-center p-3 border rounded-3 mb-4">
+                                        <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                                            <Store size={24} className="text-primary" />
+                                        </div>
+                                        <div>
+                                            <small className="text-muted d-block">Được cung cấp bởi</small>
+                                            <span className="fw-bold">{dish.merchantName || 'Cửa hàng đối tác'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Nút hành động */}
+                                <div className="d-grid gap-2 d-md-flex mt-3">
+                                    <Button
+                                        variant="outline-light"
+                                        size="lg"
+                                        onClick={() => handleAddToCart()}
+                                        className="flex-grow-1 d-flex align-items-center justify-content-center fw-bold"
+                                        style={{
+                                            borderColor: brandColor,
+                                            color: brandColor,
+                                            backgroundColor: 'white'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fff0f0'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                    >
+                                        <ShoppingCart size={20} className="me-2" />
+                                        Thêm vào giỏ
+                                    </Button>
+
+                                    <Button
+                                        variant="primary"
+                                        size="lg"
+                                        onClick={handleBuyNow}
+                                        className="flex-grow-1 d-flex align-items-center justify-content-center fw-bold text-white"
+                                        style={{
+                                            backgroundColor: brandColor,
+                                            borderColor: brandColor
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                                        onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                    >
+                                        <CreditCard size={20} className="me-2" />
+                                        Mua ngay
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                </div>
-
-                {/* Dish Info */}
-                <div className="dish-info">
-                    <h1 className="dish-name">{dish.name}</h1>
-
-                    <div className="dish-meta">
-                        <span className="view-count">👁️ {dish.viewCount} lượt xem</span>
-                        {dish.preparationTime > 0 && (
-                            <span className="prep-time">⏱️ {dish.preparationTime} phút</span>
-                        )}
-                        {/* ✅ THÊM: Hiển thị địa chỉ */}
-                        {dish.address && (
-                            <span className="dish-address">📍 {dish.address}</span>
-                        )}
                     </div>
 
-                    <div className="price-section">
-                        {dish.discountPrice && dish.discountPrice < dish.price ? (
-                            <>
-                                <span className="original-price">{formatPrice(dish.price)}</span>
-                                <span className="discount-price">{formatPrice(dish.discountPrice)}</span>
-                                <span className="discount-badge">
-                                    -{Math.round(((dish.price - dish.discountPrice) / dish.price) * 100)}%
-                                </span>
-                            </>
-                        ) : (
-                            <span className="current-price">{formatPrice(dish.price)}</span>
-                        )}
-                    </div>
+                    {/* MÓN DÀNH RIÊNG CHO BẠN - Có nút bấm */}
+                    <DishGrid
+                        title="Món dành riêng cho bạn"
+                        dishes={relatedDishes}
+                        loading={loadingRelated}
+                        emptyMessage="Chưa có món ăn liên quan"
+                        brandColor={brandColor}
+                        onAddToCart={handleAddToCart}
+                        autoScroll={false}
+                    />
 
-                    <div className="description-section">
-                        <h3>Mô tả</h3>
-                        <p className="description">{dish.description || 'Chưa có mô tả'}</p>
-                    </div>
-
-                    <div className="merchant-info">
-                        <h3>Thông tin cửa hàng</h3>
-                        <p className="merchant-name">🏪 {dish.merchantName}</p>
-                    </div>
-
-                    <div className="action-buttons">
-                        <button className="btn-add-to-cart">
-                            🛒 Thêm vào giỏ hàng
-                        </button>
-                        <button className="btn-buy-now">
-                            💳 Mua ngay
-                        </button>
-                    </div>
-                </div>
+                    {/* MỌI NGƯỜI CŨNG THÍCH - Tự động scroll */}
+                    <DishGrid
+                        title="Mọi người cũng thích"
+                        dishes={mostViewedDishes}
+                        loading={loadingMostViewed}
+                        emptyMessage="Chưa có dữ liệu món ăn phổ biến"
+                        brandColor={brandColor}
+                        onAddToCart={handleAddToCart}
+                        autoScroll={true}
+                        autoScrollInterval={3000}
+                    />
+                </Container>
             </div>
-        </div>
+        </>
     );
 };
 
