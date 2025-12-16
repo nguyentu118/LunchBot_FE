@@ -73,8 +73,7 @@ const CartPage: React.FC = () => {
             return;
         }
 
-        toast("Tính năng thanh toán đang được phát triển!", { icon: '🚧' });
-        // navigate('/checkout');
+        navigate('/checkout');
     };
 
     const handleContinueShopping = () => {

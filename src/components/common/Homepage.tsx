@@ -35,14 +35,6 @@ interface Restaurant {
 }
 
 const formatMerchantForDisplay = (merchant: PopularMerchantDto): Restaurant => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔄 Formatting merchant #' + merchant.id);
-    console.log('📝 Full merchant object:', JSON.stringify(merchant, null, 2));
-    console.log('📸 imageUrl field:', merchant.imageUrl);
-    console.log('🎨 imageUrl type:', typeof merchant.imageUrl);
-    console.log('✅ Has imageUrl?:', !!merchant.imageUrl);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
     return {
         id: merchant.id,
         name: merchant.name || 'Nhà hàng',
@@ -84,11 +76,6 @@ const HomePage: React.FC = () => {
     const {merchants: apiMerchants, loading: merchantsLoading, error: merchantsError} = usePopularMerchants(8);
 
     const popularRestaurants: Restaurant[] = apiMerchants.map(formatMerchantForDisplay);
-
-    // ⭐ THÊM DÒNG NÀY ĐỂ DEBUG
-    console.log('🏪 API Merchants Data:', apiMerchants);
-    console.log('🏪 First Merchant:', apiMerchants[0]);
-
 
     // ⭐ Hàm generate màu cho categories
     const getCategoryColor = (index: number) => {
@@ -496,9 +483,10 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <footer className="bg-dark text-white pt-5 pb-4">
+                <footer className="bg-dark text-white pt-5 pb-4" style={{position: 'relative', zIndex: 1}}>
                     <Container>
                         <Row className="g-4 mb-4">
+                            {/* Company Info & Logo */}
                             <Col xs={12} md={6} lg={4}>
                                 <div className="d-flex align-items-center gap-2 mb-3">
                                     <div className="bg-danger p-2 rounded shadow-sm">
@@ -511,7 +499,8 @@ const HomePage: React.FC = () => {
                                     <h3 className="h4 fw-bold mb-0">Lunch<span className="text-primary">Bot</span></h3>
                                 </div>
                                 <p className="small mb-3" style={{color: '#adb5bd'}}>
-                                    Nền tảng đặt đồ ăn và giao hàng hàng đầu tại Việt Nam.
+                                    Nền tảng đặt đồ ăn và giao hàng hàng đầu tại Việt Nam. Đảm bảo chất lượng,
+                                    tốc độ và dịch vụ khách hàng 24/7.
                                 </p>
                                 <div className="d-flex gap-3">
                                     <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
@@ -529,6 +518,7 @@ const HomePage: React.FC = () => {
                                 </div>
                             </Col>
 
+                            {/* Dịch vụ */}
                             <Col xs={6} md={3} lg={2}>
                                 <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Dịch vụ</h4>
                                 <ul className="list-unstyled small">
@@ -542,9 +532,20 @@ const HomePage: React.FC = () => {
                                             Ưu đãi hôm nay
                                         </a>
                                     </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Giao hàng siêu tốc
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Theo dõi đơn hàng
+                                        </a>
+                                    </li>
                                 </ul>
                             </Col>
 
+                            {/* Công ty */}
                             <Col xs={6} md={3} lg={2}>
                                 <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Công ty</h4>
                                 <ul className="list-unstyled small">
@@ -555,14 +556,43 @@ const HomePage: React.FC = () => {
                                     </li>
                                     <li className="mb-2">
                                         <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
-                                            Blog
+                                            Tuyển dụng
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Blog Tin tức
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Trở thành đối tác
                                         </a>
                                     </li>
                                 </ul>
                             </Col>
 
+                            {/* Hỗ trợ & Liên hệ */}
                             <Col xs={12} md={6} lg={4}>
-                                <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Liên hệ</h4>
+                                <h4 className="h6 fw-semibold mb-3" style={{color: '#0d6efd'}}>Hỗ trợ</h4>
+                                <ul className="list-unstyled small">
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Trung tâm trợ giúp
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Điều khoản dịch vụ
+                                        </a>
+                                    </li>
+                                    <li className="mb-2">
+                                        <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
+                                            Chính sách bảo mật
+                                        </a>
+                                    </li>
+                                </ul>
+                                <h4 className="h6 fw-semibold mt-4 mb-3" style={{color: '#0d6efd'}}>Liên hệ</h4>
                                 <ul className="list-unstyled small">
                                     <li className="d-flex align-items-center mb-2" style={{color: '#adb5bd'}}>
                                         <Phone size={16} className="me-2" style={{color: '#dc3545'}}/>
@@ -575,9 +605,10 @@ const HomePage: React.FC = () => {
                                 </ul>
                             </Col>
                         </Row>
-                        <div className="border-top pt-4 mt-4 text-center">
+                        <div className="border-top pt-4 mt-4 text-center" style={{borderColor: '#495057 !important'}}>
                             <p className="small mb-0" style={{color: '#adb5bd'}}>
-                                © {new Date().getFullYear()} LunchBot. Phát triển bởi CodeGym.
+                                © {new Date().getFullYear()} LunchBot. Đã đăng ký bản quyền. Được phát triển bởi
+                                CodeGym.
                             </p>
                         </div>
                     </Container>
