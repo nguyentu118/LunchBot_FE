@@ -1,11 +1,14 @@
+// features/cart/types/guestCart.ts
+
 export interface GuestCartItem {
     dishId: number;
     quantity: number;
-    // Cache thông tin món
     dishName?: string;
     dishImage?: string;
     price?: number;
     cachedAt?: number;
+    restaurantId?: number;
+    restaurantName?: string;
 }
 
 export interface GuestCartItemDetail extends GuestCartItem {
@@ -13,9 +16,10 @@ export interface GuestCartItemDetail extends GuestCartItem {
     dishImage: string;
     price: number;
     subtotal: number;
+    restaurantId: number;
+    restaurantName: string;
 }
 
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 giờ
 const STORAGE_KEY = 'GUEST_CART';
 
 export const GuestCartHelper = {
@@ -24,163 +28,132 @@ export const GuestCartHelper = {
             const cartJson = localStorage.getItem(STORAGE_KEY);
             return cartJson ? JSON.parse(cartJson) : [];
         } catch (error) {
-            console.error('Error reading cart from localStorage:', error);
+            console.error('Error reading cart:', error);
             return [];
         }
     },
 
     saveCart: (cart: GuestCartItem[]): void => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-            // Trigger event để các component khác biết cart đã thay đổi
-            window.dispatchEvent(new Event('cartUpdated'));
-        } catch (error) {
-            console.error('Error saving cart to localStorage:', error);
-        }
-    },
-
-    // 🔥 Thêm món VÀ cache thông tin
-    addItem: (
-        dishId: number,
-        quantity: number,
-        dishInfo?: { name: string; image: string; price: number }
-    ): void => {
-        const cart = GuestCartHelper.getCart();
-        const existingItem = cart.find(item => item.dishId === dishId);
-
-        if (existingItem) {
-            existingItem.quantity += quantity;
-
-            // Cập nhật cache nếu có thông tin mới
-            if (dishInfo) {
-                existingItem.dishName = dishInfo.name;
-                existingItem.dishImage = dishInfo.image;
-                existingItem.price = dishInfo.price;
-                existingItem.cachedAt = Date.now();
-            }
-        } else {
-            const newItem: GuestCartItem = {
-                dishId,
-                quantity,
-                ...(dishInfo && {
-                    dishName: dishInfo.name,
-                    dishImage: dishInfo.image,
-                    price: dishInfo.price,
-                    cachedAt: Date.now()
-                })
-            };
-            cart.push(newItem);
-        }
-
-        GuestCartHelper.saveCart(cart);
-    },
-
-    updateItem: (dishId: number, quantity: number): void => {
-        const cart = GuestCartHelper.getCart();
-        const item = cart.find(item => item.dishId === dishId);
-
-        if (item) {
-            if (quantity <= 0) {
-                // Nếu quantity <= 0 → xóa món
-                GuestCartHelper.removeItem(dishId);
-            } else {
-                item.quantity = quantity;
-                GuestCartHelper.saveCart(cart);
-            }
-        }
-    },
-
-    removeItem: (dishId: number): void => {
-        const cart = GuestCartHelper.getCart();
-        const filteredCart = cart.filter(item => item.dishId !== dishId);
-        GuestCartHelper.saveCart(filteredCart);
-    },
-
-    clearCart: (): void => {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+        // Sự kiện này giúp Navigation.tsx và useCartCount nhận biết thay đổi
         window.dispatchEvent(new Event('cartUpdated'));
     },
 
+    // --- 1. THÊM HÀM NÀY: Để Navigation lấy được số hiển thị lên Icon ---
     getTotalCount: (): number => {
         const cart = GuestCartHelper.getCart();
-        return cart.reduce((total, item) => total + item.quantity, 0);
+        return cart.reduce((total, item) => total + (Number(item.quantity) || 0), 0);
     },
 
-    // 🔥 Kiểm tra món nào cần refresh cache
-    getItemsNeedingRefresh: (): number[] => {
-        const cart = GuestCartHelper.getCart();
-        const now = Date.now();
-
-        return cart
-            .filter(item => {
-                // Cần refresh nếu:
-                // 1. Chưa có cache
-                if (!item.cachedAt) return true;
-
-                // 2. Thiếu thông tin
-                if (!item.dishName || item.price === undefined || item.price === null) return true;
-
-                // 3. Cache đã cũ (> 24h)
-                if ((now - item.cachedAt) > CACHE_DURATION) return true;
-
-                return false;
-            })
-            .map(item => item.dishId);
-    },
-
-    // 🔥 Cập nhật cache cho nhiều món
-    updateCache: (dishes: Array<{ id: number; name: string; image: string; price: number }>): void => {
-        const cart = GuestCartHelper.getCart();
-        const dishMap = new Map(dishes.map(d => [d.id, d]));
-
-        cart.forEach(item => {
-            const dish = dishMap.get(item.dishId);
-            if (dish) {
-                item.dishName = dish.name;
-                item.dishImage = dish.image;
-                item.price = dish.price;
-                item.cachedAt = Date.now();
-            }
-        });
-
-        GuestCartHelper.saveCart(cart);
-    },
-
-    // 🔥 Kiểm tra xem cart có món không hợp lệ không
-    hasInvalidItems: (): boolean => {
-        const cart = GuestCartHelper.getCart();
-        return cart.some(item =>
-            !item.dishName ||
-            item.price === undefined ||
-            item.price === null
-        );
-    },
-
-    // 🔥 Lấy thông tin chi tiết cart (cho UI)
-    getCartDetails: (): GuestCartItemDetail[] => {
-        const cart = GuestCartHelper.getCart();
-
-        return cart
-            .filter(item =>
-                item.dishName &&
-                item.price !== undefined &&
-                item.price !== null
-            )
-            .map(item => ({
-                ...item,
-                dishName: item.dishName!,
-                dishImage: item.dishImage || '/images/placeholder-dish.jpg',
-                price: item.price!,
-                subtotal: item.price! * item.quantity
-            }));
-    },
-
-    // 🔥 Sync cart khi user login
-    prepareForSync: (): Array<{ dishId: number; quantity: number }> => {
+    // --- 2. THÊM HÀM NÀY: Để CartApi.service.ts lấy dữ liệu sync ---
+    prepareForSync: (): { dishId: number; quantity: number }[] => {
         const cart = GuestCartHelper.getCart();
         return cart.map(item => ({
             dishId: item.dishId,
             quantity: item.quantity
         }));
+    },
+
+    // --- 3. THÊM HÀM NÀY: Để CartPage.tsx gọi khi bấm tăng/giảm số lượng ---
+    updateItem: (dishId: number, quantity: number) => {
+        const cart = GuestCartHelper.getCart();
+        const idToCheck = Number(dishId);
+        const newQty = Number(quantity);
+
+        const index = cart.findIndex(i => Number(i.dishId) === idToCheck);
+
+        if (index > -1) {
+            if (newQty <= 0) {
+                cart.splice(index, 1); // Xóa nếu số lượng <= 0
+            } else {
+                cart[index].quantity = newQty;
+            }
+            GuestCartHelper.saveCart(cart);
+        }
+    },
+
+    removeItem: (dishId: number) => {
+        const cart = GuestCartHelper.getCart();
+        const idToRemove = Number(dishId);
+        const newCart = cart.filter(item => Number(item.dishId) !== idToRemove);
+        GuestCartHelper.saveCart(newCart);
+    },
+
+    addItem: (dishId: number, quantity: number, dishInfo?: any) => {
+        const cart = GuestCartHelper.getCart();
+        const idToCheck = Number(dishId);
+        const qtyToAdd = Number(quantity);
+
+        const existingItemIndex = cart.findIndex(i => Number(i.dishId) === idToCheck);
+
+        if (existingItemIndex > -1) {
+            cart[existingItemIndex].quantity = Number(cart[existingItemIndex].quantity) + qtyToAdd;
+            // Update info nếu có
+            if (dishInfo) {
+                if (dishInfo.name) cart[existingItemIndex].dishName = dishInfo.name;
+                if (dishInfo.image) cart[existingItemIndex].dishImage = dishInfo.image;
+                if (dishInfo.price) cart[existingItemIndex].price = dishInfo.price;
+                if (dishInfo.restaurantId) cart[existingItemIndex].restaurantId = dishInfo.restaurantId;
+                if (dishInfo.restaurantName) cart[existingItemIndex].restaurantName = dishInfo.restaurantName;
+            }
+        } else {
+            cart.push({
+                dishId: idToCheck,
+                quantity: qtyToAdd,
+                dishName: dishInfo?.name,
+                dishImage: dishInfo?.image,
+                price: dishInfo?.price,
+                restaurantId: dishInfo?.restaurantId,
+                restaurantName: dishInfo?.restaurantName,
+                cachedAt: Date.now()
+            });
+        }
+        GuestCartHelper.saveCart(cart);
+    },
+
+    hasInvalidItems: (): boolean => {
+        const cart = GuestCartHelper.getCart();
+        return cart.some(item => !item.dishId || item.quantity <= 0);
+    },
+
+    getCartDetails: (): GuestCartItemDetail[] => {
+        const cart = GuestCartHelper.getCart();
+        return cart.map(item => ({
+            ...item,
+            dishName: item.dishName || 'Đang tải...',
+            dishImage: item.dishImage || '/images/placeholder-dish.jpg',
+            price: item.price || 0,
+            restaurantId: item.restaurantId || -1,
+            restaurantName: item.restaurantName || 'Đang cập nhật...',
+            subtotal: (item.price || 0) * item.quantity
+        }));
+    },
+
+    updateCache: (itemsInfo: any[]) => {
+        const cart = GuestCartHelper.getCart();
+        let hasChange = false;
+
+        cart.forEach(cartItem => {
+            const info = itemsInfo.find((i: any) => i.id === cartItem.dishId);
+            if (info) {
+                const needsUpdate =
+                    cartItem.restaurantId !== info.restaurantId ||
+                    cartItem.dishName !== info.name ||
+                    cartItem.price !== info.price;
+
+                if (needsUpdate) {
+                    cartItem.dishName = info.name;
+                    cartItem.dishImage = info.image;
+                    cartItem.price = info.price;
+                    cartItem.restaurantId = info.restaurantId;
+                    cartItem.restaurantName = info.restaurantName;
+                    cartItem.cachedAt = Date.now();
+                    hasChange = true;
+                }
+            }
+        });
+        if (hasChange) {
+            GuestCartHelper.saveCart(cart);
+        }
     }
 };

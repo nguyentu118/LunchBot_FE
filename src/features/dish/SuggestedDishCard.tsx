@@ -16,6 +16,7 @@ const formatCurrency = (value: number | undefined | null): string => {
 
 const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
     // Logic giá
+    const { addToCart, isLoading } = useCart();
     const hasDiscount = dish.discountPrice < dish.price;
     const finalPrice = hasDiscount ? dish.discountPrice : dish.price;
 
@@ -30,19 +31,9 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
     // Badge text
     const badgeText = hasDiscount ? 'GIẢM GIÁ' : 'GỢI Ý';
 
-    const handleAddToCart = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Chặn sự kiện click lan ra ngoài (để không bị nhảy trang)
-
-        // 🔥 CẬP NHẬT: Truyền đầy đủ thông tin món để cache
-        addToCart(
-            dish.id,
-            1,
-            {
-                name: dish.name,
-                image: dish.imageUrl || 'default-dish.jpg',
-                price: finalPrice // Sử dụng giá sau giảm (nếu có)
-            }
-        );
+    const handleAddToCart = async (e: React.MouseEvent) => {
+        e.stopPropagation(); // Ngăn trigger onClick của Card
+        await addToCart(dish.id, 1);
     };
 
     return (
@@ -138,19 +129,21 @@ const SuggestedDishCard: React.FC<SuggestedDishCardProps> = ({ dish }) => {
                         Thời gian: <strong>{timeString}</strong>
                     </div>
                     <button
+                        onClick={handleAddToCart}
                         className="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
                         style={{
                             width: '36px',
                             height: '36px',
-                            transition: 'transform 0.2s'
+                            transition: 'transform 0.2s',
+                            opacity: isLoading ? 0.6 : 1
                         }}
-                        title="Thêm vào giỏ hàng"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            console.log('Thêm vào giỏ:', dish.id);
+                        onMouseEnter={(e) => {
+                            if (!isLoading) {
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        title="Thêm vào giỏ hàng"
                     >
                         <ShoppingCart size={16} style={{ color: "#FF5E62" }} />
                     </button>

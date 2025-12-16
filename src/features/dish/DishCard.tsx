@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Spinner } from 'react-bootstrap'; // Thêm Spinner
+import { Badge, Spinner } from 'react-bootstrap';
 import { Store, Clock, ShoppingCart } from 'lucide-react';
-// 1. Import Hook useCart (Hãy đảm bảo đường dẫn đúng với nơi bạn tạo file hook)
 import { useCart } from '../cart/hooks/useCart.ts';
 
 interface DishCardProps {
@@ -26,8 +25,6 @@ const DishCard: React.FC<DishCardProps> = ({
                                                onAddToCart
                                            }) => {
     const navigate = useNavigate();
-
-    // 2. Sử dụng hook useCart
     const { addToCart, isLoading } = useCart();
 
     const finalPrice = dish.discountPrice || dish.price;
@@ -40,15 +37,11 @@ const DishCard: React.FC<DishCardProps> = ({
         navigate(`/dishes/${dish.id}`);
     };
 
-    // 3. Xử lý sự kiện thêm vào giỏ
     const handleAddToCartClick = async (e: React.MouseEvent) => {
-        e.stopPropagation(); // Ngăn sự kiện click lan ra thẻ cha (không navigate)
-
-        // Nếu component cha truyền hàm xử lý riêng thì dùng nó
+        e.stopPropagation();
         if (onAddToCart) {
             onAddToCart(dish.id);
         } else {
-            // Nếu không, dùng mặc định gọi API
             await addToCart(dish.id, 1);
         }
     };
@@ -102,22 +95,13 @@ const DishCard: React.FC<DishCardProps> = ({
                     {dish.name}
                 </h6>
 
-                {/* Tên merchant */}
                 <div className="d-flex align-items-center mb-2">
                     <Store size={14} className="text-muted me-1 flex-shrink-0" />
-                    <small
-                        className="text-muted"
-                        style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
+                    <small className="text-muted text-truncate">
                         {dish.merchantName}
                     </small>
                 </div>
 
-                {/* Thời gian chuẩn bị */}
                 <div className="d-flex align-items-center mb-3">
                     <Clock size={14} className="text-success me-1" />
                     <small className="text-muted">
@@ -125,7 +109,6 @@ const DishCard: React.FC<DishCardProps> = ({
                     </small>
                 </div>
 
-                {/* Giá và nút thêm giỏ */}
                 <div className="d-flex justify-content-between align-items-center">
                     <div>
                         <span
@@ -150,33 +133,36 @@ const DishCard: React.FC<DishCardProps> = ({
                         )}
                     </div>
 
-                    {/* 4. Cập nhật nút Button: Thêm trạng thái Loading và Disabled */}
+                    {/* Nút giỏ hàng */}
                     <button
-                        className="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                        className="btn btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center"
                         onClick={handleAddToCartClick}
-                        disabled={isLoading} // Khóa nút khi đang gọi API
+                        disabled={isLoading}
                         style={{
                             width: '36px',
                             height: '36px',
-                            transition: 'all 0.2s',
-                            opacity: isLoading ? 0.7 : 1
+                            backgroundColor: 'white', // Màu nền mặc định
+                            border: '1px solid #dee2e6', // Viền mặc định
+                            transition: 'all 0.2s ease' // Hiệu ứng chuyển màu mượt
                         }}
+                        // Xử lý Hover bằng Javascript
                         onMouseEnter={(e) => {
                             if (!isLoading) {
-                                e.currentTarget.style.backgroundColor = brandColor;
-                                e.currentTarget.style.transform = 'scale(1.1)';
+                                e.currentTarget.style.backgroundColor = '#d3d4d5'; // Đổi nền sang màu Xám
+                                e.currentTarget.style.borderColor = '#c6c7c8';
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (!isLoading) {
-                                e.currentTarget.style.backgroundColor = '';
-                                e.currentTarget.style.transform = 'scale(1)';
+                                e.currentTarget.style.backgroundColor = 'white'; // Trả về màu Trắng
+                                e.currentTarget.style.borderColor = '#dee2e6';
                             }
                         }}
                     >
                         {isLoading ? (
                             <Spinner animation="border" size="sm" style={{ width: '1rem', height: '1rem', color: brandColor }} />
                         ) : (
+                            // Icon vẫn giữ nguyên màu BrandColor trong mọi trường hợp
                             <ShoppingCart size={16} style={{ color: brandColor }} />
                         )}
                     </button>

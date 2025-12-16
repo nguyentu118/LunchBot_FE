@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Button, ButtonGroup } from 'react-bootstrap';
 import { Plus, List, Grid } from 'lucide-react';
 import CouponList from './CouponList';
@@ -7,22 +7,31 @@ import toast from 'react-hot-toast';
 
 interface MerchantCouponManagerProps {
     brandColor?: string;
+    refreshTrigger?: boolean;
 }
 
 const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
-                                                                         brandColor = '#FF5E62'
+                                                                         brandColor = '#FF5E62',
+                                                                         refreshTrigger
                                                                      }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [filterActive, setFilterActive] = useState<'all' | 'active'>('all');
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // ✅ Listen to refreshTrigger from parent (Dashboard)
+    useEffect(() => {
+        if (refreshTrigger !== undefined) {
+            setRefreshKey(prev => prev + 1);
+        }
+    }, [refreshTrigger]);
+
     const handleCouponCreated = () => {
-        setShowAddModal(false);
-        toast.success('Tạo mã giảm giá thành công!', {
-            icon: '🎉',
-            duration: 3000
-        });
-        // Trigger refresh của CouponList
+        // setShowAddModal(false);
+        // toast.success('Tạo mã giảm giá thành công!', {
+        //     icon: '🎉',
+        //     duration: 3000
+        // });
+        // // Trigger refresh của CouponList
         setRefreshKey(prev => prev + 1);
     };
 
@@ -59,18 +68,6 @@ const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
                             Còn hiệu lực
                         </Button>
                     </ButtonGroup>
-
-                    <Button
-                        style={{
-                            backgroundColor: brandColor,
-                            borderColor: brandColor
-                        }}
-                        onClick={() => setShowAddModal(true)}
-                        className="d-flex align-items-center gap-2"
-                    >
-                        <Plus size={20} />
-                        Tạo mã mới
-                    </Button>
                 </div>
             </div>
 

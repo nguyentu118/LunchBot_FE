@@ -287,6 +287,10 @@ const LoginForm: React.FC = () => {
                                 variant="primary"
                                 type="submit"
                                 className="w-100 fw-bold py-2"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgb(255, 153, 102) 0%, rgb(255, 94, 98) 100%)',
+                                    border: 'none'
+                                }}
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
@@ -318,7 +322,7 @@ const LoginForm: React.FC = () => {
 
                 <div className="text-center py-3 border-top">
                     <small className="text-muted">
-                        © 2024 Food Delivery. All rights reserved.
+                        © {new Date().getFullYear()} LunchBot. All rights reserved.
                     </small>
                 </div>
             </Card>

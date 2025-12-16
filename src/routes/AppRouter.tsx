@@ -120,12 +120,12 @@ const router = createBrowserRouter([
 
     // ⭐ 404 NOT FOUND
     {
-        path: '*',
+        path: '/*',
         element: (
             <div className="d-flex flex-column align-items-center justify-content-center" style={{height: '100vh'}}>
                 <h1 className="display-1 fw-bold text-primary">404</h1>
                 <p className="fs-4 text-muted mb-4">Trang không tồn tại</p>
-                <a href="/admin" className="btn btn-primary">Quay về Dashboard</a>
+                <a href="/" className="btn btn-primary">Quay về Dashboard</a>
             </div>
         ),
     },

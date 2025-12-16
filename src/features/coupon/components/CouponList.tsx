@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Container, Row, Col, Spinner, Alert, Button } from 'react-bootstrap';
-import { RefreshCw, Ticket } from 'lucide-react';
+import { RefreshCw, Ticket, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCouponList } from '../hooks/useCouponList';
 import CouponCard from './CouponCard';
@@ -28,11 +28,27 @@ const CouponList: React.FC<CouponListProps> = ({
         autoFetch: true
     });
 
+    // 1. Tạo Ref để tham chiếu đến vùng chứa danh sách (scroll container)
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
     const handleCopyCode = (code: string) => {
         toast.success(`Đã sao chép mã: ${code}`, {
             icon: '📋',
             duration: 2000
         });
+    };
+
+    // 2. Hàm xử lý cuộn trái/phải
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollContainerRef.current) {
+            const container = scrollContainerRef.current;
+            const scrollAmount = 300; // Khoảng cách cuộn (tương đương chiều rộng 1 card)
+
+            container.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
     };
 
     if (isLoading) {
@@ -83,19 +99,68 @@ const CouponList: React.FC<CouponListProps> = ({
                     <p className="mb-0">{emptyMessage}</p>
                 </Alert>
             ) : (
-                <Row className="g-3">
-                    {coupons.map((coupon) => (
-                        <Col key={coupon.id} xs={12} sm={6} lg={4}>
-                            <CouponCard
-                                coupon={coupon}
-                                showMerchantView={showMerchantView}
-                                brandColor={brandColor}
-                                onCopy={handleCopyCode}
-                            />
-                        </Col>
-                    ))}
-                </Row>
+                // 3. Vùng chứa Slider (Position Relative để đặt nút bấm tuyệt đối)
+                <div className="position-relative px-2">
+
+                    {/* Nút bấm bên Trái */}
+                    <Button
+                        variant="light"
+                        className="shadow-sm border rounded-circle position-absolute start-0 top-50 translate-middle-y d-none d-md-flex justify-content-center align-items-center"
+                        style={{ zIndex: 10, width: '40px', height: '40px' }}
+                        onClick={() => scroll('left')}
+                    >
+                        <ChevronLeft size={24} />
+                    </Button>
+
+                    {/* Container chứa danh sách Coupon */}
+                    <div
+                        ref={scrollContainerRef}
+                        style={{
+                            overflowX: 'auto',
+                            overflowY: 'hidden',
+                            scrollbarWidth: 'none', // Firefox: ẩn thanh cuộn
+                            msOverflowStyle: 'none', // IE/Edge: ẩn thanh cuộn
+                            paddingBottom: '10px' // Tạo khoảng trống cho bóng đổ nếu có
+                        }}
+                        className="hide-scrollbar" // Class tùy chỉnh nếu muốn ẩn thanh cuộn trên Chrome/Safari
+                    >
+                        {/* Thêm flex-nowrap để các cột không bị xuống dòng */}
+                        <Row className="g-3 flex-nowrap">
+                            {coupons.map((coupon) => (
+                                <Col
+                                    key={coupon.id}
+                                    xs={10} sm={6} lg={4} xl={3} // Điều chỉnh kích thước cột
+                                    style={{ flex: '0 0 auto' }} // Quan trọng: Giữ cố định kích thước, không co lại
+                                >
+                                    <CouponCard
+                                        coupon={coupon}
+                                        showMerchantView={showMerchantView}
+                                        brandColor={brandColor}
+                                        onCopy={handleCopyCode}
+                                    />
+                                </Col>
+                            ))}
+                        </Row>
+                    </div>
+
+                    {/* Nút bấm bên Phải */}
+                    <Button
+                        variant="light"
+                        className="shadow-sm border rounded-circle position-absolute end-0 top-50 translate-middle-y d-none d-md-flex justify-content-center align-items-center"
+                        style={{ zIndex: 10, width: '40px', height: '40px' }}
+                        onClick={() => scroll('right')}
+                    >
+                        <ChevronRight size={24} />
+                    </Button>
+                </div>
             )}
+
+            {/* CSS nội bộ để ẩn thanh cuộn trên Chrome/Safari/Webkit */}
+            <style>{`
+                .hide-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+            `}</style>
         </div>
     );
 };
