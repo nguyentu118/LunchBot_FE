@@ -35,7 +35,13 @@ interface Restaurant {
 }
 
 const formatMerchantForDisplay = (merchant: PopularMerchantDto): Restaurant => {
-    console.log('🔄 Formatting merchant:', merchant);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 Formatting merchant #' + merchant.id);
+    console.log('📝 Full merchant object:', JSON.stringify(merchant, null, 2));
+    console.log('📸 imageUrl field:', merchant.imageUrl);
+    console.log('🎨 imageUrl type:', typeof merchant.imageUrl);
+    console.log('✅ Has imageUrl?:', !!merchant.imageUrl);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     return {
         id: merchant.id,
@@ -389,14 +395,13 @@ const HomePage: React.FC = () => {
                                 <Row className="g-4">
                                     {popularRestaurants.map((restaurant) => (
                                         <Col xs={12} sm={6} md={4} lg={3} key={restaurant.id}>
-                                            <Card className="shadow-sm rounded-4 border-0 h-100">
+                                            <Card className="shadow-sm rounded-4 border-0 h-100 overflow-hidden">
                                                 <div className="position-relative">
                                                     <Image
                                                         src={restaurant.image}
                                                         alt={restaurant.name}
-                                                        fluid
-                                                        className="rounded-top-4"
-                                                        style={{height: '180px', objectFit: 'cover'}}
+                                                        className="w-100 rounded-top-4"
+                                                        style={{height: '220px', objectFit: 'cover'}}
                                                     />
                                                     <Button
                                                         onClick={() => toggleFavorite(restaurant.id)}
@@ -405,7 +410,7 @@ const HomePage: React.FC = () => {
                                                     >
                                                         <Heart
                                                             size={20}
-                                                            className={favorites[restaurant.id] ? 'text-danger fill-danger' : 'text-muted'}
+                                                            className={favorites[restaurant.id] ? 'text-danger' : 'text-muted'}
                                                             fill={favorites[restaurant.id] ? '#FF5E62' : 'none'}
                                                             stroke={favorites[restaurant.id] ? '#FF5E62' : 'currentColor'}
                                                         />
@@ -413,36 +418,59 @@ const HomePage: React.FC = () => {
                                                     <Badge bg="primary"
                                                            className="position-absolute bottom-0 start-0 m-3 p-2 fw-bold shadow-sm">
                                                         <Star size={14} fill="white" className="me-1"/>
-                                                        {restaurant.rating} ({restaurant.reviews})
+                                                        {restaurant.rating.toFixed(2)} ({restaurant.reviews})
                                                     </Badge>
                                                 </div>
 
                                                 <Card.Body className="p-3 d-flex flex-column">
-                                                    <Card.Title
-                                                        className="h5 fw-bold mb-1">{restaurant.name}</Card.Title>
-                                                    <Card.Text
-                                                        className="text-muted small mb-3">{restaurant.cuisine}</Card.Text>
+                                                    <div className="d-flex align-items-start justify-content-between mb-2">
+                                                        <div className="flex-grow-1">
+                                                            <Card.Title
+                                                                className="h6 fw-bold mb-1"
+                                                                style={{lineHeight: '1.4'}}
+                                                            >
+                                                                {restaurant.name}
+                                                            </Card.Title>
+                                                            <Card.Text className="text-muted small mb-0">
+                                                                {restaurant.cuisine}
+                                                            </Card.Text>
+                                                        </div>
+                                                        <Button
+                                                            variant="link"
+                                                            className="p-1 ms-2 border-0 bg-transparent text-primary rounded-circle d-flex align-items-center justify-content-center"
+                                                            style={{minWidth: 'auto', width: '28px', height: '28px', transition: 'all 0.2s'}}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = '#e3f2fd';
+                                                                e.currentTarget.style.transform = 'translateX(3px)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                                e.currentTarget.style.transform = 'translateX(0)';
+                                                            }}
+                                                        >
+                                                            <svg
+                                                                width="18"
+                                                                height="18"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2.5"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                            >
+                                                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                                                            </svg>
+                                                        </Button>
+                                                    </div>
 
                                                     <div
-                                                        className="d-flex align-items-center justify-content-between small text-dark mb-3">
+                                                        className="d-flex align-items-center justify-content-between small text-dark mt-3">
                                                         <div className="d-flex align-items-center gap-1">
                                                             <Clock size={16} className="text-primary"/>
                                                             <span>{restaurant.time}</span>
                                                         </div>
                                                         <span
                                                             className="fw-semibold text-danger">{restaurant.price}</span>
-                                                    </div>
-
-                                                    <div
-                                                        className="d-flex align-items-center justify-content-between pt-2 border-top mt-auto">
-                                                <span className="small text-muted">
-                                                    Phí giao: <span
-                                                    className="fw-semibold text-success">{restaurant.deliveryFee}</span>
-                                                </span>
-                                                        <a href="#"
-                                                           className="text-primary small fw-semibold text-decoration-none">
-                                                            Xem chi tiết &rarr;
-                                                        </a>
                                                     </div>
                                                 </Card.Body>
                                             </Card>
