@@ -6,7 +6,7 @@ export interface PopularMerchantDto {
     cuisine?: string;           // ✅ THAY ĐỔI: từ description → cuisine
     address?: string;
     phoneNumber?: string;
-    imageUrl?: string;          // ✅ THAY ĐỔI: từ avatarUrl → imageUrl
+    imageUrl: string;          // ✅ THAY ĐỔI: từ avatarUrl → imageUrl
     rating?: number;
     totalOrders?: number;
     priceRange?: string;        // ✅ THÊM MỚI: thay vì averagePrice
