@@ -95,7 +95,7 @@ const AddCouponModal: React.FC<AddCouponModalProps> = ({
                 validTo: formData.validTo
             };
 
-            const response = await axiosInstance.post("merchants/create-coupon",payload);
+            const response = await axiosInstance.post("merchants/create-coupon", payload);
 
             // Reset form
             setFormData({
@@ -108,7 +108,13 @@ const AddCouponModal: React.FC<AddCouponModalProps> = ({
                 validTo: ''
             });
 
+            // ✅ Show success message
+            toast.success("Tạo mã khuyến mãi thành công!");
+
+            // ✅ Call onSuccess to trigger refresh in parent
             onSuccess();
+
+            // ✅ Close modal
             onClose();
 
         } catch (error: any) {

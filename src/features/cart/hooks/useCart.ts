@@ -1,80 +1,61 @@
-// features/cart/hooks/useCart.ts (WITH CACHE)
+// features/cart/hooks/useCart.ts
 
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AddToCartRequest, CartApiService } from '../services/CartApi.service';
 import { GuestCartHelper } from '../types/guestCart';
 
-// 🔥 Thêm interface cho thông tin món
 interface DishInfo {
     name: string;
     image: string;
     price: number;
+    restaurantId?: number; // Cho phép optional
+    restaurantName?: string; // Cho phép optional
 }
 
 export const useCart = () => {
     const [isLoading, setIsLoading] = useState(false);
 
-    // 🔥 Cập nhật hàm addToCart để nhận thêm dishInfo
     const addToCart = async (
         dishId: number,
         quantity: number,
-        dishInfo?: DishInfo // Thông tin món để cache
+        dishInfo?: DishInfo // Đã là optional rồi
     ) => {
         const token = localStorage.getItem('token');
         const isLoggedIn = Boolean(token);
 
         if (isLoggedIn) {
-            // ===== LOGGED IN USER =====
+            // ... (Phần user đã login giữ nguyên, code của bạn đã đúng)
             setIsLoading(true);
             try {
                 const request: AddToCartRequest = { dishId, quantity };
                 await CartApiService.addToCart(request);
-
-                toast.success('Đã thêm món vào giỏ hàng!', {
-                    duration: 2000,
-                    position: 'top-center',
-                    icon: '🛒',
-                });
-
+                toast.success('Đã thêm món vào giỏ hàng!');
                 window.dispatchEvent(new Event('cartUpdated'));
-
             } catch (error) {
-                console.error('Error adding to cart:', error);
-                toast.error('Thêm vào giỏ thất bại. Vui lòng thử lại.', {
-                    duration: 3000,
-                    position: 'top-center',
-                });
+                console.error(error);
+                toast.error('Lỗi khi thêm vào giỏ');
             } finally {
                 setIsLoading(false);
             }
-
         } else {
-            // ===== GUEST USER =====
+            // ===== GUEST USER (SỬA ĐOẠN NÀY) =====
             try {
-                // 🔥 Sử dụng GuestCartHelper với cache
+                // ✅ Thay bằng: Cứ thêm vào, thiếu info thì CartPage tự fetch sau
                 GuestCartHelper.addItem(dishId, quantity, dishInfo);
 
                 toast.success('Đã thêm vào giỏ hàng!', {
-                    duration: 2000,
-                    position: 'top-center',
-                    icon: '🛒',
+                    icon: '🛒'
                 });
 
                 window.dispatchEvent(new Event('cartUpdated'));
 
             } catch (e) {
                 console.error('Lỗi lưu local storage:', e);
-                toast.error('Không thể lưu vào giỏ hàng', {
-                    duration: 3000,
-                    position: 'top-center',
-                });
+                toast.error('Không thể lưu vào giỏ hàng');
             }
         }
     };
 
-    return {
-        addToCart,
-        isLoading
-    };
+    return { addToCart, isLoading };
 };

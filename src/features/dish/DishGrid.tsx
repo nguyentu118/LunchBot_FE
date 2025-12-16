@@ -46,9 +46,10 @@ const DishGrid: React.FC<DishGridProps> = ({
         const container = scrollContainerRef.current;
         if (!container) return;
 
-        setCanScrollLeft(container.scrollLeft > 0);
+        // Cho phép sai số nhỏ (1px) khi tính toán scroll
+        setCanScrollLeft(container.scrollLeft > 1);
         setCanScrollRight(
-            container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+            container.scrollLeft < container.scrollWidth - container.clientWidth - 1
         );
     };
 
@@ -81,7 +82,13 @@ const DishGrid: React.FC<DishGridProps> = ({
         const container = scrollContainerRef.current;
         if (container) {
             container.addEventListener('scroll', checkScrollButtons);
-            return () => container.removeEventListener('scroll', checkScrollButtons);
+            // Kiểm tra lại khi resize window
+            window.addEventListener('resize', checkScrollButtons);
+
+            return () => {
+                container.removeEventListener('scroll', checkScrollButtons);
+                window.removeEventListener('resize', checkScrollButtons);
+            };
         }
     }, [dishes]);
 
@@ -95,102 +102,116 @@ const DishGrid: React.FC<DishGridProps> = ({
         container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     };
 
+    // Style cho nút điều hướng chung
+    const navButtonStyle: React.CSSProperties = {
+        width: '40px',
+        height: '40px',
+        backgroundColor: 'white',
+        border: '1px solid #dee2e6',
+        zIndex: 10,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+    };
+
     return (
         <div className="mt-5">
-            {/* Header với title */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            {/* Header chỉ còn Title */}
+            <div className="mb-4">
                 <h4
                     className="fw-bold mb-0 border-start border-4 ps-3"
                     style={{ borderColor: brandColor }}
                 >
                     {title}
                 </h4>
-
-                {/* Nút điều khiển scroll */}
-                {!loading && dishes.length > 0 && (
-                    <div className="d-flex gap-2">
-                        <button
-                            className="btn btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center"
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                backgroundColor: 'white',
-                                border: '1px solid #dee2e6',
-                                opacity: canScrollLeft ? 1 : 0.3,
-                                cursor: canScrollLeft ? 'pointer' : 'not-allowed'
-                            }}
-                            onClick={() => scroll('left')}
-                            disabled={!canScrollLeft}
-                        >
-                            <ChevronLeft size={20} color={brandColor} />
-                        </button>
-
-                        <button
-                            className="btn btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center"
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                backgroundColor: 'white',
-                                border: '1px solid #dee2e6',
-                                opacity: canScrollRight ? 1 : 0.3,
-                                cursor: canScrollRight ? 'pointer' : 'not-allowed'
-                            }}
-                            onClick={() => scroll('right')}
-                            disabled={!canScrollRight}
-                        >
-                            <ChevronRight size={20} color={brandColor} />
-                        </button>
-                    </div>
-                )}
             </div>
 
-            {/* Content */}
-            {loading ? (
-                <div className="text-center py-5">
-                    <Spinner
-                        animation="border"
-                        size="sm"
-                        style={{ color: brandColor }}
-                    />
-                    <p className="text-muted mt-2 small">Đang tải...</p>
-                </div>
-            ) : dishes.length > 0 ? (
-                <div
-                    ref={scrollContainerRef}
-                    className="d-flex gap-3 overflow-x-auto pb-3"
-                    style={{
-                        scrollbarWidth: 'none', // Firefox
-                        msOverflowStyle: 'none', // IE/Edge
-                        WebkitOverflowScrolling: 'touch' // iOS smooth scroll
-                    }}
-                >
-                    <style>
-                        {`
+            {/* Content Wrapper - Có position relative để định vị nút */}
+            <div className="position-relative">
+
+                {/* Nút Trái */}
+                {!loading && dishes.length > 0 && (
+                    <button
+                        className="btn rounded-circle shadow position-absolute start-0 top-50 translate-middle-y d-flex align-items-center justify-content-center"
+                        style={{
+                            ...navButtonStyle,
+                            // Ẩn nút nếu không scroll được sang trái (đang ở đầu)
+                            opacity: canScrollLeft ? 1 : 0,
+                            visibility: canScrollLeft ? 'visible' : 'hidden',
+                            left: '-20px' // Đẩy ra ngoài lề một chút (tùy chỉnh nếu bị che)
+                        }}
+                        onClick={() => scroll('left')}
+                        disabled={!canScrollLeft}
+                    >
+                        <ChevronLeft size={24} color={brandColor} />
+                    </button>
+                )}
+
+                {/* Main Content List */}
+                {loading ? (
+                    <div className="text-center py-5">
+                        <Spinner
+                            animation="border"
+                            size="sm"
+                            style={{ color: brandColor }}
+                        />
+                        <p className="text-muted mt-2 small">Đang tải...</p>
+                    </div>
+                ) : dishes.length > 0 ? (
+                    <div
+                        ref={scrollContainerRef}
+                        className="d-flex gap-3 overflow-x-auto pb-3 px-1" // Thêm px-1 để bóng đổ card không bị cắt
+                        style={{
+                            scrollbarWidth: 'none', // Firefox
+                            msOverflowStyle: 'none', // IE/Edge
+                            WebkitOverflowScrolling: 'touch', // iOS smooth scroll
+                            scrollBehavior: 'smooth'
+                        }}
+                    >
+                        <style>
+                            {`
                             .d-flex.overflow-x-auto::-webkit-scrollbar {
                                 display: none; /* Chrome/Safari/Opera */
                             }
                         `}
-                    </style>
+                        </style>
 
-                    {dishes.map((dish) => (
-                        <div
-                            key={dish.id}
-                            className="flex-shrink-0"
-                            style={{ width: '260px' }}
-                        >
-                            <DishCard
-                                dish={dish}
-                                brandColor={brandColor}
-                                onAddToCart={onAddToCart}
-                            />
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-5">
-                    <p className="text-muted">{emptyMessage}</p>
-                </div>
-            )}
+                        {dishes.map((dish) => (
+                            <div
+                                key={dish.id}
+                                className="flex-shrink-0"
+                                style={{ width: '260px' }}
+                            >
+                                <DishCard
+                                    dish={dish}
+                                    brandColor={brandColor}
+                                    onAddToCart={onAddToCart}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-5">
+                        <p className="text-muted">{emptyMessage}</p>
+                    </div>
+                )}
+
+                {/* Nút Phải */}
+                {!loading && dishes.length > 0 && (
+                    <button
+                        className="btn rounded-circle shadow position-absolute end-0 top-50 translate-middle-y d-flex align-items-center justify-content-center"
+                        style={{
+                            ...navButtonStyle,
+                            opacity: canScrollRight ? 1 : 0,
+                            visibility: canScrollRight ? 'visible' : 'hidden',
+                            right: '-20px' // Đẩy ra ngoài lề một chút
+                        }}
+                        onClick={() => scroll('right')}
+                        disabled={!canScrollRight}
+                    >
+                        <ChevronRight size={24} color={brandColor} />
+                    </button>
+                )}
+            </div>
         </div>
     );
 };

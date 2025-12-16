@@ -3,7 +3,7 @@ import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row
 import './Homepage.css';
 import {
     ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram,
-    Mail, MapPin, Phone, Search, Star, Twitter, Youtube, Zap
+    Mail, MapPin, Phone, Search, Star, Stars, Twitter, Youtube, Zap
 } from 'lucide-react';
 import Navigation from '../layout/Navigation';
 import SuggestedDishesSection from '../../features/dish/SuggestedDishesSection.tsx';
@@ -35,39 +35,16 @@ interface Restaurant {
 }
 
 const formatMerchantForDisplay = (merchant: PopularMerchantDto): Restaurant => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔄 Formatting merchant #' + merchant.id);
-    console.log('📝 Full merchant object:', JSON.stringify(merchant, null, 2));
-    console.log('📸 imageUrl field:', merchant.imageUrl);
-    console.log('🎨 imageUrl type:', typeof merchant.imageUrl);
-    console.log('✅ Has imageUrl?:', !!merchant.imageUrl);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
     return {
         id: merchant.id,
         name: merchant.name || 'Nhà hàng',
-
-        // ✅ Sử dụng cuisine thay vì description
         cuisine: merchant.cuisine || 'Món Việt',
-
-        // ✅ Sử dụng deliveryTime từ backend
         time: merchant.deliveryTime || '20-30 phút',
-
-        // ✅ Sử dụng priceRange thay vì tính toán từ averagePrice
         price: merchant.priceRange || '50.000₫ - 150.000₫',
-
-        // ✅ Rating từ backend
         rating: merchant.rating || 4.5,
-
-        // ✅ Reviews từ backend (đã format sẵn)
         reviews: merchant.reviews || '0',
-
-        // ✅ Sử dụng imageUrl thay vì avatarUrl
         image: merchant.imageUrl || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
-
         favorite: false,
-
-        // ✅ DeliveryFee từ backend
         deliveryFee: merchant.deliveryFee || 'Miễn phí'
     };
 };
@@ -83,13 +60,9 @@ const HomePage: React.FC = () => {
 
     const {merchants: apiMerchants, loading: merchantsLoading, error: merchantsError} = usePopularMerchants(8);
 
-    const popularRestaurants: Restaurant[] = apiMerchants.map(formatMerchantForDisplay);
-
-    // ⭐ THÊM DÒNG NÀY ĐỂ DEBUG
-    console.log('🏪 API Merchants Data:', apiMerchants);
-    console.log('🏪 First Merchant:', apiMerchants[0]);
-
-
+    const popularRestaurants: Restaurant[] = Array.isArray(apiMerchants)
+        ? apiMerchants.map(formatMerchantForDisplay)
+        : [];
     // ⭐ Hàm generate màu cho categories
     const getCategoryColor = (index: number) => {
         const colors = [
@@ -368,10 +341,13 @@ const HomePage: React.FC = () => {
                 <SuggestedDishesSection/>
 
                 {/* Popular Restaurants */}
-                <div className="bg-white py-5">
+                <div className="bg-white py-4">
                     <Container>
-                        <div className="mb-5">
-                            <h2 className="fw-bold mb-3 d-flex align-items-center">⭐ Nhà hàng nổi tiếng</h2>
+                        <div className="mb-3">
+                            <h2 className="fw-bold mb-3 d-flex align-items-center">
+                                <Stars size={28} className="me-2 text-danger" fill="currentColor" />
+                                Nhà Hàng Nổi Tiếng
+                            </h2>
                         </div>
                         {/* Loading State */}
                         {merchantsLoading && (
@@ -392,16 +368,16 @@ const HomePage: React.FC = () => {
                         {/* Success State */}
                         {!merchantsLoading && !merchantsError && popularRestaurants.length > 0 && (
                             <>
-                                <Row className="g-4">
+                                <Row className="g-3 mb-3">
                                     {popularRestaurants.map((restaurant) => (
-                                        <Col xs={12} sm={6} md={4} lg={3} key={restaurant.id}>
-                                            <Card className="shadow-sm rounded-4 border-0 h-100 overflow-hidden">
+                                        <Col xs={12} sm={6} md={3} key={restaurant.id}>
+                                            <Card className="shadow-sm rounded-3 border-0 h-100 overflow-hidden">
                                                 <div className="position-relative">
                                                     <Image
                                                         src={restaurant.image}
                                                         alt={restaurant.name}
-                                                        className="w-100 rounded-top-4"
-                                                        style={{height: '220px', objectFit: 'cover'}}
+                                                        className="w-100"
+                                                        style={{height: '220px', objectFit: 'cover', borderRadius: '0.375rem 0.375rem 0 0'}}
                                                     />
                                                     <Button
                                                         onClick={() => toggleFavorite(restaurant.id)}
@@ -478,7 +454,7 @@ const HomePage: React.FC = () => {
                                     ))}
                                 </Row>
 
-                                <div className="text-center mt-5">
+                                <div className="text-center mt-3">
                                     <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg">
                                         Xem tất cả nhà hàng
                                         <ChevronRight size={20} className="ms-2"/>
@@ -534,7 +510,7 @@ const HomePage: React.FC = () => {
                                 <ul className="list-unstyled small">
                                     <li className="mb-2">
                                         <a href="#" className="text-decoration-none" style={{color: '#adb5bd'}}>
-                                            Tìm kiếm Nhà hàng
+                                            Tìm kiếm Nhà Hàng
                                         </a>
                                     </li>
                                     <li className="mb-2">

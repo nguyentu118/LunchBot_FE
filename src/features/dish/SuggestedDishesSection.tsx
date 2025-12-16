@@ -15,12 +15,12 @@ const SuggestedDishesSection: React.FC = () => {
     // State cho slider
     const [slideIndex, setSlideIndex] = useState<number>(0);
 
-    // ✅ Tính toán maxSlideIndex bằng useMemo để tránh re-calculate mỗi lần render
+    // ✅ Tính toán maxSlideIndex
     const maxSlideIndex = useMemo(() => {
         return Math.max(0, dishes.length - 4);
     }, [dishes.length]);
 
-    // ✅ Hàm điều hướng slider - dependency là maxSlideIndex thay vì dishes.length
+    // ✅ Hàm điều hướng slider
     const nextSlide = useCallback(() => {
         setSlideIndex(prev => Math.min(prev + 1, maxSlideIndex));
     }, [maxSlideIndex]);
@@ -29,10 +29,23 @@ const SuggestedDishesSection: React.FC = () => {
         setSlideIndex(prev => Math.max(prev - 1, 0));
     }, []);
 
-    // Hàm xử lý click vào dish card để xem chi tiết
     const handleDishClick = useCallback((dishId: number) => {
         navigate(`/dishes/${dishId}`);
     }, [navigate]);
+
+    // Style nút điều khiển (lấy từ yêu cầu của bạn)
+    const navButtonStyle: React.CSSProperties = {
+        width: '45px', // Tăng nhẹ kích thước để dễ bấm hơn
+        height: '45px',
+        backgroundColor: 'white',
+        border: '1px solid #dee2e6',
+        zIndex: 10,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s ease'
+    };
 
     // 1. Hiển thị Loading
     if (isLoading) {
@@ -76,55 +89,73 @@ const SuggestedDishesSection: React.FC = () => {
     // 4. Hiển thị Slider
     return (
         <Container className="py-4">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="fw-bold mb-3 d-flex align-items-center">
+            {/* Header chỉ còn Title */}
+            <div className="mb-3">
+                <h2 className="fw-bold mb-0 d-flex align-items-center">
                     <Flame size={28} className="me-2 text-danger" fill="currentColor" />
                     Món Ăn Gợi Ý Hàng Đầu
                 </h2>
-                <div className="d-flex gap-2">
-                    <Button
-                        variant="light"
-                        onClick={prevSlide}
-                        disabled={slideIndex === 0}
-                        className="rounded-circle shadow-sm"
-                    >
-                        <ChevronLeft size={24} className="text-primary" />
-                    </Button>
-                    <Button
-                        variant="light"
-                        onClick={nextSlide}
-                        disabled={slideIndex >= maxSlideIndex}
-                        className="rounded-circle shadow-sm"
-                    >
-                        <ChevronRight size={24} className="text-primary" />
-                    </Button>
-                </div>
             </div>
 
-            {/* Slider Container */}
-            <div className="overflow-hidden">
-                <div
-                    className="d-flex flex-row flex-nowrap gap-3"
+            {/* Wrapper bao quanh Slider và Nút bấm */}
+            <div className="position-relative">
+
+                {/* Nút Trái */}
+                <button
+                    className="btn btn-sm rounded-circle shadow position-absolute start-0 top-50 translate-middle-y d-none d-md-flex"
                     style={{
-                        transform: `translateX(-${slideIndex * 25}%)`,
-                        transition: 'transform 0.5s ease-in-out'
+                        ...navButtonStyle,
+                        opacity: slideIndex > 0 ? 1 : 0,
+                        visibility: slideIndex > 0 ? 'visible' : 'hidden',
+                        left: '0px'
                     }}
+                    onClick={prevSlide}
+                    disabled={slideIndex === 0}
                 >
-                    {dishes.map((dish: SuggestedDish) => (
-                        <div
-                            key={dish.id}
-                            className="flex-shrink-0"
-                            style={{
-                                width: 'calc(25% - 9px)',
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => handleDishClick(dish.id)}
-                        >
-                            <SuggestedDishCard dish={dish} />
-                        </div>
-                    ))}
+                    <ChevronLeft size={24} className="text-primary" />
+                </button>
+
+                {/* Slider Container - Thêm mx-2 để tách khỏi nút */}
+                <div className="overflow-hidden mx-2">
+                    <div
+                        className="d-flex flex-row flex-nowrap gap-3"
+                        style={{
+                            transform: `translateX(-${slideIndex * 25}%)`,
+                            transition: 'transform 0.5s ease-in-out'
+                        }}
+                    >
+                        {dishes.map((dish: SuggestedDish) => (
+                            <div
+                                key={dish.id}
+                                className="flex-shrink-0"
+                                style={{
+                                    width: 'calc(25% - 9px)',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => handleDishClick(dish.id)}
+                            >
+                                <SuggestedDishCard dish={dish} />
+                            </div>
+                        ))}
+                    </div>
                 </div>
+
+                {/* Nút Phải */}
+                <button
+                    className="btn btn-sm rounded-circle shadow position-absolute end-0 top-50 translate-middle-y d-none d-md-flex"
+                    style={{
+                        ...navButtonStyle,
+                        opacity: slideIndex < maxSlideIndex ? 1 : 0,
+                        visibility: slideIndex < maxSlideIndex ? 'visible' : 'hidden',
+                        right: '0px'
+                    }}
+                    onClick={nextSlide}
+                    disabled={slideIndex >= maxSlideIndex}
+                >
+                    <ChevronRight size={24} className="text-primary" />
+                </button>
             </div>
+
             <div className="text-center mt-3">
                 <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg">
                     Xem thêm các món gợi ý

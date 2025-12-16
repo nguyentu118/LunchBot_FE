@@ -319,8 +319,8 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
 
         try {
             await axiosInstance.put(`/dishes/${id}`, dataToSend);
-            toast.success('🎉 Cập nhật món ăn thành công!', { duration: 3000 });
-
+            toast.success("Cập nhật thành công!")
+            onSuccess();
 
         } catch (err) {
             const axiosError = err as AxiosError;

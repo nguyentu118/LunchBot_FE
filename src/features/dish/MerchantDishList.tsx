@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, {useRef, useState, useEffect, useCallback, memo } from 'react';
 import { Upload, Pencil, Image as ImageIcon, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig.ts";
 import toast from "react-hot-toast";
@@ -42,7 +42,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     // State để track ảnh bị lỗi
     const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
-    const fetchMerchantDishes = useCallback(async () => {
+    const fetchMerchantDishes = useCallback(async (showToast = true) => {
         setIsLoading(true);
         try {
             const response = await axiosInstance.get('/dishes/list');
@@ -111,9 +111,9 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
 
             setDishes(fetchedDishes);
 
-            if (fetchedDishes.length > 0) {
+            if (showToast && fetchedDishes.length > 0) {
                 toast.success(`Đã tải ${fetchedDishes.length} món ăn.`, { duration: 1500 });
-            } else {
+            } else if (showToast && fetchedDishes.length === 0) {
                 toast.error("Chưa có món ăn nào.", { duration: 1500 });
             }
         } catch (error) {
@@ -125,8 +125,18 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         }
     }, []);
 
+    const isFirstLoad = useRef(true);
+
     useEffect(() => {
-        fetchMerchantDishes();
+        if (isFirstLoad.current) {
+            // 1. Nếu là lần đầu vào trang: Tải và HIỆN thông báo
+            fetchMerchantDishes(true);
+            isFirstLoad.current = false; // Đánh dấu là đã load xong lần đầu
+        } else {
+            // 2. Nếu useEffect chạy lại do `onDishCreatedToggle` thay đổi (tức là vừa update/thêm mới):
+            // Tải lại nhưng KHÔNG hiện thông báo (Silent reload)
+            fetchMerchantDishes(false);
+        }
     }, [fetchMerchantDishes, onDishCreatedToggle]);
 
     // 🔥 TÍNH TOÁN PHÂN TRANG
@@ -184,15 +194,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     return (
         <>
             <div className="bg-white rounded-4 p-4 shadow">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h3 className="h4 fw-bold text-dark mb-0">Danh sách món ăn đã thêm</h3>
-                    {dishes.length > 0 && (
-                        <span className="badge bg-danger fs-6">
-                            Tổng: {dishes.length} món
-                        </span>
-                    )}
-                </div>
-
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
                     {currentDishes.length === 0 ? (
                         <div className="col-12 text-center py-5">

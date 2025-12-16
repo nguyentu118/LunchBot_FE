@@ -70,21 +70,40 @@ const DishDetailPage: React.FC = () => {
 
     useEffect(() => {
         window.scrollTo(0, 0);
-        if (dishId) {
-            fetchDishDetail();
-            fetchRelatedDishes();
-            fetchMostViewedDishes();
+
+        // ✅ VALIDATE dishId
+        if (!dishId || isNaN(Number(dishId)) || Number(dishId) <= 0) {
+            navigate('/*', { replace: true });
+            return;
         }
+
+        fetchDishDetail();
+        fetchRelatedDishes();
+        fetchMostViewedDishes();
     }, [dishId]);
 
     const fetchDishDetail = async () => {
         try {
             const response = await axiosInstance.get<DishDetail>(`/dishes/${dishId}`);
+
+            // ✅ CHECK nếu không có data
+            if (!response.data || !response.data.id) {
+                navigate('/not-found', { replace: true });
+                return;
+            }
+
             setDish(response.data);
             setLoading(false);
-        } catch (err) {
-            console.error(err);
-            setError('Không thể tải thông tin món ăn');
+        } catch (err: any) {
+            console.error('Error fetching dish:', err);
+
+            // ✅ CHECK status code 404
+            if (err.response?.status === 404) {
+                navigate('/not-found', { replace: true });
+            } else {
+                setError('Không thể tải thông tin món ăn');
+            }
+
             setLoading(false);
         }
     };
