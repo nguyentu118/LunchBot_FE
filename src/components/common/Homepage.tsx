@@ -64,6 +64,7 @@ const HomePage: React.FC = () => {
         ? apiMerchants.map(formatMerchantForDisplay)
         : [];
     // ⭐ Hàm generate màu cho categories
+
     const getCategoryColor = (index: number) => {
         const colors = [
             {bg: '#fff5f5', icon: '#dc3545'}, // Đỏ
