@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
-import {Briefcase, Home, LogIn, LogOut, Settings, ShoppingCart, Sparkles, User, UserCircle, UtensilsCrossed
+import {
+    Briefcase, Home, LogIn, LogOut, Settings, ShoppingBag, ShoppingCart, Sparkles, User, UserCircle, UtensilsCrossed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GuestCartHelper } from '../../features/cart/types/guestCart';
@@ -140,6 +141,10 @@ const Navigation: React.FC = () => {
     const handleManageMerchant = () => {
         navigate('/merchant/update');
     };
+    const handleMyOrders = () => {
+        navigate('/orders');
+    };
+
 
     // Normalize role để kiểm tra
     const normalizedRole = userInfo.userRole ? userInfo.userRole.toUpperCase().replace(/^ROLE_/, '') : null;
@@ -221,7 +226,7 @@ const Navigation: React.FC = () => {
                                     <span className="fw-bold small">{displayName}</span>
                                 </Dropdown.Toggle>
 
-                                <Dropdown.Menu className="shadow-lg mt-2">
+                                <Dropdown.Menu className="shadow-lg mt-2" style={{ zIndex: 9999 }}>
                                     <Dropdown.Header className="d-flex align-items-center fw-bold border-bottom">
                                         <UserCircle size={20} className="me-2 text-primary"/>
                                         {userInfo.fullName}
@@ -229,6 +234,13 @@ const Navigation: React.FC = () => {
 
                                     {normalizedRole === 'USER' && (
                                         <>
+                                            <Dropdown.Item
+                                                onClick={handleMyOrders}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <ShoppingBag size={16} className="me-2 text-success"/>
+                                                Đơn hàng của tôi
+                                            </Dropdown.Item>
                                             <Dropdown.Item
                                                 onClick={handleUpdateUserProfile}
                                                 className="d-flex align-items-center"
