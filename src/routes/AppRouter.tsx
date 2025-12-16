@@ -15,6 +15,9 @@ import ProtectedRoute from "./ProtectedRoute.tsx";
 import MerchantDashboard from "../components/layout/MerchantDashBoard.tsx";
 import DishDetailPage from "../features/dish/DishDetailPage.tsx";
 import CartPage from "../features/cart/CartPage.tsx";
+import CheckoutPage from "../features/checkout-card/components/CheckoutPage.tsx";
+import OrdersListPage from "../features/order/components/OrderListPage.tsx";
+import OrderDetailPage from "../features/order/components/OrderDetailPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -51,6 +54,18 @@ const router = createBrowserRouter([
     {
         path: "/cart",
         element: <CartPage/>,
+    },
+    {
+        path: "/checkout",
+        element: <CheckoutPage/>,
+    },
+    {
+        path: "/orders",
+        element: <OrdersListPage/>,
+    },
+    {
+        path: "/orders/:orderId",
+        element: <OrderDetailPage/>,
     },
 
 

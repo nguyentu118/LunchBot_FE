@@ -240,10 +240,7 @@ const CartPage: React.FC = () => {
             return;
         }
 
-        // Log ra để kiểm tra
-        console.log("Thanh toán các món:", Array.from(selectedItems));
-        toast.success("Chuyển đến trang thanh toán...");
-        navigate('/checkout', { state: { itemIds: Array.from(selectedItems) } });
+        navigate('/checkout');
     };
 
     // Kiểm tra trạng thái "Chọn tất cả"
