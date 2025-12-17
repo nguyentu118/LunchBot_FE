@@ -235,12 +235,33 @@ const CartPage: React.FC = () => {
             navigate('/login');
             return;
         }
+
         if (selectedItems.size === 0) {
             toast.error('Chưa chọn món nào!');
             return;
         }
 
-        navigate('/checkout');
+        // Kiểm tra xem các món đã chọn có cùng restaurant không
+        const selectedItemsData = enrichedItems.filter(item =>
+            selectedItems.has(item.dishId)
+        );
+
+        const uniqueRestaurants = new Set(
+            selectedItemsData.map(item => item.restaurantId)
+        );
+
+        if (uniqueRestaurants.size > 1) {
+            toast.error('Vui lòng chọn món từ cùng 1 cửa hàng để thanh toán!');
+            return;
+        }
+
+        // Chuyển đổi Set thành mảng và truyền qua URL
+        const selectedIds = Array.from(selectedItems);
+        const queryParams = new URLSearchParams({
+            items: selectedIds.join(',')
+        });
+
+        navigate(`/checkout?${queryParams.toString()}`);
     };
 
     // Kiểm tra trạng thái "Chọn tất cả"
