@@ -27,7 +27,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             label: 'Thanh toán bằng thẻ',
             icon: <CreditCard size={24} className="text-primary" />,
             description: 'Visa, Mastercard, JCB, ATM nội địa',
-            badge: 'Sắp có'
+            badge: 'Tiện Lợi'
         }
     ];
 
@@ -46,14 +46,12 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
                         key={method.value}
                         className={`mb-3 ${selectedMethod === method.value ? 'border-primary border-2' : 'border'}`}
                         style={{
-                            cursor: method.value === PaymentMethod.CARD ? 'not-allowed' : 'pointer',
-                            opacity: method.value === PaymentMethod.CARD ? 0.6 : 1,
+                            cursor: 'pointer', // Luôn hiện con trỏ tay
+                            opacity: 1,        // [QUAN TRỌNG] Để opacity là 1 để chữ đen và đậm rõ nét
                             transition: 'all 0.2s'
                         }}
                         onClick={() => {
-                            if (method.value !== PaymentMethod.CARD) {
-                                onSelectMethod(method.value);
-                            }
+                            onSelectMethod(method.value);
                         }}
                     >
                         <Card.Body>
@@ -64,11 +62,10 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
                                     name="paymentMethod"
                                     checked={selectedMethod === method.value}
                                     onChange={() => {
-                                        if (method.value !== PaymentMethod.CARD) {
                                             onSelectMethod(method.value);
-                                        }
+
                                     }}
-                                    disabled={method.value === PaymentMethod.CARD}
+                                    disabled={false}
                                     className="me-3 mt-1"
                                 />
 
@@ -78,7 +75,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
                                         <h6 className="mb-0 fw-bold">{method.label}</h6>
                                         {method.badge && (
                                             <Badge
-                                                bg={method.value === PaymentMethod.CARD ? 'secondary' : 'success'}
+                                                bg={method.value === PaymentMethod.CARD ? 'primary' : 'success'}
                                                 className="ms-2"
                                             >
                                                 {method.badge}
