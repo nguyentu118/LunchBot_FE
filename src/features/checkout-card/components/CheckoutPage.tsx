@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Alert, Spinner, Form } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +24,10 @@ import { Address, AddressFormData } from '../types/address.types';
 
 const CheckoutPage: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    // ✅ LẤY DANH SÁCH DISH ID TỪ URL
+    const selectedDishIds = searchParams.get('items')?.split(',').map(Number) || [];
 
     // State
     const [checkoutData, setCheckoutData] = useState<CheckoutResponse | null>(null);
@@ -41,6 +45,13 @@ const CheckoutPage: React.FC = () => {
 
     // Fetch checkout info
     useEffect(() => {
+        // ✅ KIỂM TRA: Nếu không có dishId nào được chọn → redirect về cart
+        if (selectedDishIds.length === 0) {
+            toast.error('Vui lòng chọn món để thanh toán');
+            navigate('/cart');
+            return;
+        }
+
         loadCheckoutInfo();
     }, []);
 
@@ -50,7 +61,34 @@ const CheckoutPage: React.FC = () => {
             setError('');
 
             const data = await checkoutService.getCheckoutInfo();
-            setCheckoutData(data);
+
+            // ✅ LỌC CHỈ CÁC MÓN ĐÃ CHỌN
+            const filteredItems = data.items.filter(item =>
+                selectedDishIds.includes(item.dishId)
+            );
+
+            // ✅ KIỂM TRA: Nếu không còn món nào (có thể đã bị xóa)
+            if (filteredItems.length === 0) {
+                toast.error('Không tìm thấy món đã chọn trong giỏ hàng');
+                navigate('/cart');
+                return;
+            }
+
+            // ✅ TÍNH LẠI TỔNG TIỀN CHO CÁC MÓN ĐÃ CHỌN
+            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
+            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
+
+            // ✅ Tính lại totalAmount (itemsTotal + phí - giảm giá)
+            const totalAmount = itemsTotal + data.serviceFee + data.shippingFee - data.discountAmount;
+
+            // ✅ CẬP NHẬT DATA VỚI CÁC MÓN ĐÃ LỌC
+            setCheckoutData({
+                ...data,
+                items: filteredItems,
+                totalItems: totalItems,
+                itemsTotal: itemsTotal,
+                totalAmount: totalAmount
+            });
 
             // Auto select default address
             if (data.defaultAddressId) {
@@ -64,9 +102,9 @@ const CheckoutPage: React.FC = () => {
             setError(errorMsg);
             toast.error(errorMsg);
 
-            // Nếu giỏ hàng trống, redirect về trang chủ
-            if (errorMsg.includes('trống')) {
-                setTimeout(() => navigate('/'), 2000);
+            // Nếu giỏ hàng trống hoặc có nhiều merchant, redirect về cart
+            if (errorMsg.includes('trống') || errorMsg.includes('nhiều cửa hàng')) {
+                setTimeout(() => navigate('/cart'), 2000);
             }
         } finally {
             setIsLoading(false);
@@ -82,11 +120,7 @@ const CheckoutPage: React.FC = () => {
         try {
             const newAddress = await addressService.createAddress(data);
             toast.success('Thêm địa chỉ thành công');
-
-            // Reload checkout data
             await loadCheckoutInfo();
-
-            // Auto select new address
             setSelectedAddressId(newAddress.id);
         } catch (err: any) {
             console.error('Error adding address:', err);
@@ -117,7 +151,6 @@ const CheckoutPage: React.FC = () => {
             toast.success('Xóa địa chỉ thành công');
             await loadCheckoutInfo();
 
-            // Reset selected address if deleted
             if (selectedAddressId === addressId) {
                 setSelectedAddressId(null);
             }
@@ -145,7 +178,30 @@ const CheckoutPage: React.FC = () => {
         try {
             setIsApplyingCoupon(true);
             const data = await checkoutService.applyCoupon(code);
-            setCheckoutData(data);
+
+            // ✅ LỌC LẠI ITEMS SAU KHI ÁP COUPON
+            const filteredItems = data.items.filter(item =>
+                selectedDishIds.includes(item.dishId)
+            );
+
+            if (filteredItems.length === 0) {
+                toast.error('Không tìm thấy món đã chọn');
+                navigate('/cart');
+                return;
+            }
+
+            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
+            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
+            const totalAmount = itemsTotal + data.serviceFee + data.shippingFee - data.discountAmount;
+
+            setCheckoutData({
+                ...data,
+                items: filteredItems,
+                totalItems: totalItems,
+                itemsTotal: itemsTotal,
+                totalAmount: totalAmount
+            });
+
             toast.success(`Áp dụng mã "${code}" thành công!`);
         } catch (err: any) {
             console.error('Error applying coupon:', err);
@@ -159,7 +215,30 @@ const CheckoutPage: React.FC = () => {
         try {
             setIsApplyingCoupon(true);
             const data = await checkoutService.removeCoupon();
-            setCheckoutData(data);
+
+            // ✅ LỌC LẠI ITEMS SAU KHI XÓA COUPON
+            const filteredItems = data.items.filter(item =>
+                selectedDishIds.includes(item.dishId)
+            );
+
+            if (filteredItems.length === 0) {
+                toast.error('Không tìm thấy món đã chọn');
+                navigate('/cart');
+                return;
+            }
+
+            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
+            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
+            const totalAmount = itemsTotal + data.serviceFee + data.shippingFee - data.discountAmount;
+
+            setCheckoutData({
+                ...data,
+                items: filteredItems,
+                totalItems: totalItems,
+                itemsTotal: itemsTotal,
+                totalAmount: totalAmount
+            });
+
             toast.success('Đã xóa mã giảm giá');
         } catch (err: any) {
             console.error('Error removing coupon:', err);
@@ -169,9 +248,8 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // Place order
+    // ✅ PLACE ORDER: GỬI CHỈ CÁC DISH ID ĐÃ CHỌN
     const handlePlaceOrder = async () => {
-        // Validation
         if (!selectedAddressId) {
             toast.error('Vui lòng chọn địa chỉ giao hàng');
             return;
@@ -189,22 +267,29 @@ const CheckoutPage: React.FC = () => {
         try {
             setIsProcessing(true);
 
+            // ✅ GỬI dishIds ĐÃ CHỌN LÊN BACKEND
             const orderData = {
+                dishIds: selectedDishIds, // ← QUAN TRỌNG: Chỉ gửi món đã chọn
                 addressId: selectedAddressId,
                 paymentMethod: selectedPaymentMethod,
                 couponCode: checkoutData?.appliedCouponCode || undefined,
                 notes: notes.trim() || undefined
             };
 
+            console.log('📦 Order payload:', orderData); // Debug
+
             const order = await orderService.createOrder(orderData);
 
             toast.success('Đặt hàng thành công!');
 
-            // Redirect to order detail page
+            // ✅ Dispatch event để cập nhật cart count
+            window.dispatchEvent(new Event('cartUpdated'));
+
             navigate(`/orders/${order.id}`);
         } catch (err: any) {
             console.error('Error placing order:', err);
-            toast.error(err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.');
+            const errorMsg = err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
+            toast.error(errorMsg);
         } finally {
             setIsProcessing(false);
         }
@@ -230,8 +315,8 @@ const CheckoutPage: React.FC = () => {
                     <Alert variant="danger" className="text-center">
                         <h5>Có lỗi xảy ra</h5>
                         <p>{error}</p>
-                        <Button variant="primary" onClick={() => navigate('/')}>
-                            Về trang chủ
+                        <Button variant="primary" onClick={() => navigate('/cart')}>
+                            Quay lại giỏ hàng
                         </Button>
                     </Alert>
                 </Container>
