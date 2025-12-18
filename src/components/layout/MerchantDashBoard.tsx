@@ -424,7 +424,16 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     <div className="col-lg-9">
                         <div className="bg-white rounded-3 shadow-sm" style={{ minHeight: '500px' }}>
                             {activeView === 'dishes' && (
-                                <MerchantDishList onDishCreatedToggle={dishCreatedToggle} selectedDish={selectedDish} setSelectedDish={setSelectedDish} onEdit={handleEditDish} />
+                                <MerchantDishList
+                                    onDishCreatedToggle={dishCreatedToggle}
+                                    selectedDish={selectedDish}
+                                    setSelectedDish={setSelectedDish}
+                                    onEdit={handleEditDish}
+                                    onDishDeleted={() => {
+                                        console.log('🔥 onDishDeleted được gọi!'); // Debug log
+                                        setDishCreatedToggle(prev => !prev)
+                                    }}
+                                />
                             )}
                             {activeView === 'coupons' && <MerchantCouponManager brandColor={customStyles.primaryPink} refreshTrigger={couponCreatedToggle} />}                        </div>
                     </div>

@@ -19,6 +19,7 @@ interface MerchantDishListProps {
     setSelectedDish: (dish: Dish | null) => void;
     onEdit?: (dish: Dish) => void;
     onDelete?: (dishId: number) => void;
+    onDishDeleted?: () => void; // ✅ Prop này đã có trong interface
 }
 
 const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
@@ -26,13 +27,14 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     selectedDish,
                                                                     setSelectedDish,
                                                                     onEdit,
+                                                                    onDishDeleted, // ✅ THÊM DÒNG NÀY - Nhận prop từ parent
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     // 🔥 PHÂN TRANG
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const ITEMS_PER_PAGE = 6; // Số món ăn mỗi trang
+    const ITEMS_PER_PAGE = 6;
 
     // State cho Image Gallery Modal
     const [showGallery, setShowGallery] = useState(false);
@@ -83,7 +85,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
             }
 
             const fetchedDishes: Dish[] = dishesData.map((dish: any) => {
-                // Parse imagesUrls safely
                 let images: string[] = [];
                 if (dish.imagesUrls) {
                     try {
@@ -94,7 +95,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     }
                 }
 
-                // Format price
                 const formattedPrice = typeof dish.price === 'number'
                     ? dish.price.toLocaleString('vi-VN') + 'đ'
                     : (dish.price || '0') + 'đ';
@@ -129,12 +129,9 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
 
     useEffect(() => {
         if (isFirstLoad.current) {
-            // 1. Nếu là lần đầu vào trang: Tải và HIỆN thông báo
             fetchMerchantDishes(true);
-            isFirstLoad.current = false; // Đánh dấu là đã load xong lần đầu
+            isFirstLoad.current = false;
         } else {
-            // 2. Nếu useEffect chạy lại do `onDishCreatedToggle` thay đổi (tức là vừa update/thêm mới):
-            // Tải lại nhưng KHÔNG hiện thông báo (Silent reload)
             fetchMerchantDishes(false);
         }
     }, [fetchMerchantDishes, onDishCreatedToggle]);
@@ -145,7 +142,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const currentDishes = dishes.slice(startIndex, endIndex);
 
-    // Reset về trang 1 khi dishes thay đổi
     useEffect(() => {
         if (currentPage > totalPages && totalPages > 0) {
             setCurrentPage(1);
@@ -292,7 +288,9 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 dishName={dish.name}
                                                 className="btn-sm flex-fill"
                                                 onDeleteSuccess={() => {
-                                                    fetchMerchantDishes();
+                                                    // ✅ SỬA LẠI: Gọi CẢ 2 hàm
+                                                    fetchMerchantDishes(false); // Refresh list (không toast)
+                                                    onDishDeleted?.(); // Thông báo cho parent để cập nhật stats
                                                 }}
                                             />
                                         </div>
@@ -337,7 +335,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     </div>
                 )}
 
-                {/* Hiển thị thông tin trang */}
                 {totalPages > 1 && (
                     <div className="text-center mt-3 text-muted small">
                         Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, dishes.length)} của {dishes.length} món

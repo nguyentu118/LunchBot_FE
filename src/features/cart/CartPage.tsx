@@ -65,9 +65,7 @@ const CartPage: React.FC = () => {
                     }
 
                     try {
-                        // === SỬA QUAN TRỌNG: Dùng đường dẫn tương đối ===
-                        // Đảm bảo Backend bạn đang chạy ở port 8080 và đã cấu hình proxy (nếu dùng vite/create-react-app)
-                        // Hoặc bạn có thể sửa thành 'http://localhost:8080/api/dishes/' nếu chắc chắn port
+
                         const response = await axiosInstance.get(`/dishes/${item.dishId}`);
 
                         // Debug: Xem API trả về gì
