@@ -1,20 +1,25 @@
 import React from 'react';
-import { Card, Badge } from 'react-bootstrap';
-import { Ticket, Calendar, Users, Tag } from 'lucide-react';
+import { Card, Badge, Button } from 'react-bootstrap';
+import { Ticket, Calendar, Users, Tag, Edit, Trash2 } from 'lucide-react';
 import { Coupon } from '../hooks/useCouponList';
+import { toast } from 'react-hot-toast';
 
 interface CouponCardProps {
     coupon: Coupon;
     showMerchantView?: boolean;
     brandColor?: string;
     onCopy?: (code: string) => void;
+    onDelete?: (id: number) => void;
+    onEdit?: (coupon: Coupon) => void;
 }
 
 const CouponCard: React.FC<CouponCardProps> = ({
                                                    coupon,
                                                    showMerchantView = false,
                                                    brandColor = '#FF5E62',
-                                                   onCopy
+                                                   onCopy,
+                                                   onDelete,
+                                                   onEdit
                                                }) => {
     const isExpired = new Date(coupon.validTo) < new Date();
     const isOutOfStock = coupon.usedCount >= coupon.usageLimit;
@@ -22,7 +27,11 @@ const CouponCard: React.FC<CouponCardProps> = ({
     const isDisabled = isExpired || isOutOfStock || isInactive;
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('vi-VN');
+        return new Date(dateString).toLocaleDateString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     };
 
     const formatCurrency = (amount: number) => {
@@ -40,10 +49,10 @@ const CouponCard: React.FC<CouponCardProps> = ({
     };
 
     const getStatusBadge = () => {
-        if (isInactive) return <Badge bg="secondary">Đã khóa</Badge>;
-        if (isExpired) return <Badge bg="danger">Hết hạn</Badge>;
-        if (isOutOfStock) return <Badge bg="warning" text="dark">Hết lượt</Badge>;
-        return <Badge bg="success">Còn hiệu lực</Badge>;
+        if (isInactive) return <Badge bg="secondary" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Đã khóa</Badge>;
+        if (isExpired) return <Badge bg="danger" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Hết hạn</Badge>;
+        if (isOutOfStock) return <Badge bg="warning" text="dark" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Hết lượt</Badge>;
+        return <Badge bg="success" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Còn hiệu lực</Badge>;
     };
 
     const handleCopyCode = () => {
@@ -53,41 +62,104 @@ const CouponCard: React.FC<CouponCardProps> = ({
         }
     };
 
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        toast.custom((t) => (
+            <div
+                style={{
+                    opacity: t.visible ? 1 : 0,
+                    transform: t.visible ? 'translateY(0)' : 'translateY(-20px)',
+                    transition: 'all 0.15s ease-out',
+                    maxWidth: '320px',
+                    width: '100%',
+                    backgroundColor: '#fff',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    pointerEvents: 'auto',
+                    borderTop: `3px solid ${brandColor}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center'
+                }}
+            >
+                <div className="mb-2 d-flex align-items-center justify-content-center"
+                     style={{ width: '40px', height: '40px', backgroundColor: '#fff5f5', borderRadius: '50%' }}>
+                    <Trash2 size={20} color="#dc3545" />
+                </div>
+
+                <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>Xác nhận xóa?</h6>
+                <p className="text-muted mb-3" style={{ fontSize: '0.8rem' }}>Xóa mã: <b>{coupon.code}</b></p>
+
+                <div className="d-flex gap-2 w-100">
+                    <Button
+                        className="flex-grow-1"
+                        variant="danger"
+                        size="sm"
+                        style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                        onClick={() => {
+                            onDelete?.(coupon.id);
+                            toast.dismiss(t.id);
+                        }}
+                    >
+                        Xóa
+                    </Button>
+                    <Button
+                        className="flex-grow-1"
+                        variant="light"
+                        size="sm"
+                        style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Hủy
+                    </Button>
+                </div>
+            </div>
+        ), {
+            duration: 4000,
+            position: 'top-center',
+        });
+    };
+
     return (
         <Card
             className={`h-100 shadow-sm ${isDisabled ? 'opacity-75' : ''}`}
             style={{
-                borderLeft: `4px solid ${isDisabled ? '#6c757d' : brandColor}`,
+                borderLeft: `3px solid ${isDisabled ? '#6c757d' : brandColor}`,
                 transition: 'transform 0.2s',
-                cursor: isDisabled ? 'not-allowed' : 'pointer'
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                fontSize: '0.85rem'
             }}
             onMouseEnter={(e) => {
                 if (!isDisabled) {
-                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.transform = 'translateY(-3px)';
                 }
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
             }}
         >
-            <Card.Body>
-                <div className="d-flex justify-content-between align-items-start mb-3">
+            <Card.Body className="p-3">
+                {/* Header - Giảm giá & Status */}
+                <div className="d-flex justify-content-between align-items-start mb-2">
                     <div className="d-flex align-items-center gap-2">
                         <div
-                            className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                            className="rounded-circle p-1 d-flex align-items-center justify-content-center"
                             style={{
                                 backgroundColor: isDisabled ? '#e9ecef' : `${brandColor}20`,
-                                width: '40px',
-                                height: '40px'
+                                width: '32px',
+                                height: '32px'
                             }}
                         >
-                            <Ticket size={20} color={isDisabled ? '#6c757d' : brandColor} />
+                            <Ticket size={16} color={isDisabled ? '#6c757d' : brandColor} />
                         </div>
                         <div>
-                            <h5 className="mb-0 fw-bold" style={{ color: isDisabled ? '#6c757d' : brandColor }}>
+                            <div className="fw-bold mb-0" style={{ color: isDisabled ? '#6c757d' : brandColor, fontSize: '0.95rem' }}>
                                 {getDiscountText()}
-                            </h5>
-                            <small className="text-muted">
+                            </div>
+                            <small className="text-muted" style={{ fontSize: '0.7rem' }}>
                                 {coupon.discountType === 'PERCENTAGE' ? 'Giảm theo %' : 'Giảm cố định'}
                             </small>
                         </div>
@@ -95,47 +167,56 @@ const CouponCard: React.FC<CouponCardProps> = ({
                     {getStatusBadge()}
                 </div>
 
+                {/* Mã Coupon */}
                 <div
-                    className="mb-3 p-2 rounded text-center"
+                    className="mb-2 py-1 px-2 rounded text-center"
                     style={{
                         backgroundColor: '#f8f9fa',
-                        border: `2px dashed ${isDisabled ? '#6c757d' : brandColor}`,
+                        border: `1.5px dashed ${isDisabled ? '#6c757d' : brandColor}`,
                         cursor: !isDisabled ? 'pointer' : 'default'
                     }}
                     onClick={!isDisabled ? handleCopyCode : undefined}
                 >
-                    <code className="fs-5 fw-bold" style={{ color: isDisabled ? '#6c757d' : brandColor }}>
+                    <code className="fw-bold d-block" style={{
+                        color: isDisabled ? '#6c757d' : brandColor,
+                        fontSize: '0.8rem',
+                        letterSpacing: '0.5px'
+                    }}>
                         {coupon.code}
                     </code>
                     {!isDisabled && (
-                        <div className="mt-1">
-                            <small className="text-muted">Nhấn để sao chép</small>
-                        </div>
+                        <small className="text-muted d-block" style={{ fontSize: '0.6rem', marginTop: '2px' }}>
+                            Nhấn để sao chép
+                        </small>
                     )}
                 </div>
 
-                <div className="mb-2 d-flex align-items-center gap-2 text-muted small">
-                    <Tag size={16} />
+                {/* Thông tin chi tiết */}
+                <div className="mb-1 d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                    <Tag size={12} />
                     <span>Đơn tối thiểu: <strong>{formatCurrency(coupon.minOrderValue)}</strong></span>
                 </div>
 
-                <div className="mb-2 d-flex align-items-center gap-2 text-muted small">
-                    <Calendar size={16} />
+                <div className="mb-2 d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                    <Calendar size={12} />
                     <span>{formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}</span>
                 </div>
 
+                {/* Merchant View */}
                 {showMerchantView && (
-                    <div className="mt-3 pt-3 border-top">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div className="d-flex align-items-center gap-2 text-muted small">
-                                <Users size={16} />
+                    <div className="mt-2 pt-2 border-top">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                            <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                <Users size={12} />
                                 <span>Đã dùng: <strong>{coupon.usedCount}</strong></span>
                             </div>
-                            <div className="text-muted small">
+                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                                 Giới hạn: <strong>{coupon.usageLimit}</strong>
                             </div>
                         </div>
-                        <div className="progress mt-2" style={{ height: '6px' }}>
+
+                        {/* Progress Bar */}
+                        <div className="progress mb-2" style={{ height: '4px' }}>
                             <div
                                 className="progress-bar"
                                 role="progressbar"
@@ -144,6 +225,28 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                     backgroundColor: brandColor
                                 }}
                             />
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="d-flex gap-2">
+                            <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                                style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                                onClick={() => onEdit?.(coupon)}
+                            >
+                                <Edit size={12} /> Sửa
+                            </Button>
+                            <Button
+                                variant="outline-danger"
+                                size="sm"
+                                className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                                style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                                onClick={handleDeleteClick}
+                            >
+                                <Trash2 size={12} /> Xóa
+                            </Button>
                         </div>
                     </div>
                 )}

@@ -108,9 +108,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     }
                 }
 
-                const formattedPrice = typeof dish.price === 'number'
-                    ? dish.price.toLocaleString('vi-VN') + 'đ'
-                    : (dish.price || '0') + 'đ';
                 // Xử lý giá
                 const priceNumber = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price) || 0;
                 const formattedPrice = priceNumber.toLocaleString('vi-VN') + 'đ';
