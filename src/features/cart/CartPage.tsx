@@ -189,6 +189,7 @@ const CartPage: React.FC = () => {
     };
 
     // Update số lượng
+    // Update số lượng
     const handleUpdateQuantity = async (dishId: number, newQuantity: number) => {
         try {
             if (isLoggedIn) {
@@ -196,11 +197,15 @@ const CartPage: React.FC = () => {
             } else {
                 if (newQuantity <= 0) GuestCartHelper.removeItem(dishId);
                 else GuestCartHelper.updateItem(dishId, newQuantity);
-                window.dispatchEvent(new Event('cartUpdated'));
             }
-            await refetch(); // Gọi lại hook để lấy data mới -> kích hoạt lại useEffect enrich
+
+            // ✅ THÊM DÒNG NÀY - Dispatch event để Navigation bắt được
+            window.dispatchEvent(new Event('cartUpdated'));
+
+            await refetch(); // Gọi lại hook để lấy data mới
         } catch (error) {
-            toast.error('Lỗi cập nhật số lượng' + error);
+            toast.error('Lỗi cập nhật số lượng');
+            console.error(error);
         }
     };
 

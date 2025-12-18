@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Plus, Tag, Clock, Upload, Trash2, X, MapPin } from 'lucide-react';
+import { Plus, Tag, Clock, Upload, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DishCreateRequestState {
     name: string;
     merchantId: number;
-    address: string; // ✅ THÊM TRƯỜNG ĐỊA CHỈ
     imagesFiles: FileList | null;
     preparationTime: number | undefined;
-    description: string; // Ghi chú
+    description: string;
     price: string;
     discountPrice: string;
     serviceFee: string;
@@ -44,7 +43,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-    // ⚙️ CẤU HÌNH CLOUDINARY
     const CLOUDINARY_CLOUD_NAME = 'dxoln0uq3';
     const CLOUDINARY_UPLOAD_PRESET = 'lunchbot_dishes';
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -141,17 +139,17 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         handleNewDishChange(mockEvent);
     };
 
-    // ✅ VALIDATION ĐẦY ĐỦ THEO MÔ TẢ
     const handleSaveClick = async () => {
-        // ✅ VALIDATE TẤT CẢ CÁC TRƯỜNG BẮT BUỘC
         const errors: string[] = [];
 
         if (!newDishData.name.trim()) {
             errors.push("Tên món ăn");
+        } else if (newDishData.name.length > 255) {
+            errors.push("Tên món ăn (tối đa 255 ký tự)");
         }
 
-        if (!newDishData.address.trim()) {
-            errors.push("Địa chỉ");
+        if (newDishData.description.length >= 5000) {
+            errors.push("Mô tả (tối đa 5000 ký tự)");
         }
 
         if (selectedFiles.length === 0 && (!newDishData.imagesFiles || newDishData.imagesFiles.length === 0)) {
@@ -170,7 +168,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
             errors.push("Danh mục (Tag)");
         }
 
-        // ✅ HIỂN THỊ LỖI NẾU CÓ
         if (errors.length > 0) {
             toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${errors.join(', ')}`, {
                 duration: 4000,
@@ -186,7 +183,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
         try {
             const filesToUpload = selectedFiles.length > 0 ? selectedFiles : Array.from(newDishData.imagesFiles || []);
 
-            // KIỂM TRA KÍCH THƯỚC FILE
             const oversizedFiles = filesToUpload.filter(file => file.size > MAX_FILE_SIZE);
 
             if (oversizedFiles.length > 0) {
@@ -196,7 +192,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                 return;
             }
 
-            // KIỂM TRA ĐỊNH DẠNG FILE
             const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
             const invalidFiles = filesToUpload.filter(file => !allowedTypes.includes(file.type));
 
@@ -210,7 +205,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
             const uploadedUrls: string[] = [];
             const failedFiles: { name: string; reason: string }[] = [];
 
-            // UPLOAD TỪNG FILE
             for (let i = 0; i < filesToUpload.length; i++) {
                 const file = filesToUpload[i];
 
@@ -218,7 +212,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
 
                     const response = await fetch(
                         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
@@ -263,7 +256,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                 );
             }
 
-            // ✅ LƯU DỮ LIỆU
             await onSave({
                 ...newDishData,
                 uploadedUrls,
@@ -272,9 +264,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
             toast.success(`🎉 Đã thêm món "${newDishData.name}" với ${uploadedUrls.length} ảnh!`, {
                 duration: 3000
             });
-
-            // ✅ KHÔNG ĐÓNG MODAL - GIỮ NGUYÊN NỘI DUNG ĐỂ KHÁCH HÀNG XEM LẠI
-            // onClose(); // BỎ DÒNG NÀY ĐỂ GIỮ NGUYÊN FORM
 
         } catch (error) {
             toast.error("❌ Có lỗi xảy ra khi thêm món.");
@@ -304,7 +293,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                             <div className="col-lg-6 d-flex flex-column gap-3">
                                 <h5 className="mb-2 fw-bold text-secondary border-bottom pb-2">Thông tin cơ bản</h5>
 
-                                {/* ✅ TÊN MÓN ĂN (*) */}
+                                {/* ✅ TÊN MÓN ĂN (*) - MAX 255 */}
                                 <div className="mb-2">
                                     <label htmlFor="dishName" className="form-label fw-bold">
                                         Tên Món Ăn <span className="text-danger">*</span>
@@ -317,26 +306,15 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         value={newDishData.name}
                                         onChange={handleNewDishChange}
                                         placeholder="VD: Phở bò đặc biệt"
+                                        maxLength={255}
                                     />
+                                    <small className="text-muted">
+                                        {newDishData.name.length}/255 ký tự
+                                    </small>
                                 </div>
 
-                                {/* ✅ ĐỊA CHỈ (*) - TRƯỜNG MỚI */}
-                                <div className="mb-2">
-                                    <label htmlFor="dishAddress" className="form-label fw-bold d-flex align-items-center">
-                                        <MapPin size={16} className="me-1" /> Địa Chỉ <span className="text-danger">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        id="dishAddress"
-                                        name="address"
-                                        value={newDishData.address}
-                                        onChange={handleNewDishChange}
-                                        placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM"
-                                    />
-                                </div>
 
-                                {/* ✅ GHI CHÚ (MÔ TẢ) */}
+                                {/* ✅ GHI CHÚ (MÔ TẢ) - MAX 5000 */}
                                 <div className="mb-2">
                                     <label htmlFor="dishDescription" className="form-label fw-bold">Ghi Chú (Mô Tả)</label>
                                     <textarea
@@ -347,7 +325,11 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                         value={newDishData.description}
                                         onChange={handleNewDishChange}
                                         placeholder="Mô tả về món ăn..."
+                                        maxLength={5000}
                                     ></textarea>
+                                    <small className="text-muted">
+                                        {newDishData.description.length}/5000 ký tự
+                                    </small>
                                 </div>
 
                                 {/* ✅ THỜI GIAN CHUẨN BỊ */}
@@ -554,7 +536,7 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                 )}
                             </div>
 
-                            {/* ✅ TAG (DANH MỤC) (*) */}
+                            {/* ✅ TAG (DANH MỤC) (*) - HOVER #FF5E62 */}
                             <div className="col-12 mt-4">
                                 <h5 className="mb-3 fw-bold text-secondary border-bottom pb-2">
                                     Tag (Danh Mục) <span className="text-danger">*</span>
@@ -569,13 +551,28 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                                                     key={category.id}
                                                     type="button"
                                                     className={`btn btn-sm fw-bold rounded-pill shadow-sm d-flex align-items-center ${
-                                                        isSelected ? 'text-white' : 'btn-outline-secondary'
+                                                        isSelected ? '' : 'btn-outline-secondary'
                                                     }`}
                                                     style={{
                                                         backgroundColor: isSelected ? customStyles.primaryPink : 'transparent',
-                                                        borderColor: isSelected ? customStyles.primaryPink : '',
-                                                        transition: 'background-color 0.2s, border-color 0.2s, color 0.2s',
+                                                        borderColor: isSelected ? customStyles.primaryPink : '#6c757d',
+                                                        color: isSelected ? '#fff' : '#495057',
+                                                        transition: 'all 0.2s',
                                                         cursor: 'pointer',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!isSelected) {
+                                                            e.currentTarget.style.backgroundColor = '#FF5E62';
+                                                            e.currentTarget.style.borderColor = '#FF5E62';
+                                                            e.currentTarget.style.color = '#fff';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (!isSelected) {
+                                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                                            e.currentTarget.style.borderColor = '#6c757d';
+                                                            e.currentTarget.style.color = '#495057';
+                                                        }
                                                     }}
                                                     onClick={() => handleCategoryToggle(category.id)}
                                                 >

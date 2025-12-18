@@ -19,7 +19,6 @@ export const CartApiService = {
     getCartCount: async (): Promise<CartCountDTO> => {
         try {
             const response = await axiosInstance.get(`${CART_API}/count`);
-            console.log('✅ Cart API Response:', response.data);
 
             // ⭐ Kiểm tra response structure
             if (response.data.data) {

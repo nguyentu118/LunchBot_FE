@@ -248,7 +248,7 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // ✅ PLACE ORDER: GỬI CHỈ CÁC DISH ID ĐÃ CHỌN
+    // ✅ PLACE ORDER VỚI CUSTOM TOAST CONFIRM
     const handlePlaceOrder = async () => {
         if (!selectedAddressId) {
             toast.error('Vui lòng chọn địa chỉ giao hàng');
@@ -260,11 +260,50 @@ const CheckoutPage: React.FC = () => {
             return;
         }
 
-        if (!window.confirm('Xác nhận đặt hàng?')) {
+        if (notes.length > 500) {
+            toast.error('Ghi chú không được vượt quá 500 ký tự');
             return;
         }
 
+        // ✅ CUSTOM CONFIRM với toast
+        const confirmOrder = () => new Promise((resolve, reject) => {
+            toast((t) => (
+                <div className="d-flex flex-column gap-2">
+                    <div className="fw-bold">Xác nhận đặt hàng?</div>
+                    <div className="text-muted small">
+                        Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận
+                    </div>
+                    <div className="d-flex gap-2 mt-2">
+                        <button
+                            className="btn btn-danger btn-sm flex-grow-1"
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                resolve(true);
+                            }}
+                        >
+                            Xác nhận
+                        </button>
+                        <button
+                            className="btn btn-outline-secondary btn-sm flex-grow-1"
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                reject(new Error('Đã hủy'));
+                            }}
+                        >
+                            Hủy
+                        </button>
+                    </div>
+                </div>
+            ), {
+                duration: Infinity, // Không tự động đóng
+                position: 'top-center',
+            });
+        });
+
         try {
+            // Đợi user confirm
+            await confirmOrder();
+
             setIsProcessing(true);
 
             // ✅ GỬI dishIds ĐÃ CHỌN LÊN BACKEND
@@ -276,17 +315,21 @@ const CheckoutPage: React.FC = () => {
                 notes: notes.trim() || undefined
             };
 
-            console.log('📦 Order payload:', orderData); // Debug
+            console.log('📦 Order payload:', orderData);
 
             const order = await orderService.createOrder(orderData);
 
-            toast.success('Đặt hàng thành công!');
+            toast.success('🎉 Đặt hàng thành công!');
 
             // ✅ Dispatch event để cập nhật cart count
             window.dispatchEvent(new Event('cartUpdated'));
 
             navigate(`/orders/${order.id}`);
+
         } catch (err: any) {
+            // Nếu user hủy, không hiện lỗi
+            if (err.message === 'Đã hủy') return;
+
             console.error('Error placing order:', err);
             const errorMsg = err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
             toast.error(errorMsg);
@@ -387,7 +430,19 @@ const CheckoutPage: React.FC = () => {
                                         placeholder="VD: Giao hàng trước 12h, không gọi chuông..."
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
+                                        maxLength={500}
+                                        isInvalid={notes.length > 500}
                                     />
+                                    <div className="d-flex justify-content-between align-items-center mt-2">
+                                        <small className={`${notes.length > 500 ? 'text-danger' : 'text-muted'}`}>
+                                            {notes.length}/500 ký tự
+                                        </small>
+                                        {notes.length > 500 && (
+                                            <small className="text-danger">
+                                                Vượt quá giới hạn {notes.length - 500} ký tự
+                                            </small>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Col>

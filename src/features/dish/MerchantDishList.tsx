@@ -11,6 +11,14 @@ interface Dish {
     price: string;
     image: string | null;
     images?: string[];
+    categoryIds?: number[];
+    priceNumber?: number;
+}
+
+interface SearchFilters {
+    keyword: string;
+    categoryId: string;
+    priceRange: string;
 }
 
 interface MerchantDishListProps {
@@ -20,6 +28,7 @@ interface MerchantDishListProps {
     onEdit?: (dish: Dish) => void;
     onDelete?: (dishId: number) => void;
     onDishDeleted?: () => void; // ✅ Prop này đã có trong interface
+    searchFilters: SearchFilters;
 }
 
 const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
@@ -28,6 +37,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     setSelectedDish,
                                                                     onEdit,
                                                                     onDishDeleted, // ✅ THÊM DÒNG NÀY - Nhận prop từ parent
+                                                                    searchFilters
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -68,7 +78,8 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         }
                     }
                 } catch (e) {
-                    toast.error('Lỗi parse dữ liệu. Vui lòng liên hệ developer để fix Backend.' + e);
+                    console.error('Parse error:', e);
+                    toast.error('Lỗi parse dữ liệu. Vui lòng liên hệ developer.');
                 }
             }
             else if (Array.isArray(response.data)) {
@@ -84,41 +95,44 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                 }
             }
 
+
             const fetchedDishes: Dish[] = dishesData.map((dish: any) => {
+                // Xử lý ảnh
                 let images: string[] = [];
                 if (dish.imagesUrls) {
                     try {
                         const parsed = JSON.parse(dish.imagesUrls);
                         images = Array.isArray(parsed) ? parsed : [];
                     } catch (e) {
-                        console.warn('Failed to parse imagesUrls for dish:', dish.id, e);
+                        console.warn('Failed to parse images for dish:', dish.id);
                     }
                 }
 
                 const formattedPrice = typeof dish.price === 'number'
                     ? dish.price.toLocaleString('vi-VN') + 'đ'
                     : (dish.price || '0') + 'đ';
+                // Xử lý giá
+                const priceNumber = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price) || 0;
+                const formattedPrice = priceNumber.toLocaleString('vi-VN') + 'đ';
 
                 return {
                     id: dish.id,
                     name: dish.name || 'Món ăn không tên',
                     description: dish.description || 'Chưa có mô tả.',
                     price: formattedPrice,
+                    priceNumber: priceNumber,
                     image: images.length > 0 ? images[0] : null,
                     images: images,
+                    // ✅ Backend ĐÃ TRẢ VỀ categoryIds
+                    categoryIds: dish.categoryIds || []
                 };
             });
 
             setDishes(fetchedDishes);
 
-            if (showToast && fetchedDishes.length > 0) {
-                toast.success(`Đã tải ${fetchedDishes.length} món ăn.`, { duration: 1500 });
-            } else if (showToast && fetchedDishes.length === 0) {
-                toast.error("Chưa có món ăn nào.", { duration: 1500 });
-            }
         } catch (error) {
             console.error("Lỗi tải danh sách món ăn:", error);
-            toast.error("Không thể tải danh sách món. Vui lòng kiểm tra kết nối hoặc đăng nhập.");
+            toast.error("Không thể tải danh sách món. Vui lòng kiểm tra kết nối.");
             setDishes([]);
         } finally {
             setIsLoading(false);
@@ -136,17 +150,61 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         }
     }, [fetchMerchantDishes, onDishCreatedToggle]);
 
+    // 🔥 LỌC CLIENT-SIDE (Hoạt động sau khi Backend đã trả về categoryIds)
+    const filteredDishes = dishes.filter(dish => {
+        // 1️⃣ Lọc theo KEYWORD
+        if (searchFilters.keyword) {
+            const keyword = searchFilters.keyword.toLowerCase().trim();
+            const matchName = dish.name.toLowerCase().includes(keyword);
+            const matchDesc = dish.description.toLowerCase().includes(keyword);
+            if (!matchName && !matchDesc) {
+                return false;
+            }
+        }
+
+        // 2️⃣ Lọc theo CATEGORY
+        if (searchFilters.categoryId) {
+            const categoryId = Number(searchFilters.categoryId);
+
+            if (!dish.categoryIds || !Array.isArray(dish.categoryIds)) {
+                console.warn(`⚠️ Dish ${dish.id} has no categoryIds`);
+                return false;
+            }
+
+            if (!dish.categoryIds.includes(categoryId)) {
+                return false;
+            }
+        }
+
+        // 3️⃣ Lọc theo PRICE RANGE
+        if (searchFilters.priceRange) {
+            const [min, max] = searchFilters.priceRange.split('-').map(Number);
+            const price = dish.priceNumber || 0;
+            if (price < min || price > max) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+
     // 🔥 TÍNH TOÁN PHÂN TRANG
-    const totalPages = Math.ceil(dishes.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredDishes.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    const currentDishes = dishes.slice(startIndex, endIndex);
+    const currentDishes = filteredDishes.slice(startIndex, endIndex);
+
+    // Reset về trang 1 khi filter thay đổi
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchFilters]);
 
     useEffect(() => {
         if (currentPage > totalPages && totalPages > 0) {
             setCurrentPage(1);
         }
-    }, [dishes.length, currentPage, totalPages]);
+    }, [filteredDishes.length, currentPage, totalPages]);
 
     const goToPage = (page: number) => {
         if (page >= 1 && page <= totalPages) {
@@ -174,6 +232,8 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         setImageErrors(prev => new Set(prev).add(imageUrl));
     };
 
+    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
+
     if (isLoading) {
         return (
             <div className="bg-white rounded-4 p-4 shadow">
@@ -190,8 +250,17 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     return (
         <>
             <div className="bg-white rounded-4 p-4 shadow">
+                {hasActiveFilters && filteredDishes.length === 0 && (
+                    <div className="alert alert-info d-flex align-items-center" role="alert">
+                        <AlertCircle size={20} className="me-2" />
+                        <div>
+                            Không tìm thấy món ăn phù hợp với bộ lọc của bạn.
+                        </div>
+                    </div>
+                )}
+
                 <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-                    {currentDishes.length === 0 ? (
+                    {currentDishes.length === 0 && !hasActiveFilters ? (
                         <div className="col-12 text-center py-5">
                             <h4 className="text-muted">Chưa có món ăn nào.</h4>
                             <p className="text-secondary">Hãy bấm "Thêm món ăn" để bắt đầu.</p>
@@ -337,7 +406,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
 
                 {totalPages > 1 && (
                     <div className="text-center mt-3 text-muted small">
-                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, dishes.length)} của {dishes.length} món
+                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredDishes.length)} của {filteredDishes.length} món
                     </div>
                 )}
             </div>
