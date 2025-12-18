@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Button, ButtonGroup } from 'react-bootstrap';
-import { Plus, List, Grid } from 'lucide-react';
+import { List, Grid } from 'lucide-react';
 import CouponList from './CouponList';
 import AddCouponModal from './AddCouponModal';
 import toast from 'react-hot-toast';
@@ -26,11 +26,11 @@ const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
     }, [refreshTrigger]);
 
     const handleCouponCreated = () => {
-        // setShowAddModal(false);
-        // toast.success('Tạo mã giảm giá thành công!', {
-        //     icon: '🎉',
-        //     duration: 3000
-        // });
+        setShowAddModal(false);
+        toast.success('Tạo mã giảm giá thành công!', {
+            icon: '🎉',
+            duration: 3000
+        });
         // // Trigger refresh của CouponList
         setRefreshKey(prev => prev + 1);
     };

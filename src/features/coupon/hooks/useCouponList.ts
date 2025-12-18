@@ -52,16 +52,32 @@ export const useCouponList = ({ merchantId, onlyActive = false, autoFetch = true
         }
     };
 
+    const deleteCoupon = async (id: number) => {
+        try {
+            // ⭐ Backend sẽ tự lấy merchantId từ JWT token
+            await axiosInstance.delete(`/coupons/${id}`);
+            toast.success('Đã xóa mã giảm giá thành công');
+            await fetchCoupons(); // Tự động refresh sau khi xóa
+            return true;
+        } catch (err: any) {
+            toast.error(err.response?.data || 'Không thể xóa mã giảm giá');
+            return false;
+        }
+    };
+
+    // ✅ useEffect phải đặt TRƯỚC return
     useEffect(() => {
         if (autoFetch) {
             fetchCoupons();
         }
     }, [merchantId, onlyActive, autoFetch]);
 
+    // ✅ Return tất cả functions và states
     return {
         coupons,
         isLoading,
         error,
-        refetch: fetchCoupons
+        refetch: fetchCoupons,
+        deleteCoupon
     };
 };
