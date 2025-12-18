@@ -29,7 +29,6 @@ interface DishDetail {
     id: number;
     name: string;
     description: string;
-    address: string;
     price: number;
     discountPrice: number | null;
     preparationTime: number | null;

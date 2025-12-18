@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-import { Clock, Tag, X, Upload, Trash2, MapPin } from 'lucide-react';
+import { Clock, Tag, X, Upload, Trash2 } from 'lucide-react';
 import { AxiosError } from 'axios';
 import axiosInstance from "../../config/axiosConfig.ts";
 import useCategories from "../../features/category/useCategories.ts";
@@ -20,7 +20,6 @@ interface DishUpdateFormProps {
 interface DishFormData {
     name: string;
     merchantId: number;
-    address: string; // ✅ THÊM TRƯỜNG ĐỊA CHỈ
     imagesUrls: string;
     preparationTime: number | undefined;
     description: string;
@@ -46,7 +45,6 @@ interface DishDetailResponse extends Omit<DishFormData, 'categoryIds' | 'price' 
 const initialFormData: DishFormData = {
     name: '',
     merchantId: 0,
-    address: '', // ✅ THÊM DEFAULT
     imagesUrls: '',
     preparationTime: 15,
     description: '',
@@ -101,7 +99,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                 setFormData({
                     name: dishData.name,
                     merchantId: dishData.merchant.id,
-                    address: dishData.address || '', // ✅ LẤY ĐỊA CHỈ TỪ API
                     imagesUrls: dishData.imagesUrls || '',
                     preparationTime: dishData.preparationTime,
                     description: dishData.description || '',
@@ -111,8 +108,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                     categoryIds: new Set(dishData.categories.map(cat => cat.id)),
                     isRecommended: dishData.isRecommended
                 });
-
-                toast.success('Đã tải thông tin món ăn thành công!', { duration: 1500 });
 
             } catch (err) {
                 const axiosError = err as AxiosError;
@@ -274,9 +269,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
             errors.push("Tên món ăn");
         }
 
-        if (!formData.address.trim()) {
-            errors.push("Địa chỉ");
-        }
 
         if (previewUrls.length === 0) {
             errors.push("Ảnh món ăn");
@@ -306,7 +298,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
         const dataToSend = {
             name: formData.name,
             merchantId: formData.merchantId,
-            address: formData.address, // ✅ GỬI ĐỊA CHỈ
             imagesUrls: JSON.stringify(existingImageUrls),
             preparationTime: formData.preparationTime || 0,
             description: formData.description,
@@ -377,22 +368,6 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                         />
                     </div>
 
-                    {/* ✅ ĐỊA CHỈ (*) - TRƯỜNG MỚI */}
-                    <div className="mb-2">
-                        <label className="form-label fw-bold d-flex align-items-center">
-                            <MapPin size={16} className="me-1" /> Địa Chỉ <span className="text-danger">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            name="address"
-                            value={formData.address}
-                            onChange={handleChange}
-                            required
-                            disabled={generalLoading}
-                            placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP.HCM"
-                        />
-                    </div>
 
                     {/* ✅ GHI CHÚ (MÔ TẢ) */}
                     <div className="mb-2">
@@ -642,13 +617,28 @@ const DishUpdateForm: React.FC<DishUpdateFormProps> = ({ dishId, onSuccess, onCa
                                             key={cat.id}
                                             type="button"
                                             className={`btn btn-sm fw-bold rounded-pill shadow-sm d-flex align-items-center ${
-                                                isSelected ? 'text-white' : 'btn-outline-secondary'
+                                                isSelected ? '' : 'btn-outline-secondary'
                                             }`}
                                             style={{
                                                 backgroundColor: isSelected ? '#dc3545' : 'transparent',
-                                                borderColor: isSelected ? '#dc3545' : '',
-                                                transition: 'background-color 0.2s',
+                                                borderColor: isSelected ? '#dc3545' : '#6c757d',
+                                                color: isSelected ? '#fff' : '#495057',
+                                                transition: 'all 0.2s',
                                                 cursor: 'pointer',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.backgroundColor = '#FF5E62';
+                                                    e.currentTarget.style.borderColor = '#FF5E62';
+                                                    e.currentTarget.style.color = '#fff';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.borderColor = '#6c757d';
+                                                    e.currentTarget.style.color = '#495057';
+                                                }
                                             }}
                                             onClick={() => handleCategoryToggle(cat.id)}
                                             disabled={generalLoading}

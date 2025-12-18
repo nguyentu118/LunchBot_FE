@@ -12,7 +12,6 @@ export const UserApiService = {
     getMeInfo: async (): Promise<UserMeDTO> => {
         try {
             const response = await axiosInstance.get(`${USER_API}/me`);
-            console.log('✅ API Response:', response.data);
 
             // ⭐ Kiểm tra response structure
             // Nếu backend trả về { data: { fullName: "..." } }
