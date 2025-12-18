@@ -3,7 +3,7 @@
 export enum OrderStatus {
     PENDING = 'PENDING',           // Chờ xác nhận
     CONFIRMED = 'CONFIRMED',       // Đã xác nhận
-    PREPARING = 'PREPARING',       // Đang chuẩn bị
+    PROCESSING = 'PROCESSING',       // Đang chuẩn bị
     READY = 'READY',              // Sẵn sàng giao
     DELIVERING = 'DELIVERING',     // Đang giao
     COMPLETED = 'COMPLETED',       // Hoàn thành
@@ -109,7 +109,7 @@ export const ORDER_STATUS_CONFIG = {
         variant: 'info',
         color: '#17a2b8'
     },
-    [OrderStatus.PREPARING]: {
+    [OrderStatus.PROCESSING]: {
         label: 'Đang chuẩn bị',
         variant: 'primary',
         color: '#007bff'
