@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Button, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Container, Button, Badge, Spinner} from 'react-bootstrap';
 import toast from 'react-hot-toast';
 import {
     ArrowLeft, Eye, Clock, ShoppingCart, CreditCard,
-    ChevronLeft, ChevronRight, Store
+    ChevronLeft, ChevronRight, Store, AlertCircle
 } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig";
 import Navigation from "../../components/layout/Navigation";
@@ -85,7 +85,6 @@ const DishDetailPage: React.FC = () => {
         try {
             const response = await axiosInstance.get<DishDetail>(`/dishes/${dishId}`);
 
-            // ✅ CHECK nếu không có data
             if (!response.data || !response.data.id) {
                 navigate('/not-found', { replace: true });
                 return;
@@ -96,14 +95,24 @@ const DishDetailPage: React.FC = () => {
         } catch (err: any) {
             console.error('Error fetching dish:', err);
 
-            // ✅ CHECK status code 404
             if (err.response?.status === 404) {
-                navigate('/not-found', { replace: true });
+                // ✅ THÊM: Hiển thị thông báo cụ thể
+                const errorMsg = err.response?.data?.error || 'Món ăn không tồn tại hoặc không còn khả dụng';
+
+                setError(errorMsg);
+                setLoading(false);
+
+                // Hiển thị toast thông báo
+                toast.error(errorMsg, { duration: 4000 });
+
+                // Sau 2s redirect về trang chủ
+                setTimeout(() => {
+                    navigate('/', { replace: true });
+                }, 2000);
             } else {
                 setError('Không thể tải thông tin món ăn');
+                setLoading(false);
             }
-
-            setLoading(false);
         }
     };
 
@@ -182,10 +191,29 @@ const DishDetailPage: React.FC = () => {
 
     if (error || !dish) {
         return (
-            <Container className="py-5 text-center">
-                <Alert variant="danger">{error || 'Không tìm thấy món ăn'}</Alert>
-                <Button variant="secondary" onClick={() => navigate(-1)}>Quay lại</Button>
-            </Container>
+            <div className="min-vh-100 bg-light">
+                <Navigation />
+                <Container className="py-5">
+                    <div className="text-center">
+                        <div className="mb-4">
+                            <AlertCircle size={80} className="text-danger opacity-50" />
+                        </div>
+                        <h3 className="text-danger mb-3">{error || 'Không tìm thấy món ăn'}</h3>
+                        <p className="text-muted mb-4">
+                            Món ăn này có thể đã bị xóa hoặc không còn khả dụng
+                        </p>
+                        <div className="d-flex gap-2 justify-content-center">
+                            <Button variant="outline-secondary" onClick={() => navigate(-1)}>
+                                <ArrowLeft size={16} className="me-2" />
+                                Quay lại
+                            </Button>
+                            <Button variant="danger" onClick={() => navigate('/')}>
+                                Về trang chủ
+                            </Button>
+                        </div>
+                    </div>
+                </Container>
+            </div>
         );
     }
 

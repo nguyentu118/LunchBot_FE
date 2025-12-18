@@ -449,44 +449,46 @@ const CheckoutPage: React.FC = () => {
 
                         {/* Right Column - Order Summary */}
                         <Col lg={4}>
-                            <OrderSummary
-                                merchantName={checkoutData.merchantName}
-                                merchantAddress={checkoutData.merchantAddress}
-                                items={checkoutData.items}
-                                totalItems={checkoutData.totalItems}
-                                itemsTotal={checkoutData.itemsTotal}
-                                discountAmount={checkoutData.discountAmount}
-                                serviceFee={checkoutData.serviceFee}
-                                shippingFee={checkoutData.shippingFee}
-                                totalAmount={checkoutData.totalAmount}
-                                appliedCouponCode={checkoutData.appliedCouponCode}
-                            />
+                            <div className="sticky-top" style={{ top: '20px', zIndex: 10 }}>
+                                <OrderSummary
+                                    merchantName={checkoutData.merchantName}
+                                    merchantAddress={checkoutData.merchantAddress}
+                                    items={checkoutData.items}
+                                    totalItems={checkoutData.totalItems}
+                                    itemsTotal={checkoutData.itemsTotal}
+                                    discountAmount={checkoutData.discountAmount}
+                                    serviceFee={checkoutData.serviceFee}
+                                    shippingFee={checkoutData.shippingFee}
+                                    totalAmount={checkoutData.totalAmount}
+                                    appliedCouponCode={checkoutData.appliedCouponCode}
+                                />
 
-                            {/* Place Order Button */}
-                            <Button
-                                variant="danger"
-                                size="lg"
-                                className="w-100 mt-3 fw-bold"
-                                onClick={handlePlaceOrder}
-                                disabled={isProcessing || !selectedAddressId}
-                            >
-                                {isProcessing ? (
-                                    <>
-                                        <Spinner
-                                            as="span"
-                                            animation="border"
-                                            size="sm"
-                                            className="me-2"
-                                        />
-                                        Đang xử lý...
-                                    </>
-                                ) : (
-                                    <>
-                                        <ShoppingCart size={20} className="me-2" />
-                                        Đặt hàng
-                                    </>
-                                )}
-                            </Button>
+                                {/* Place Order Button */}
+                                <Button
+                                    variant="danger"
+                                    size="lg"
+                                    className="w-100 mt-3 fw-bold"
+                                    onClick={handlePlaceOrder}
+                                    disabled={isProcessing || !selectedAddressId}
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <Spinner
+                                                as="span"
+                                                animation="border"
+                                                size="sm"
+                                                className="me-2"
+                                            />
+                                            Đang xử lý...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ShoppingCart size={20} className="me-2" />
+                                            Đặt hàng
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </Col>
                     </Row>
                 )}

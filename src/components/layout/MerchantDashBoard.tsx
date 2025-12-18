@@ -478,6 +478,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     selectedDish={selectedDish}
                                     setSelectedDish={setSelectedDish}
                                     onEdit={handleEditDish}
+                                    onDishDeleted={() => {
+                                        console.log('🔥 onDishDeleted được gọi!'); // Debug log
+                                        setDishCreatedToggle(prev => !prev)
+                                    }}
                                     searchFilters={searchFilters}
                                 />
                             )}

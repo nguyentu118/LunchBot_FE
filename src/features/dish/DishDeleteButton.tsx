@@ -12,6 +12,11 @@ interface DishDeleteButtonProps {
     className?: string;
 }
 
+interface ErrorResponse {
+    error?: string;
+    message?: string;
+}
+
 const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
                                                                dishId,
                                                                dishName,
@@ -39,14 +44,30 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
             }
 
         } catch (err) {
-            const axiosError = err as AxiosError;
-            const message = (axiosError.response?.data as any)?.message ||
-                (axiosError.response?.data as string) ||
-                axiosError.message;
+            console.error("Lỗi khi xóa món ăn:", err);
 
-            toast.error(`Xóa thất bại: ${message}`, {
-                duration: 5000,
-                icon: '❌'
+            // Ép kiểu lỗi sang AxiosError để lấy data từ response
+            const error = err as AxiosError<ErrorResponse>;
+
+            // Lấy thông báo lỗi từ Backend (trường "error" mà ta đã map trong Controller)
+            const serverErrorMessage = error.response?.data?.error;
+
+            // Fallback: Nếu không có message từ server thì dùng message mặc định
+            const displayMessage = serverErrorMessage || "Không thể xóa món ăn này. Vui lòng thử lại.";
+
+            // Hiển thị Toast Lỗi
+            toast.error(displayMessage, {
+                duration: 5000, // Hiện lâu hơn chút để user kịp đọc
+                style: {
+                    border: '1px solid #ff4b4b',
+                    padding: '16px',
+                    color: '#333',
+                    minWidth: '300px'
+                },
+                iconTheme: {
+                    primary: '#ff4b4b',
+                    secondary: '#FFFAEE',
+                },
             });
 
         } finally {

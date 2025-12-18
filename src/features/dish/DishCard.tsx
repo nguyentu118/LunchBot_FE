@@ -45,7 +45,7 @@ const DishCard: React.FC<DishCardProps> = ({
             await addToCart(dish.id, 1);
         }
     };
-
+    console.log('Dish merchantName:', dish.merchantName);
     return (
         <div
             className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden"
@@ -97,8 +97,17 @@ const DishCard: React.FC<DishCardProps> = ({
 
                 <div className="d-flex align-items-center mb-2">
                     <Store size={14} className="text-muted me-1 flex-shrink-0" />
-                    <small className="text-muted text-truncate">
-                        {dish.merchantName}
+                    <small
+                        className="text-muted"
+                        style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: '0.875rem' // 14px
+                        }}
+                        title={dish.merchantName || 'Chưa có thông tin'}
+                    >
+                        {dish.merchantName || 'Cửa hàng'}
                     </small>
                 </div>
 

@@ -27,6 +27,7 @@ interface MerchantDishListProps {
     setSelectedDish: (dish: Dish | null) => void;
     onEdit?: (dish: Dish) => void;
     onDelete?: (dishId: number) => void;
+    onDishDeleted?: () => void; // ✅ Prop này đã có trong interface
     searchFilters: SearchFilters;
 }
 
@@ -35,6 +36,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     selectedDish,
                                                                     setSelectedDish,
                                                                     onEdit,
+                                                                    onDishDeleted, // ✅ THÊM DÒNG NÀY - Nhận prop từ parent
                                                                     searchFilters
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
@@ -106,6 +108,9 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     }
                 }
 
+                const formattedPrice = typeof dish.price === 'number'
+                    ? dish.price.toLocaleString('vi-VN') + 'đ'
+                    : (dish.price || '0') + 'đ';
                 // Xử lý giá
                 const priceNumber = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price) || 0;
                 const formattedPrice = priceNumber.toLocaleString('vi-VN') + 'đ';
@@ -195,7 +200,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         setCurrentPage(1);
     }, [searchFilters]);
 
-    // Reset về trang 1 khi dishes thay đổi
     useEffect(() => {
         if (currentPage > totalPages && totalPages > 0) {
             setCurrentPage(1);
@@ -353,7 +357,9 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 dishName={dish.name}
                                                 className="btn-sm flex-fill"
                                                 onDeleteSuccess={() => {
-                                                    fetchMerchantDishes();
+                                                    // ✅ SỬA LẠI: Gọi CẢ 2 hàm
+                                                    fetchMerchantDishes(false); // Refresh list (không toast)
+                                                    onDishDeleted?.(); // Thông báo cho parent để cập nhật stats
                                                 }}
                                             />
                                         </div>
@@ -398,7 +404,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     </div>
                 )}
 
-                {/* Hiển thị thông tin trang */}
                 {totalPages > 1 && (
                     <div className="text-center mt-3 text-muted small">
                         Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredDishes.length)} của {filteredDishes.length} món
