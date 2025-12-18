@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Container, Row, Col, Spinner, Alert, Button } from 'react-bootstrap';
+import { Row, Col, Spinner, Alert, Button } from 'react-bootstrap';
 import { RefreshCw, Ticket, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCouponList } from '../hooks/useCouponList';
@@ -22,11 +22,13 @@ const CouponList: React.FC<CouponListProps> = ({
                                                    brandColor = '#FF5E62',
                                                    emptyMessage = 'Chưa có mã giảm giá nào'
                                                }) => {
-    const { coupons, isLoading, error, refetch } = useCouponList({
+    const { coupons:rawData , isLoading, error, refetch } = useCouponList({
         merchantId,
-        onlyActive,
+        onlyActive ,
         autoFetch: true
     });
+
+    const coupons = Array.isArray(rawData) ? rawData : [];
 
     // 1. Tạo Ref để tham chiếu đến vùng chứa danh sách (scroll container)
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -124,13 +126,14 @@ const CouponList: React.FC<CouponListProps> = ({
                         }}
                         className="hide-scrollbar" // Class tùy chỉnh nếu muốn ẩn thanh cuộn trên Chrome/Safari
                     >
+
                         {/* Thêm flex-nowrap để các cột không bị xuống dòng */}
                         <Row className="g-3 flex-nowrap">
                             {coupons.map((coupon) => (
                                 <Col
                                     key={coupon.id}
-                                    xs={10} sm={6} lg={4} xl={3} // Điều chỉnh kích thước cột
-                                    style={{ flex: '0 0 auto' }} // Quan trọng: Giữ cố định kích thước, không co lại
+                                    xs={10} sm={6} lg={4} xl={3}
+                                    style={{ flex: '0 0 auto' }}
                                 >
                                     <CouponCard
                                         coupon={coupon}

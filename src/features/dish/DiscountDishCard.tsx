@@ -126,7 +126,7 @@ const DiscountDishCard: React.FC<DiscountDishCardProps> = ({ dish }) => {
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <div className="small text-muted d-flex align-items-center">
                         <Clock size={14} className="me-1 text-success" />
-                        Thời gian: <strong className="ms-1">{dish.preparationTime} phút</strong>
+                        Thời gian: <strong className="ms-1">{dish.preparationTime || "15-20"} phút</strong>
                     </div>
                     <button
                         onClick={handleAddToCart}

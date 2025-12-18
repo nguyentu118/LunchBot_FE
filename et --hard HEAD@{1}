@@ -1,0 +1,38 @@
+[33m9b98813[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/fix-cart[m[33m)[m HEAD@{0}: commit (merge): Merge branch 'dev' of https://github.com/Ducnguyn97/LunchBot_FE into feature/fix-cart
+[33mdc427b7[m HEAD@{1}: commit: change code
+[33ma14edd4[m HEAD@{2}: commit (merge): Merge branch 'dev' of https://github.com/Ducnguyn97/LunchBot_FE into feature/fix-cart
+[33m8b5007f[m HEAD@{3}: commit: commit
+[33m65f31ac[m[33m ([m[1;31morigin/feature/fix-cart[m[33m, [m[1;32mfeature/coupon[m[33m)[m HEAD@{4}: checkout: moving from feature/coupon to feature/fix-cart
+[33m65f31ac[m[33m ([m[1;31morigin/feature/fix-cart[m[33m, [m[1;32mfeature/coupon[m[33m)[m HEAD@{5}: commit: sua gio hang
+[33m6e8b9e2[m HEAD@{6}: pull origin dev: Fast-forward
+[33mfb20775[m[33m ([m[1;31morigin/feature/coupon[m[33m, [m[1;32mfeature/cart[m[33m)[m HEAD@{7}: checkout: moving from feature/cart to feature/coupon
+[33mfb20775[m[33m ([m[1;31morigin/feature/coupon[m[33m, [m[1;32mfeature/cart[m[33m)[m HEAD@{8}: commit: chuc nang coupon
+[33m2136533[m[33m ([m[1;31morigin/feature/cart[m[33m, [m[1;32mfeature/fix-code[m[33m)[m HEAD@{9}: checkout: moving from feature/fix-code to feature/cart
+[33m2136533[m[33m ([m[1;31morigin/feature/cart[m[33m, [m[1;32mfeature/fix-code[m[33m)[m HEAD@{10}: commit: code chuc nang cart
+[33m566ae08[m[33m ([m[1;31morigin/feature/fix-code[m[33m, [m[1;32mfeature/dish-detail[m[33m)[m HEAD@{11}: checkout: moving from feature/dish-detail to feature/fix-code
+[33m566ae08[m[33m ([m[1;31morigin/feature/fix-code[m[33m, [m[1;32mfeature/dish-detail[m[33m)[m HEAD@{12}: commit: fix code
+[33meb70cfd[m HEAD@{13}: pull origin dev: Fast-forward
+[33ma4ddd79[m[33m ([m[1;31morigin/feature/dish-detail[m[33m, [m[1;32mfeature/update[m[33m)[m HEAD@{14}: checkout: moving from feature/update to feature/dish-detail
+[33ma4ddd79[m[33m ([m[1;31morigin/feature/dish-detail[m[33m, [m[1;32mfeature/update[m[33m)[m HEAD@{15}: commit: done dish detai
+[33m5382789[m HEAD@{16}: pull origin dev: Fast-forward
+[33m03cb423[m[33m ([m[1;31morigin/feature/update[m[33m, [m[1;32mfeature/fix[m[33m)[m HEAD@{17}: checkout: moving from feature/fix to feature/update
+[33m03cb423[m[33m ([m[1;31morigin/feature/update[m[33m, [m[1;32mfeature/fix[m[33m)[m HEAD@{18}: commit: commit function update dish
+[33mea1da1b[m HEAD@{19}: pull origin dev: Fast-forward
+[33mbfb91a5[m[33m ([m[1;31morigin/feature/fix[m[33m)[m HEAD@{20}: commit: sua form them va cap nhat
+[33m9af78ef[m HEAD@{21}: commit: fix code
+[33mf0cd43c[m[33m ([m[1;32mfeature/CRUD[m[33m)[m HEAD@{22}: checkout: moving from feature/CRUD to feature/fix
+[33mf0cd43c[m[33m ([m[1;32mfeature/CRUD[m[33m)[m HEAD@{23}: commit (merge): Merge branch 'dev' of https://github.com/Ducnguyn97/LunchBot_FE into feature/CRUD
+[33m37df3a4[m[33m ([m[1;31morigin/feature/CRUD[m[33m, [m[1;32mfeature/feedback[m[33m)[m HEAD@{24}: checkout: moving from feature/feedback to feature/CRUD
+[33m37df3a4[m[33m ([m[1;31morigin/feature/CRUD[m[33m, [m[1;32mfeature/feedback[m[33m)[m HEAD@{25}: commit: hoan thanh fe cho CRUD
+[33m63b4f05[m HEAD@{26}: pull origin dev: Fast-forward
+[33m5d41d6b[m[33m ([m[1;31morigin/feature/feedback[m[33m, [m[1;32mfeature/sprint1[m[33m)[m HEAD@{27}: checkout: moving from feature/sprint1 to feature/feedback
+[33m5d41d6b[m[33m ([m[1;31morigin/feature/feedback[m[33m, [m[1;32mfeature/sprint1[m[33m)[m HEAD@{28}: commit: hoan thanh feed back
+[33md8b122c[m[33m ([m[1;31morigin/feature/sprint1[m[33m, [m[1;32mfeature/fixcode[m[33m)[m HEAD@{29}: checkout: moving from feature/fixcode to feature/sprint1
+[33md8b122c[m[33m ([m[1;31morigin/feature/sprint1[m[33m, [m[1;32mfeature/fixcode[m[33m)[m HEAD@{30}: commit: hoan thanh fe sprint1
+[33m1de0f13[m[33m ([m[1;31morigin/feature/fixcode[m[33m, [m[1;32mfeature/login[m[33m)[m HEAD@{31}: checkout: moving from feature/login to feature/fixcode
+[33m1de0f13[m[33m ([m[1;31morigin/feature/fixcode[m[33m, [m[1;32mfeature/login[m[33m)[m HEAD@{32}: commit: fix code
+[33m71d69b0[m[33m ([m[1;31morigin/feature/login[m[33m)[m HEAD@{33}: commit: fix bug
+[33mac36abb[m HEAD@{34}: commit: fix bug
+[33m3d8caec[m[33m ([m[1;32mdev[m[33m)[m HEAD@{35}: checkout: moving from dev to feature/login
+[33m3d8caec[m[33m ([m[1;32mdev[m[33m)[m HEAD@{36}: commit: code login/register
+[33mcd24c3a[m HEAD@{37}: clone: from https://github.com/Ducnguyn97/LunchBot_FE.git

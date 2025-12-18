@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Card, Alert, Spinner, Badge, Modal, Form } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
+import {useParams, useNavigate, Navigate} from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone, Store, Calendar, CreditCard, FileText, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -100,19 +100,7 @@ const OrderDetailPage: React.FC = () => {
 
     // Error state
     if (error || !order) {
-        return (
-            <div className="min-vh-100 d-flex align-items-center justify-content-center">
-                <Container>
-                    <Alert variant="danger" className="text-center">
-                        <h5>Không tìm thấy đơn hàng</h5>
-                        <p>{error}</p>
-                        <Button variant="primary" onClick={() => navigate('/orders')}>
-                            Về danh sách đơn hàng
-                        </Button>
-                    </Alert>
-                </Container>
-            </div>
-        );
+        return <Navigate to="/order-notfound" replace />;
     }
 
     return (

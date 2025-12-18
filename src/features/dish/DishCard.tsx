@@ -105,7 +105,7 @@ const DishCard: React.FC<DishCardProps> = ({
                 <div className="d-flex align-items-center mb-3">
                     <Clock size={14} className="text-success me-1" />
                     <small className="text-muted">
-                        {dish.preparationTime || 15} phút
+                        {dish.preparationTime || "15-20"} phút
                     </small>
                 </div>
 
