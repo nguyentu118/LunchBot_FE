@@ -19,3 +19,24 @@ export interface MerchantApiResponse {
     data: PopularMerchantDto[];
     message?: string;
 }
+// 1. Định nghĩa Interface dữ liệu (Khớp với DTO Backend)
+export interface OrderResponse {
+    id: number;
+    orderNumber: string;
+    customerName: string;
+    orderDate: string;
+    totalAmount: number;
+    status: string;
+    paymentStatus: string;
+}
+
+export interface RevenueStatisticsResponse {
+    totalRevenue: number;
+    totalOrders: number;
+    orders: {
+        content: OrderResponse[];
+        totalPages: number;
+        totalElements: number;
+        number: number; // trang hiện tại
+    };
+}
