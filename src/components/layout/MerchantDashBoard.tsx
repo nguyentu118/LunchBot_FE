@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {Plus, List, Grid, Search, X, ClipboardList} from 'lucide-react';
+import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3} from 'lucide-react';
 import {Modal} from "react-bootstrap";
 import toast from "react-hot-toast";
 import {AxiosResponse, AxiosError} from 'axios';
@@ -16,6 +16,8 @@ import MerchantOrderManager from "../../features/merchants/MerchantOrderManager"
 import useCategories from "../../features/category/useCategories.ts";
 import axiosInstance from "../../config/axiosConfig.ts";
 import OrderStatisticsCard from "../../features/merchants/OrderStatisticsCard.tsx";
+import RevenueStatistics from "../../features/merchants/RevenueStatistics.tsx";
+import OrderByDish from "../../features/order/components/OrderByDish.tsx";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -134,7 +136,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
 
     // View State
-    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'>('dishes');
+    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'|'statistics'|'orderByDish'>('dishes');
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -370,6 +372,21 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     onClick: () => {
                     }
                 };
+            case 'statistics':
+                return {
+                    subTitle: 'Thống kê doanh thu',
+                    btnText: '',
+                    showButton: false, // Ẩn nút thêm mới
+                    onClick: () => {
+                    }
+                };
+            case 'orderByDish':
+                return {
+                    subTitle: 'Thống kê đơn hàng theo món ăn',
+                    btnText: '',
+                    showButton: false,
+                    onClick: () => {}
+                };
             default:
                 return {
                     subTitle: '', btnText: '', showButton: false, onClick: () => {
@@ -421,119 +438,114 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 </div>
 
                 {/* SEARCH & FILTER BAR */}
-                <div className="row mb-3">
-                    <div className="col-12">
-                        <div className="bg-white rounded-3 p-3 shadow-sm">
-                            <div className="row g-3">
-                                {/* 1. Ô TÌM KIẾM CHUNG (KEYWORD) */}
-                                <div className="col-md-6">
-                                    <label className="form-label small fw-semibold text-muted mb-1">
-                                        {activeView === 'orders' ? 'Tìm đơn hàng' : 'Tìm kiếm theo tên'}
-                                    </label>
-                                    <div className="input-group">
-                        <span className="input-group-text bg-white border-end-0">
-                            <Search size={18} className="text-muted"/>
-                        </span>
-                                        <input
-                                            type="text"
-                                            className="form-control border-start-0 ps-0"
-                                            placeholder={
-                                                activeView === 'dishes' ? 'Nhập tên món ăn...' :
-                                                    activeView === 'orders' ? 'Mã đơn, tên khách...' : // Placeholder cho Orders
-                                                        'Nhập tên mã giảm giá...'
-                                            }
-                                            value={searchFilters.keyword}
-                                            onChange={(e) => handleSearchChange('keyword', e.target.value)}
-                                        />
-                                        {searchFilters.keyword && (
-                                            <button
-                                                className="btn btn-outline-secondary border-start-0"
-                                                type="button"
-                                                onClick={() => handleSearchChange('keyword', '')}
-                                            >
-                                                <X size={18}/>
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* 2. BỘ LỌC CHO MÓN ĂN (DISHES) */}
-                                {activeView === 'dishes' && (
-                                    <>
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Danh
-                                                mục</label>
-                                            <select
-                                                className="form-select"
-                                                value={searchFilters.categoryId}
-                                                onChange={(e) => handleSearchChange('categoryId', e.target.value)}
-                                            >
-                                                <option value="">Tất cả danh mục</option>
-                                                {categories.map((cat: any) => (
-                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Khoảng
-                                                giá</label>
-                                            <select
-                                                className="form-select"
-                                                value={searchFilters.priceRange}
-                                                onChange={(e) => handleSearchChange('priceRange', e.target.value)}
-                                            >
-                                                <option value="">Tất cả</option>
-                                                <option value="0-50000">Dưới 50k</option>
-                                                <option value="50000-100000">50k - 100k</option>
-                                                <option value="100000-200000">100k - 200k</option>
-                                                <option value="200000-999999999">Trên 200k</option>
-                                            </select>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* 3. BỘ LỌC CHO ĐƠN HÀNG (ORDERS) - PHẦN BẠN CẦN */}
-                                {activeView === 'orders' && (
-                                    <>
-                                        {/* Lọc theo Trạng thái */}
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Trạng
-                                                thái</label>
-                                            <select
-                                                className="form-select"
-                                                value={searchFilters.status}
-                                                onChange={(e) => handleSearchChange('status', e.target.value)}
-                                            >
-                                                <option value="">Tất cả trạng thái</option>
-                                                <option value="PENDING">Chờ xác nhận</option>
-                                                <option value="PROCESSING">Đang chế biến</option>
-                                                <option value="READY">Đã xong món</option>
-                                                <option value="DELIVERING">Đang giao</option>
-                                                <option value="COMPLETED">Hoàn thành</option>
-                                                <option value="CANCELLED">Đã hủy</option>
-                                            </select>
-                                        </div>
-
-                                        {/* Lọc theo Ngày */}
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Ngày
-                                                đặt</label>
+                {activeView !== 'statistics' && (
+                    <div className="row mb-3">
+                        <div className="col-12">
+                            <div className="bg-white rounded-3 p-3 shadow-sm">
+                                <div className="row g-3">
+                                    {/* KEYWORD SEARCH */}
+                                    <div className="col-md-6">
+                                        <label className="form-label small fw-semibold text-muted mb-1">
+                                            {activeView === 'orders' ? 'Tìm đơn hàng' : 'Tìm kiếm theo tên'}
+                                        </label>
+                                        <div className="input-group">
+                                            <span className="input-group-text bg-white border-end-0">
+                                                <Search size={18} className="text-muted"/>
+                                            </span>
                                             <input
-                                                type="date"
-                                                className="form-control"
-                                                value={searchFilters.date}
-                                                onChange={(e) => handleSearchChange('date', e.target.value)}
+                                                type="text"
+                                                className="form-control border-start-0 ps-0"
+                                                placeholder={
+                                                    activeView === 'dishes' ? 'Nhập tên món ăn...' :
+                                                        activeView === 'orders' ? 'Mã đơn, tên khách...' :
+                                                            'Nhập tên mã giảm giá...'
+                                                }
+                                                value={searchFilters.keyword}
+                                                onChange={(e) => handleSearchChange('keyword', e.target.value)}
                                             />
+                                            {searchFilters.keyword && (
+                                                <button
+                                                    className="btn btn-outline-secondary border-start-0"
+                                                    type="button"
+                                                    onClick={() => handleSearchChange('keyword', '')}
+                                                >
+                                                    <X size={18}/>
+                                                </button>
+                                            )}
                                         </div>
-                                    </>
-                                )}
+                                    </div>
 
-                                {/* Placeholder cho Coupons (Giữ nguyên) */}
-                                {activeView === 'coupons' && <div className="col-md-6"></div>}
+                                    {/* DISHES FILTERS */}
+                                    {activeView === 'dishes' && (
+                                        <>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Danh mục</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.categoryId}
+                                                    onChange={(e) => handleSearchChange('categoryId', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả danh mục</option>
+                                                    {categories.map((cat: any) => (
+                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Khoảng giá</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.priceRange}
+                                                    onChange={(e) => handleSearchChange('priceRange', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả</option>
+                                                    <option value="0-50000">Dưới 50k</option>
+                                                    <option value="50000-100000">50k - 100k</option>
+                                                    <option value="100000-200000">100k - 200k</option>
+                                                    <option value="200000-999999999">Trên 200k</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* ORDERS FILTERS */}
+                                    {activeView === 'orders' && (
+                                        <>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Trạng thái</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.status}
+                                                    onChange={(e) => handleSearchChange('status', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả trạng thái</option>
+                                                    <option value="PENDING">Chờ xác nhận</option>
+                                                    <option value="PROCESSING">Đang chế biến</option>
+                                                    <option value="READY">Đã xong món</option>
+                                                    <option value="DELIVERING">Đang giao</option>
+                                                    <option value="COMPLETED">Hoàn thành</option>
+                                                    <option value="CANCELLED">Đã hủy</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Ngày đặt</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control"
+                                                    value={searchFilters.date}
+                                                    onChange={(e) => handleSearchChange('date', e.target.value)}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {activeView === 'coupons' && <div className="col-md-6"></div>}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
+
 
                 <div className="row g-3">
                     <div className="col-lg-3">
@@ -547,6 +559,18 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 <SidebarButton icon={ClipboardList} text="Quản lý đơn hàng"
                                                onClick={() => setActiveView('orders')}
                                                isActive={activeView === 'orders'}/>
+                                <SidebarButton
+                                    icon={TrendingUp}
+                                    text="Thống kê Doanh số"
+                                    onClick={() => setActiveView('statistics')}
+                                    isActive={activeView === 'statistics'}
+                                />
+                                <SidebarButton
+                                    icon={BarChart3}
+                                    text="Thống kê theo món"
+                                    onClick={() => setActiveView('orderByDish')}
+                                    isActive={activeView === 'orderByDish'}
+                                />
                             </div>
                         </div>
 
@@ -613,6 +637,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                         date: searchFilters.date || ''
                                     }}
                                 />
+                            )}
+                            {/* ✅ HIỂN THỊ REVENUE STATISTICS */}
+                            {activeView === 'statistics' && (
+                                <RevenueStatistics merchantId={currentMerchantId} />
+                            )}
+                            {activeView === 'orderByDish' && (
+                                <OrderByDish />
                             )}
                         </div>
                     </div>
