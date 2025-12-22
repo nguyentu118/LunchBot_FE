@@ -18,6 +18,9 @@ import CartPage from "../features/cart/CartPage.tsx";
 import CheckoutPage from "../features/checkout-card/components/CheckoutPage.tsx";
 import OrdersListPage from "../features/order/components/OrderListPage.tsx";
 import OrderDetailPage from "../features/order/components/OrderDetailPage.tsx";
+import DriverListPage from "../features/admin/driver/DriverListPage.tsx";
+import DriverList from "../features/admin/driver/components/DriverList.tsx";
+import DriverUpdateForm from "../features/admin/driver/components/DriverUpdateForm.tsx";
 
 
 const router = createBrowserRouter([
@@ -90,20 +93,20 @@ const router = createBrowserRouter([
             },
             // Các route admin khác
             {
-                path: 'users',
-                element: <div>User Management Page</div>,
+                path: 'drivers',
+                element: <DriverListPage/>,
             },
             {
-                path: 'drivers',
-                element: <div>Driver Management Page</div>,
+                path: 'drivers/:driverId',
+                element: <DriverList/>,
             },
             {
                 path: 'orders',
                 element: <div>Order Management Page</div>,
             },
             {
-                path: 'reports',
-                element: <div>Reports Page</div>,
+                path: 'drivers/update/:driverId',
+                element: <DriverUpdateForm/>,
             },
             {
                 path: 'settings',
