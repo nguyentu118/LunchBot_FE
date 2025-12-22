@@ -1,15 +1,16 @@
 // src/features/address/components/AddressForm.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, Row, Col, Alert } from 'react-bootstrap';
-import { MapPin, Save } from 'lucide-react';
-import { Address, AddressFormData } from '../types/address.types';
+import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
+import { MapPin, Save, AlertCircle } from 'lucide-react';
+import { Address, AddressFormData, GHNProvince, GHNDistrict, GHNWard } from '../types/address.types';
+import { ghnService } from '../services/ghnService';
 
 interface AddressFormProps {
     show: boolean;
     onHide: () => void;
     onSubmit: (data: AddressFormData) => Promise<void>;
-    address?: Address | null; // Nếu có address thì là edit, không thì là create
+    address?: Address | null;
     isLoading?: boolean;
 }
 
@@ -23,115 +24,186 @@ const AddressForm: React.FC<AddressFormProps> = ({
     const [formData, setFormData] = useState<AddressFormData>({
         contactName: '',
         phone: '',
-        province: 'Hà Nội',
+        province: '',
         district: '',
         ward: '',
         street: '',
         building: '',
-        isDefault: false
+        isDefault: false,
+        provinceId: undefined,
+        districtId: undefined,
+        wardCode: undefined
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof AddressFormData, string>>>({});
 
-    // Danh sách tỉnh/thành phố (có thể mở rộng)
-    const provinces = [
-        'Hà Nội',
-        'Hồ Chí Minh',
-        'Đà Nẵng',
-        'Hải Phòng',
-        'Cần Thơ',
-        'An Giang',
-        'Bà Rịa - Vũng Tàu',
-        'Bắc Giang',
-        'Bắc Kạn',
-        'Bạc Liêu',
-        'Bắc Ninh',
-        'Bến Tre',
-        'Bình Định',
-        'Bình Dương',
-        'Bình Phước',
-        'Bình Thuận',
-        'Cà Mau',
-        'Cao Bằng',
-        'Đắk Lắk',
-        'Đắk Nông',
-        'Điện Biên',
-        'Đồng Nai',
-        'Đồng Tháp',
-        'Gia Lai',
-        'Hà Giang',
-        'Hà Nam',
-        'Hà Tĩnh',
-        'Hải Dương',
-        'Hậu Giang',
-        'Hòa Bình',
-        'Hưng Yên',
-        'Khánh Hòa',
-        'Kiên Giang',
-        'Kon Tum',
-        'Lai Châu',
-        'Lâm Đồng',
-        'Lạng Sơn',
-        'Lào Cai',
-        'Long An',
-        'Nam Định',
-        'Nghệ An',
-        'Ninh Bình',
-        'Ninh Thuận',
-        'Phú Thọ',
-        'Phú Yên',
-        'Quảng Bình',
-        'Quảng Nam',
-        'Quảng Ngãi',
-        'Quảng Ninh',
-        'Quảng Trị',
-        'Sóc Trăng',
-        'Sơn La',
-        'Tây Ninh',
-        'Thái Bình',
-        'Thái Nguyên',
-        'Thanh Hóa',
-        'Thừa Thiên Huế',
-        'Tiền Giang',
-        'Trà Vinh',
-        'Tuyên Quang',
-        'Vĩnh Long',
-        'Vĩnh Phúc',
-        'Yên Bái'
-    ];
+    // ✅ GHN API states
+    const [provinces, setProvinces] = useState<GHNProvince[]>([]);
+    const [districts, setDistricts] = useState<GHNDistrict[]>([]);
+    const [wards, setWards] = useState<GHNWard[]>([]);
 
-    // Load address data khi edit
+    const [isLoadingProvinces, setIsLoadingProvinces] = useState(false);
+    const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
+    const [isLoadingWards, setIsLoadingWards] = useState(false);
+
+    // Load provinces khi modal open
     useEffect(() => {
-        if (address) {
-            setFormData({
-                contactName: address.contactName,
-                phone: address.phone,
-                province: address.province,
-                district: address.district,
-                ward: address.ward,
-                street: address.street,
-                building: address.building || '',
-                isDefault: address.isDefault
-            });
-        } else {
-            // Reset form khi tạo mới
-            setFormData({
-                contactName: '',
-                phone: '',
-                province: 'Hà Nội',
-                district: '',
-                ward: '',
-                street: '',
-                building: '',
-                isDefault: false
-            });
+        if (show) {
+            loadProvinces();
+
+            // Load address data khi edit
+            if (address) {
+                setFormData({
+                    contactName: address.contactName,
+                    phone: address.phone,
+                    province: address.province,
+                    district: address.district,
+                    ward: address.ward,
+                    street: address.street,
+                    building: address.building || '',
+                    isDefault: address.isDefault,
+                    provinceId: address.provinceId,
+                    districtId: address.districtId,
+                    wardCode: address.wardCode
+                });
+
+                // Load districts & wards nếu edit
+                if (address.provinceId) {
+                    loadDistricts(address.provinceId);
+                    if (address.districtId) {
+                        loadWards(address.districtId);
+                    }
+                }
+            } else {
+                // Reset form
+                setFormData({
+                    contactName: '',
+                    phone: '',
+                    province: '',
+                    district: '',
+                    ward: '',
+                    street: '',
+                    building: '',
+                    isDefault: false,
+                    provinceId: undefined,
+                    districtId: undefined,
+                    wardCode: undefined
+                });
+                setDistricts([]);
+                setWards([]);
+            }
+            setErrors({});
         }
-        setErrors({});
     }, [address, show]);
+
+    // ✅ Load provinces từ GHN
+    const loadProvinces = async () => {
+        try {
+            setIsLoadingProvinces(true);
+            const data = await ghnService.getProvinces();
+            setProvinces(data);
+        } catch (error) {
+            console.error('Error loading provinces:', error);
+            alert('Không thể tải danh sách tỉnh/thành phố');
+        } finally {
+            setIsLoadingProvinces(false);
+        }
+    };
+
+    // ✅ Load districts khi chọn province
+    const loadDistricts = async (provinceId: number) => {
+        try {
+            setIsLoadingDistricts(true);
+            setDistricts([]);
+            setWards([]);
+
+            const data = await ghnService.getDistrictsByProvince(provinceId);
+            setDistricts(data);
+        } catch (error) {
+            console.error('Error loading districts:', error);
+            alert('Không thể tải danh sách quận/huyện');
+        } finally {
+            setIsLoadingDistricts(false);
+        }
+    };
+
+    // ✅ Load wards khi chọn district
+    const loadWards = async (districtId: number) => {
+        try {
+            setIsLoadingWards(true);
+            setWards([]);
+
+            const data = await ghnService.getWardsByDistrict(districtId);
+            setWards(data);
+        } catch (error) {
+            console.error('Error loading wards:', error);
+            alert('Không thể tải danh sách phường/xã');
+        } finally {
+            setIsLoadingWards(false);
+        }
+    };
+
+    const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const provinceId = parseInt(e.target.value);
+        const selectedProvince = provinces.find(p => p.ProvinceID === provinceId);
+
+        setFormData(prev => ({
+            ...prev,
+            province: selectedProvince?.ProvinceName || '',
+            provinceId: provinceId,
+            district: '',
+            districtId: undefined,
+            ward: '',
+            wardCode: undefined
+        }));
+
+        if (selectedProvince) {
+            loadDistricts(provinceId);
+        }
+
+        if (errors.province) {
+            setErrors(prev => ({ ...prev, province: undefined }));
+        }
+    };
+
+    const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const districtId = parseInt(e.target.value);
+        const selectedDistrict = districts.find(d => d.DistrictID === districtId);
+
+        setFormData(prev => ({
+            ...prev,
+            district: selectedDistrict?.DistrictName || '',
+            districtId: districtId,
+            ward: '',
+            wardCode: undefined
+        }));
+
+        if (selectedDistrict) {
+            loadWards(districtId);
+        }
+
+        if (errors.district) {
+            setErrors(prev => ({ ...prev, district: undefined }));
+        }
+    };
+
+    const handleWardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const wardCode = e.target.value;
+        const selectedWard = wards.find(w => w.WardCode === wardCode);
+
+        setFormData(prev => ({
+            ...prev,
+            ward: selectedWard?.WardName || '',
+            wardCode: wardCode
+        }));
+
+        if (errors.ward) {
+            setErrors(prev => ({ ...prev, ward: undefined }));
+        }
+    };
 
     const handleChange = (field: keyof AddressFormData, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error khi user nhập
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -150,12 +222,16 @@ const AddressForm: React.FC<AddressFormProps> = ({
             newErrors.phone = 'Số điện thoại phải có 10-11 chữ số';
         }
 
-        if (!formData.district.trim()) {
-            newErrors.district = 'Vui lòng nhập quận/huyện';
+        if (!formData.provinceId) {
+            newErrors.province = 'Vui lòng chọn tỉnh/thành phố';
         }
 
-        if (!formData.ward.trim()) {
-            newErrors.ward = 'Vui lòng nhập phường/xã';
+        if (!formData.districtId) {
+            newErrors.district = 'Vui lòng chọn quận/huyện';
+        }
+
+        if (!formData.wardCode) {
+            newErrors.ward = 'Vui lòng chọn phường/xã';
         }
 
         if (!formData.street.trim()) {
@@ -192,6 +268,14 @@ const AddressForm: React.FC<AddressFormProps> = ({
 
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
+                    {/* ✅ GHN API thông báo */}
+                    {isLoadingProvinces && (
+                        <Alert variant="info" className="mb-3">
+                            <Spinner animation="border" size="sm" className="me-2" />
+                            Đang tải danh sách tỉnh/thành phố...
+                        </Alert>
+                    )}
+
                     <Row className="g-3">
                         {/* Contact Name */}
                         <Col xs={12} md={6}>
@@ -227,49 +311,69 @@ const AddressForm: React.FC<AddressFormProps> = ({
                             </Form.Group>
                         </Col>
 
-                        {/* Province */}
+                        {/* Province - ✅ GHN Select */}
                         <Col xs={12} md={4}>
                             <Form.Group>
                                 <Form.Label>Tỉnh/Thành phố <span className="text-danger">*</span></Form.Label>
                                 <Form.Select
-                                    value={formData.province}
-                                    onChange={(e) => handleChange('province', e.target.value)}
+                                    value={formData.provinceId || ''}
+                                    onChange={handleProvinceChange}
+                                    disabled={isLoadingProvinces || provinces.length === 0}
+                                    isInvalid={!!errors.province}
                                 >
+                                    <option value="">-- Chọn tỉnh/thành phố --</option>
                                     {provinces.map(province => (
-                                        <option key={province} value={province}>{province}</option>
+                                        <option key={province.ProvinceID} value={province.ProvinceID}>
+                                            {province.ProvinceName}
+                                        </option>
                                     ))}
                                 </Form.Select>
+                                <Form.Control.Feedback type="invalid">
+                                    {errors.province}
+                                </Form.Control.Feedback>
                             </Form.Group>
                         </Col>
 
-                        {/* District */}
+                        {/* District - ✅ GHN Select */}
                         <Col xs={12} md={4}>
                             <Form.Group>
                                 <Form.Label>Quận/Huyện <span className="text-danger">*</span></Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Quận Cầu Giấy"
-                                    value={formData.district}
-                                    onChange={(e) => handleChange('district', e.target.value)}
+                                <Form.Select
+                                    value={formData.districtId || ''}
+                                    onChange={handleDistrictChange}
+                                    disabled={isLoadingDistricts || districts.length === 0 || !formData.provinceId}
                                     isInvalid={!!errors.district}
-                                />
+                                >
+                                    <option value="">-- Chọn quận/huyện --</option>
+                                    {districts.map(district => (
+                                        <option key={district.DistrictID} value={district.DistrictID}>
+                                            {district.DistrictName}
+                                        </option>
+                                    ))}
+                                </Form.Select>
                                 <Form.Control.Feedback type="invalid">
                                     {errors.district}
                                 </Form.Control.Feedback>
                             </Form.Group>
                         </Col>
 
-                        {/* Ward */}
+                        {/* Ward - ✅ GHN Select */}
                         <Col xs={12} md={4}>
                             <Form.Group>
                                 <Form.Label>Phường/Xã <span className="text-danger">*</span></Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Phường Dịch Vọng"
-                                    value={formData.ward}
-                                    onChange={(e) => handleChange('ward', e.target.value)}
+                                <Form.Select
+                                    value={formData.wardCode || ''}
+                                    onChange={handleWardChange}
+                                    disabled={isLoadingWards || wards.length === 0 || !formData.districtId}
                                     isInvalid={!!errors.ward}
-                                />
+                                >
+                                    <option value="">-- Chọn phường/xã --</option>
+                                    {wards.map(ward => (
+                                        <option key={ward.WardCode} value={ward.WardCode}>
+                                            {ward.WardName}
+                                        </option>
+                                    ))}
+                                </Form.Select>
                                 <Form.Control.Feedback type="invalid">
                                     {errors.ward}
                                 </Form.Control.Feedback>
@@ -316,6 +420,20 @@ const AddressForm: React.FC<AddressFormProps> = ({
                                 onChange={(e) => handleChange('isDefault', e.target.checked)}
                             />
                         </Col>
+
+                        {/* ✅ Thông báo GHN fields */}
+                        {formData.provinceId && formData.districtId && formData.wardCode && (
+                            <Col xs={12}>
+                                <Alert variant="success" className="mb-0 py-2">
+                                    <AlertCircle size={16} className="me-2 d-inline" />
+                                    <small>
+                                        ✅ GHN IDs: Province={formData.provinceId},
+                                        District={formData.districtId},
+                                        Ward={formData.wardCode}
+                                    </small>
+                                </Alert>
+                            </Col>
+                        )}
                     </Row>
 
                     {Object.keys(errors).length > 0 && (
@@ -332,7 +450,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
                     <Button
                         variant="primary"
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || isLoadingProvinces || isLoadingDistricts || isLoadingWards}
                         className="d-flex align-items-center gap-2"
                     >
                         {isLoading ? (

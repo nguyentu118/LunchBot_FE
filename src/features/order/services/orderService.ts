@@ -11,7 +11,6 @@ class OrderService {
         const response = await axiosInstance.post<Order>('/orders', data);
         return response.data;
     }
-
     /**
      * Lấy danh sách tất cả đơn hàng của user
      */

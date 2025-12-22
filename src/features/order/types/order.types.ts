@@ -62,6 +62,7 @@ export interface Order {
 
     // Shipping
     shippingAddress: OrderAddress;
+    shippingPartnerName?: string;
 
     // Items
     items: OrderItem[];
@@ -73,6 +74,8 @@ export interface Order {
     serviceFee: number;
     shippingFee: number;
     totalAmount: number;
+    commissionRate?: number;
+    commissionFee?: number;
 
     // Additional info
     couponCode?: string;
@@ -87,6 +90,7 @@ export interface Order {
 }
 
 export interface CreateOrderRequest {
+    dishIds: number[];
     addressId: number;
     paymentMethod: PaymentMethod;
     couponCode?: string;
@@ -97,7 +101,10 @@ export interface CancelOrderRequest {
     reason: string;
 }
 
+// ============================================
 // Status display configs
+// ============================================
+
 export const ORDER_STATUS_CONFIG = {
     [OrderStatus.PENDING]: {
         label: 'Chờ xác nhận',
