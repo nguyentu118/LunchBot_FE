@@ -1,9 +1,6 @@
-// src/features/merchants/components/OrderByDish.tsx
-// ✅ OPTIMIZED: Expandable order cards with accordion style
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Alert, Spinner, Badge, Button } from 'react-bootstrap';
-import { Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Card, Alert, Spinner, Badge, Button, Table, Row, Col } from 'react-bootstrap';
+import { Search, ChevronLeft, ChevronRight, Package, MapPin, Phone, User, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Services
@@ -53,7 +50,7 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
 
     // State - Orders
     const [orders, setOrders] = useState<OrderResponse[]>([]);
-    const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null); // ✅ NEW
+    const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
     // Pagination - Orders
     const [currentPage, setCurrentPage] = useState(0);
@@ -120,7 +117,7 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
 
         setIsLoadingOrders(true);
         setError(null);
-        setExpandedOrderId(null); // ✅ Reset expanded order when changing page
+        setExpandedOrderId(null);
 
         try {
             const response = await orderService.getOrdersByDish(dishId, page, pageSize);
@@ -161,7 +158,6 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
         }
     };
 
-    // ✅ NEW: Toggle expand/collapse
     const toggleOrderExpand = (orderId: number) => {
         setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
     };
@@ -270,7 +266,7 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
                 {/* Divider */}
                 <hr className="my-4" />
 
-                {/* ==================== ORDERS SECTION - EXPANDABLE ==================== */}
+                {/* ==================== ORDERS SECTION ==================== */}
                 <div>
                     <h6 className="fw-bold mb-3">
                         Danh sách đơn hàng
@@ -296,148 +292,142 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
                         </div>
                     ) : orders.length > 0 ? (
                         <>
-                            {/* Orders List - EXPANDABLE */}
-                            <div className="row g-2">
+                            {/* Orders List */}
+                            <div>
                                 {orders.map((order) => {
                                     const isExpanded = expandedOrderId === order.id;
+                                    const customerName = order.shippingAddress?.contactName || 'N/A';
+                                    const customerPhone = order.shippingAddress?.phone || 'N/A';
+                                    const fullAddress = order.shippingAddress?.fullAddress || 'Chưa có địa chỉ';
 
                                     return (
-                                        <div key={order.id} className="col-12">
-                                            {/* HEADER - Always Visible */}
-                                            <Card
-                                                className="border-0 shadow-sm"
-                                                style={{
-                                                    transition: 'all 0.2s',
-                                                    cursor: 'pointer',
-                                                    backgroundColor: isExpanded ? '#f8f9fa' : 'white'
-                                                }}
+                                        <Card
+                                            key={order.id}
+                                            className="mb-3 border rounded shadow-sm"
+                                            style={{
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {/* HEADER - Order Summary */}
+                                            <Card.Body
+                                                className="p-3"
+                                                onClick={() => toggleOrderExpand(order.id)}
                                             >
-                                                <Card.Body
-                                                    className="p-3"
-                                                    onClick={() => toggleOrderExpand(order.id)}
-                                                >
-                                                    <div className="d-flex justify-content-between align-items-center">
-                                                        {/* LEFT: Order info */}
-                                                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                                                            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                                                <strong style={{ fontSize: '0.9rem' }}>
-                                                                    {order.orderNumber}
-                                                                </strong>
-                                                                <Badge
-                                                                    style={{
-                                                                        backgroundColor: ORDER_STATUS_COLORS[order.status] || '#6c757d',
-                                                                        padding: '0.25rem 0.5rem',
-                                                                        fontSize: '0.7rem'
-                                                                    }}
-                                                                >
-                                                                    {ORDER_STATUS_LABELS[order.status] || order.status}
-                                                                </Badge>
-                                                            </div>
-                                                            <small className="text-muted d-block">
-                                                                {formatDate(order.orderDate)}
-                                                            </small>
-                                                        </div>
-
-                                                        {/* MIDDLE: Order items count */}
-                                                        <div className="text-center px-3" style={{ minWidth: '80px' }}>
-                                                            <small className="text-muted d-block">Mục</small>
-                                                            <strong style={{ fontSize: '0.9rem' }}>
-                                                                {order.items.length}
-                                                            </strong>
-                                                        </div>
-
-                                                        {/* RIGHT: Total amount + Toggle icon */}
-                                                        <div className="text-end d-flex align-items-center gap-2" style={{ minWidth: '150px' }}>
-                                                            <div>
-                                                                <small className="text-muted d-block">Tổng tiền</small>
-                                                                <div className="fw-bold" style={{ color: brandColor, fontSize: '1rem' }}>
-                                                                    {formatCurrency(order.totalAmount)}
-                                                                </div>
-                                                            </div>
-                                                            {/* ✅ Chevron Icon - Rotate when expanded */}
-                                                            <ChevronDown
-                                                                size={20}
-                                                                style={{
-                                                                    transition: 'transform 0.2s',
-                                                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                                    color: brandColor
-                                                                }}
-                                                            />
+                                                <div className="d-flex justify-content-between align-items-center w-100">
+                                                    <div className="flex-grow-1">
+                                                        <span className="fw-bold">#{order.orderNumber || order.id}</span>
+                                                        <span className="text-muted ms-2 small">
+                                                            {formatDate(order.orderDate)}
+                                                        </span>
+                                                        <div className="small text-muted mt-1">
+                                                            <User size={14} className="me-1" />
+                                                            {customerName}
                                                         </div>
                                                     </div>
-                                                </Card.Body>
-                                            </Card>
-
-                                            {/* EXPANDED DETAILS - Collapsible */}
-                                            {isExpanded && (
-                                                <div
-                                                    className="bg-light rounded-bottom p-3 mt-1"
-                                                    style={{
-                                                        animation: 'slideDown 0.2s ease-in-out',
-                                                        borderLeft: `4px solid ${brandColor}`
-                                                    }}
-                                                >
-                                                    {/* Customer Info */}
-                                                    <div className="mb-3 pb-3 border-bottom">
-                                                        <small className="text-muted d-block fw-semibold mb-2">👤 Khách hàng</small>
-                                                        <div className="fw-semibold">{order.customerName}</div>
-                                                        <small className="text-muted">{order.customerPhone}</small>
-                                                    </div>
-
-                                                    {/* Items Detail */}
-                                                    <div className="mb-3 pb-3 border-bottom">
-                                                        <small className="text-muted d-block fw-semibold mb-2">📦 Mục đơn hàng</small>
-                                                        <div className="d-flex flex-wrap gap-2">
-                                                            {order.items.map((item) => (
-                                                                <div
-                                                                    key={item.id}
-                                                                    className="badge"
-                                                                    style={{
-                                                                        backgroundColor: brandColor,
-                                                                        color: 'white',
-                                                                        padding: '0.5rem 0.75rem',
-                                                                        fontSize: '0.8rem'
-                                                                    }}
-                                                                >
-                                                                    {item.dishName} x{item.quantity}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Shipping Address */}
-                                                    <div className="mb-3 pb-3 border-bottom">
-                                                        <small className="text-muted d-block fw-semibold mb-2">🚚 Địa chỉ giao hàng</small>
-                                                        <small style={{ fontSize: '0.85rem' }}>
-                                                            {order.shippingAddress?.fullAddress || 'Chưa có địa chỉ'}
-                                                        </small>
-                                                    </div>
-
-                                                    {/* Price Breakdown */}
-                                                    <div>
-                                                        <small className="text-muted d-block fw-semibold mb-2">💰 Chi tiết tiền</small>
-                                                        <div className="row g-2 small">
-                                                            <div className="col-6">
-                                                                <span className="text-muted">Tiền hàng:</span>
-                                                                <div className="fw-semibold">{formatCurrency(order.itemsTotal)}</div>
-                                                            </div>
-                                                            <div className="col-6">
-                                                                <span className="text-muted">Phí dịch vụ:</span>
-                                                                <div className="fw-semibold">{formatCurrency(order.serviceFee)}</div>
-                                                            </div>
-                                                            <div className="col-6">
-                                                                <span className="text-muted">Phí giao hàng:</span>
-                                                                <div className="fw-semibold">{formatCurrency(order.shippingFee)}</div>
-                                                            </div>
-                                                            <div className="col-6">
-                                                                <span className="text-muted">Giảm giá:</span>
-                                                                <div className="fw-semibold text-success">-{formatCurrency(order.discountAmount)}</div>
-                                                            </div>
-                                                        </div>
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        <span className="text-success fw-bold" style={{ fontSize: '1rem' }}>
+                                                            {order.totalAmount?.toLocaleString() || '0'} ₫
+                                                        </span>
+                                                        <Badge
+                                                            style={{
+                                                                backgroundColor: ORDER_STATUS_COLORS[order.status] || '#6c757d'
+                                                            }}
+                                                        >
+                                                            {ORDER_STATUS_LABELS[order.status] || order.status}
+                                                        </Badge>
                                                     </div>
                                                 </div>
+                                            </Card.Body>
+
+                                            {/* EXPANDED DETAILS */}
+                                            {isExpanded && (
+                                                <Card.Body className="border-top p-3 bg-light">
+                                                    <Row>
+                                                        {/* LEFT: Items */}
+                                                        <Col md={8}>
+                                                            <h6 className="text-muted mb-3">
+                                                                <Package size={18} className="me-2" />
+                                                                Chi tiết món ăn:
+                                                            </h6>
+                                                            <Table hover size="sm" className="mb-0">
+                                                                <tbody>
+                                                                {order.items?.map((item, idx) => (
+                                                                    <tr key={idx}>
+                                                                        <td width="50">
+                                                                            <img
+                                                                                src={item.dishImage || 'https://via.placeholder.com/40'}
+                                                                                alt={item.dishName}
+                                                                                style={{
+                                                                                    width: '40px',
+                                                                                    height: '40px',
+                                                                                    objectFit: 'cover',
+                                                                                    borderRadius: '4px'
+                                                                                }}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="align-middle">{item.dishName || 'N/A'}</td>
+                                                                        <td className="align-middle text-center">x{item.quantity || 0}</td>
+                                                                        <td className="align-middle text-end fw-semibold">
+                                                                            {item.totalPrice?.toLocaleString() || '0'} ₫
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                </tbody>
+                                                            </Table>
+                                                        </Col>
+
+                                                        {/* RIGHT: Customer Info */}
+                                                        <Col md={4} className="border-start">
+                                                            <h6 className="text-muted mb-3">
+                                                                <User size={18} className="me-2" />
+                                                                Thông tin khách hàng:
+                                                            </h6>
+                                                            <div className="mb-3">
+                                                                <div className="d-flex align-items-start mb-2">
+                                                                    <User size={16} className="me-2 mt-1 text-muted flex-shrink-0" />
+                                                                    <div>
+                                                                        <small className="text-muted d-block">Tên khách hàng</small>
+                                                                        <span className="fw-semibold">{customerName}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="d-flex align-items-start mb-2">
+                                                                    <Phone size={16} className="me-2 mt-1 text-muted flex-shrink-0" />
+                                                                    <div>
+                                                                        <small className="text-muted d-block">Số điện thoại</small>
+                                                                        <span className="fw-semibold">{customerPhone}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="d-flex align-items-start mb-3">
+                                                                    <MapPin size={16} className="me-2 mt-1 text-muted flex-shrink-0" />
+                                                                    <div>
+                                                                        <small className="text-muted d-block">Địa chỉ giao hàng</small>
+                                                                        <span className="text-dark">{fullAddress}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="d-flex align-items-center p-2 rounded"
+                                                                     style={{backgroundColor: '#f8f9fa'}}>
+                                                                    <strong className="me-2">Thanh toán:</strong>
+                                                                    {order.paymentStatus === 'PAID' ? (
+                                                                        <span className="text-success fw-semibold">
+                                                                            <CheckCircle size={16} className="me-1" />
+                                                                            Đã thanh toán
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-warning fw-semibold">
+                                                                            ⏳ Chưa thanh toán ({order.paymentMethod || 'COD'})
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </Col>
+                                                    </Row>
+                                                </Card.Body>
                                             )}
-                                        </div>
+                                        </Card>
                                     );
                                 })}
                             </div>
@@ -482,20 +472,6 @@ const OrderByDish: React.FC<OrderByDishProps> = ({ merchantDishes = [] }) => {
                         )
                     )}
                 </div>
-
-                {/* CSS for animation */}
-                <style>{`
-                    @keyframes slideDown {
-                        from {
-                            opacity: 0;
-                            transform: translateY(-10px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-                `}</style>
             </div>
         </div>
     );
