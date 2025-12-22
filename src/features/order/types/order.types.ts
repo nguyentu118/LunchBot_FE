@@ -3,7 +3,7 @@
 export enum OrderStatus {
     PENDING = 'PENDING',           // Chờ xác nhận
     CONFIRMED = 'CONFIRMED',       // Đã xác nhận
-    PREPARING = 'PREPARING',       // Đang chuẩn bị
+    PROCESSING = 'PROCESSING',       // Đang chuẩn bị
     READY = 'READY',              // Sẵn sàng giao
     DELIVERING = 'DELIVERING',     // Đang giao
     COMPLETED = 'COMPLETED',       // Hoàn thành
@@ -116,7 +116,7 @@ export const ORDER_STATUS_CONFIG = {
         variant: 'info',
         color: '#17a2b8'
     },
-    [OrderStatus.PREPARING]: {
+    [OrderStatus.PROCESSING]: {
         label: 'Đang chuẩn bị',
         variant: 'primary',
         color: '#007bff'
@@ -161,8 +161,10 @@ export const PAYMENT_METHOD_CONFIG = {
         icon: '💳'
     }
 };
-
-// ✅ THÊM MỚI: Config cho trạng thái thanh toán
+/**
+ * ✅ Task 15: Thống kê đơn hàng theo món ăn
+ * Dùng cho Merchant Dashboard
+ */
 export const PAYMENT_STATUS_CONFIG = {
     [PaymentStatus.PENDING]: {
         label: 'Chờ thanh toán',
@@ -184,4 +186,80 @@ export const PAYMENT_STATUS_CONFIG = {
         variant: 'info',
         color: '#17a2b8'
     }
+};
+export interface ShippingAddress {
+    id: number;
+    contactName: string;
+    phone: string;
+    fullAddress: string;
+    building?: string;
+    street?: string;
+    ward?: string;
+    district?: string;
+    province?: string;
+}
+
+export interface OrderItemDTO {
+    id: number;
+    dishId: number;
+    dishName: string;
+    dishImage: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+}
+
+export interface OrderResponse {
+    id: number;
+    orderNumber: string;
+    status: string;
+    paymentStatus: string;
+    customerName: string;
+    customerPhone: string;
+    orderDate: string;
+    totalAmount: number;
+    items: OrderItemDTO[];
+    shippingAddress: ShippingAddress;
+    merchantId: number;
+    merchantName: string;
+    itemsTotal: number;
+    discountAmount: number;
+    serviceFee: number;
+    shippingFee: number;
+    couponCode?: string;
+    notes?: string;
+    expectedDeliveryTime?: string;
+    completedAt?: string;
+    cancelledAt?: string;
+    cancellationReason?: string;
+}
+
+export interface Dish {
+    id: number;
+    name: string;
+    price: number;
+    discountPrice?: number;
+    imageUrl?: string;
+    description?: string;
+}
+
+// ✅ Constants cho Task 15 - Status labels & colors
+export const ORDER_STATUS_LABELS: Record<string, string> = {
+    PENDING: 'Chờ xác nhận',
+    CONFIRMED: 'Đã xác nhận',
+    PROCESSING: 'Đang chuẩn bị',
+    READY: 'Đã xong',
+    DELIVERING: 'Đang giao',
+    COMPLETED: 'Hoàn thành',
+    CANCELLED: 'Đã hủy'
+};
+
+export const ORDER_STATUS_COLORS: Record<string, string> = {
+    PENDING: '#FFC107',
+    CONFIRMED: '#17A2B8',
+    PROCESSING: '#007BFF',
+    READY: '#28A745',
+    DELIVERING: '#FF9800',
+    COMPLETED: '#28A745',
+    CANCELLED: '#DC3545'
 };

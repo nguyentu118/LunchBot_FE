@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {Plus, List, Grid, Search, X} from 'lucide-react';
-import { Modal } from "react-bootstrap";
+import React, {useState, useEffect, useCallback} from 'react';
+import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3} from 'lucide-react';
+import {Modal} from "react-bootstrap";
 import toast from "react-hot-toast";
-import { AxiosResponse, AxiosError } from 'axios';
+import {AxiosResponse, AxiosError} from 'axios';
 
 // Components
 import AddDishModal from "../../features/dish/AddDishModal.tsx";
@@ -11,9 +11,13 @@ import MerchantDishList from "../../features/dish/MerchantDishList.tsx";
 import MerchantCouponManager from "../../features/coupon/components/MerchantCouponManager.tsx";
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
 import Navigation from "./Navigation.tsx";
+import MerchantOrderManager from "../../features/merchants/MerchantOrderManager";
 // Hooks & Config
 import useCategories from "../../features/category/useCategories.ts";
 import axiosInstance from "../../config/axiosConfig.ts";
+import OrderStatisticsCard from "../../features/merchants/OrderStatisticsCard.tsx";
+import RevenueStatistics from "../../features/merchants/RevenueStatistics.tsx";
+import OrderByDish from "../../features/order/components/OrderByDish.tsx";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -58,6 +62,8 @@ interface SearchFilters {
     keyword: string;
     categoryId: string;
     priceRange: string;
+    status: '',
+    date: ''
 }
 
 interface MerchantDishListProps {
@@ -94,7 +100,13 @@ const initialDishData: DishCreateRequestState = {
 };
 
 // ==================== COMPONENTS ====================
-const SidebarButton: React.FC<SidebarButtonProps> = ({ icon: Icon, text, onClick, color = 'danger', isActive = false }) => (
+const SidebarButton: React.FC<SidebarButtonProps> = ({
+                                                         icon: Icon,
+                                                         text,
+                                                         onClick,
+                                                         color = 'danger',
+                                                         isActive = false
+                                                     }) => (
     <button
         onClick={onClick}
         className="btn w-100 py-2 mb-2 fw-semibold d-flex justify-content-start align-items-center gap-2"
@@ -106,14 +118,14 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({ icon: Icon, text, onClick
             fontSize: '0.9rem'
         }}
     >
-        <Icon size={18} />
+        <Icon size={18}/>
         {text}
     </button>
 );
 
 // ==================== MAIN COMPONENT ====================
 const MerchantDashboardBootstrap: React.FC = () => {
-    const { categories, isLoading: isLoadingCategories, error: categoriesError } = useCategories();
+    const {categories, isLoading: isLoadingCategories, error: categoriesError} = useCategories();
 
     // Merchant State
     const [currentMerchantId, setCurrentMerchantId] = useState<number | null>(null);
@@ -121,13 +133,14 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [isLoadingId, setIsLoadingId] = useState<boolean>(true);
 
     // Stats State
-    const [dishStats, setDishStats] = useState<DishStats>({ totalDishes: 0, recommendedDishes: 0 });
+    const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
 
     // View State
-    const [activeView, setActiveView] = useState<'dishes' | 'coupons'>('dishes');
+    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'|'statistics'|'orderByDish'>('dishes');
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -211,7 +224,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 const totalDishes = dishesData.length;
                 const recommendedDishes = dishesData.filter((dish: any) => dish.isRecommended === true).length;
 
-                setDishStats({ totalDishes, recommendedDishes });
+                setDishStats({totalDishes, recommendedDishes});
             } catch (error) {
                 console.error("Lỗi tải thống kê:", error);
             }
@@ -223,7 +236,9 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }, [currentMerchantId, dishCreatedToggle]);
 
     // ==================== HANDLERS ====================
-    const handleAddDish = useCallback(async (data: Omit<DishCreateRequestState, 'imagesFiles' | 'merchantId'> & { uploadedUrls: string[] }) => {
+    const handleAddDish = useCallback(async (data: Omit<DishCreateRequestState, 'imagesFiles' | 'merchantId'> & {
+        uploadedUrls: string[]
+    }) => {
         if (isLoadingId || currentMerchantId === null) {
             toast.error("Thông tin Merchant chưa sẵn sàng. Vui lòng thử lại sau giây lát.");
             return;
@@ -270,19 +285,19 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }, []);
 
     const handleNewDishChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
+        const {name, value, type} = e.target;
 
         if (type === 'file') {
             const files = (e.target as HTMLInputElement).files;
-            setNewDishData(prev => ({ ...prev, imagesFiles: files }));
+            setNewDishData(prev => ({...prev, imagesFiles: files}));
         } else if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
-            setNewDishData(prev => ({ ...prev, [name]: checked }));
+            setNewDishData(prev => ({...prev, [name]: checked}));
         } else if (name === 'preparationTime') {
             const numValue = parseInt(value);
-            setNewDishData(prev => ({ ...prev, [name]: isNaN(numValue) ? undefined : numValue }));
+            setNewDishData(prev => ({...prev, [name]: isNaN(numValue) ? undefined : numValue}));
         } else {
-            setNewDishData(prev => ({ ...prev, [name]: value }));
+            setNewDishData(prev => ({...prev, [name]: value}));
         }
     };
 
@@ -294,7 +309,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
             } else {
                 newSet.add(categoryId);
             }
-            return { ...prev, categoryIds: newSet };
+            return {...prev, categoryIds: newSet};
         });
     };
 
@@ -328,141 +343,264 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }
 
     if (currentMerchantId === null) {
-        return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng đăng nhập lại.</div>;
+        return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng
+            đăng nhập lại.</div>;
     }
+
+    // 1. Tạo biến cấu hình cho Header
+    const getHeaderConfig = () => {
+        switch (activeView) {
+            case 'dishes':
+                return {
+                    subTitle: 'Quản lý món ăn',
+                    btnText: 'Thêm món ăn',
+                    showButton: true,
+                    onClick: () => setShowAddModal(true)
+                };
+            case 'coupons':
+                return {
+                    subTitle: 'Quản lý mã giảm giá',
+                    btnText: 'Thêm mã giảm giá',
+                    showButton: true,
+                    onClick: () => setShowCouponModal(true) // Đảm bảo bạn đã có state này
+                };
+            case 'orders':
+                return {
+                    subTitle: 'Quản lý và theo dõi đơn hàng',
+                    btnText: '',
+                    showButton: false, // Ẩn nút thêm mới
+                    onClick: () => {
+                    }
+                };
+            case 'statistics':
+                return {
+                    subTitle: 'Thống kê doanh thu',
+                    btnText: '',
+                    showButton: false, // Ẩn nút thêm mới
+                    onClick: () => {
+                    }
+                };
+            case 'orderByDish':
+                return {
+                    subTitle: 'Thống kê đơn hàng theo món ăn',
+                    btnText: '',
+                    showButton: false,
+                    onClick: () => {}
+                };
+            default:
+                return {
+                    subTitle: '', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+        }
+    };
+
+    const headerConfig = getHeaderConfig();
+
 
     // ==================== RENDER ====================
     return (
-        <div className="min-vh-100" style={{ backgroundColor: '#f8f9fa' }}>
-            <header className="shadow-sm" style={{ backgroundColor: customStyles.primaryPink }}>
-                <Navigation />
+        <div className="min-vh-100" style={{backgroundColor: '#f8f9fa'}}>
+            <header className="shadow-sm" style={{backgroundColor: customStyles.primaryPink}}>
+                <Navigation/>
             </header>
 
             <div className="container-fluid px-3 py-3">
                 <div className="row mb-3">
                     <div className="col-12">
-                        <div className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
+                        <div
+                            className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
                             <div>
-                                <h4 className="mb-1 fw-bold" style={{ color: customStyles.primaryPink }}>{merchantName}</h4>
-                                <p className="text-muted mb-0 small">{activeView === 'dishes' ? 'Quản lý món ăn' : 'Quản lý mã giảm giá'}</p>
+                                <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
+                                    {merchantName}
+                                </h4>
+                                {/* Sử dụng biến từ headerConfig */}
+                                <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
                             </div>
-                            <button
-                                className="btn btn-sm fw-semibold px-4"
-                                style={{ backgroundColor: customStyles.primaryPink, color: 'white', borderRadius: '0.5rem' }}
-                                onClick={() => activeView === 'dishes' ? setShowAddModal(true) : setShowCouponModal(true)}
-                            >
-                                <Plus size={16} className="me-1" />
-                                {activeView === 'dishes' ? 'Thêm món ăn' : 'Thêm mã giảm giá'}
-                            </button>
+
+                            {/* Chỉ hiển thị nút khi showButton = true */}
+                            {headerConfig.showButton && (
+                                <button
+                                    className="btn btn-sm fw-semibold px-4"
+                                    style={{
+                                        backgroundColor: customStyles.primaryPink,
+                                        color: 'white',
+                                        borderRadius: '0.5rem'
+                                    }}
+                                    onClick={headerConfig.onClick}
+                                >
+                                    <Plus size={16} className="me-1"/>
+                                    {headerConfig.btnText}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* SEARCH & FILTER BAR */}
-                <div className="row mb-3">
-                    <div className="col-12">
-                        <div className="bg-white rounded-3 p-3 shadow-sm">
-                            <div className="row g-3">
-                                {/* Tăng chiều rộng ô tìm kiếm từ col-md-5 lên col-md-6 */}
-                                <div className="col-md-6">
-                                    <label className="form-label small fw-semibold text-muted mb-1">Tìm kiếm theo tên</label>
-                                    <div className="input-group">
-                        <span className="input-group-text bg-white border-end-0">
-                            <Search size={18} className="text-muted" />
-                        </span>
-                                        <input
-                                            type="text"
-                                            className="form-control border-start-0 ps-0" // Bỏ border giữa icon và input cho mượt
-                                            placeholder={activeView === 'dishes' ? 'Nhập tên món ăn...' : 'Nhập tên mã giảm giá...'}
-                                            value={searchFilters.keyword}
-                                            onChange={(e) => handleSearchChange('keyword', e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                        />
-                                        {searchFilters.keyword && (
-                                            <button
-                                                className="btn btn-outline-secondary border-start-0"
-                                                type="button"
-                                                onClick={() => handleSearchChange('keyword', '')}
-                                            >
-                                                <X size={18} />
-                                            </button>
-                                        )}
+                {activeView !== 'statistics' && (
+                    <div className="row mb-3">
+                        <div className="col-12">
+                            <div className="bg-white rounded-3 p-3 shadow-sm">
+                                <div className="row g-3">
+                                    {/* KEYWORD SEARCH */}
+                                    <div className="col-md-6">
+                                        <label className="form-label small fw-semibold text-muted mb-1">
+                                            {activeView === 'orders' ? 'Tìm đơn hàng' : 'Tìm kiếm theo tên'}
+                                        </label>
+                                        <div className="input-group">
+                                            <span className="input-group-text bg-white border-end-0">
+                                                <Search size={18} className="text-muted"/>
+                                            </span>
+                                            <input
+                                                type="text"
+                                                className="form-control border-start-0 ps-0"
+                                                placeholder={
+                                                    activeView === 'dishes' ? 'Nhập tên món ăn...' :
+                                                        activeView === 'orders' ? 'Mã đơn, tên khách...' :
+                                                            'Nhập tên mã giảm giá...'
+                                                }
+                                                value={searchFilters.keyword}
+                                                onChange={(e) => handleSearchChange('keyword', e.target.value)}
+                                            />
+                                            {searchFilters.keyword && (
+                                                <button
+                                                    className="btn btn-outline-secondary border-start-0"
+                                                    type="button"
+                                                    onClick={() => handleSearchChange('keyword', '')}
+                                                >
+                                                    <X size={18}/>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
+
+                                    {/* DISHES FILTERS */}
+                                    {activeView === 'dishes' && (
+                                        <>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Danh mục</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.categoryId}
+                                                    onChange={(e) => handleSearchChange('categoryId', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả danh mục</option>
+                                                    {categories.map((cat: any) => (
+                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Khoảng giá</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.priceRange}
+                                                    onChange={(e) => handleSearchChange('priceRange', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả</option>
+                                                    <option value="0-50000">Dưới 50k</option>
+                                                    <option value="50000-100000">50k - 100k</option>
+                                                    <option value="100000-200000">100k - 200k</option>
+                                                    <option value="200000-999999999">Trên 200k</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* ORDERS FILTERS */}
+                                    {activeView === 'orders' && (
+                                        <>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Trạng thái</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={searchFilters.status}
+                                                    onChange={(e) => handleSearchChange('status', e.target.value)}
+                                                >
+                                                    <option value="">Tất cả trạng thái</option>
+                                                    <option value="PENDING">Chờ xác nhận</option>
+                                                    <option value="PROCESSING">Đang chế biến</option>
+                                                    <option value="READY">Đã xong món</option>
+                                                    <option value="DELIVERING">Đang giao</option>
+                                                    <option value="COMPLETED">Hoàn thành</option>
+                                                    <option value="CANCELLED">Đã hủy</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label small fw-semibold text-muted mb-1">Ngày đặt</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control"
+                                                    value={searchFilters.date}
+                                                    onChange={(e) => handleSearchChange('date', e.target.value)}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {activeView === 'coupons' && <div className="col-md-6"></div>}
                                 </div>
-
-                                {activeView === 'dishes' && (
-                                    <>
-                                        {/* Điều chỉnh col-md-3 cho Danh mục */}
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Danh mục</label>
-                                            <select
-                                                className="form-select"
-                                                value={searchFilters.categoryId}
-                                                onChange={(e) => handleSearchChange('categoryId', e.target.value)}
-                                            >
-                                                <option value="">Tất cả danh mục</option>
-                                                {categories.map((cat: {id: number, name: string}) => (
-                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* Điều chỉnh col-md-3 cho Khoảng giá để tổng bằng 12 */}
-                                        <div className="col-md-3">
-                                            <label className="form-label small fw-semibold text-muted mb-1">Khoảng giá</label>
-                                            <select
-                                                className="form-select"
-                                                value={searchFilters.priceRange}
-                                                onChange={(e) => handleSearchChange('priceRange', e.target.value)}
-                                            >
-                                                <option value="">Tất cả</option>
-                                                <option value="0-50000">Dưới 50k</option>
-                                                <option value="50000-100000">50k - 100k</option>
-                                                <option value="100000-200000">100k - 200k</option>
-                                                <option value="200000-999999999">Trên 200k</option>
-                                            </select>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Nếu view là coupons, ô tìm kiếm sẽ chiếm hết col-12 để không bị trống */}
-                                {activeView === 'coupons' && <div className="col-md-6"></div>}
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
+
 
                 <div className="row g-3">
                     <div className="col-lg-3">
                         <div className="rounded-3 p-3 shadow-sm mb-3" style={customStyles.sidebarBg}>
                             <h6 className="fw-bold text-white mb-3">Menu</h6>
                             <div className="d-grid">
-                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')} isActive={activeView === 'dishes'} />
-                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')} isActive={activeView === 'coupons'} />
+                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')}
+                                               isActive={activeView === 'dishes'}/>
+                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')}
+                                               isActive={activeView === 'coupons'}/>
+                                <SidebarButton icon={ClipboardList} text="Quản lý đơn hàng"
+                                               onClick={() => setActiveView('orders')}
+                                               isActive={activeView === 'orders'}/>
+                                <SidebarButton
+                                    icon={TrendingUp}
+                                    text="Thống kê Doanh số"
+                                    onClick={() => setActiveView('statistics')}
+                                    isActive={activeView === 'statistics'}
+                                />
+                                <SidebarButton
+                                    icon={BarChart3}
+                                    text="Thống kê theo món"
+                                    onClick={() => setActiveView('orderByDish')}
+                                    isActive={activeView === 'orderByDish'}
+                                />
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-3 p-3 shadow-sm mb-3">
-                            <h6 className="fw-bold mb-3">Thống kê nhanh</h6>
-                            <div className="d-flex flex-column gap-3">
-                                <div className="d-flex justify-content-between align-items-center">
-                                    <span className="text-muted small">Tổng món:</span>
-                                    <span className="fw-bold" style={{ color: customStyles.primaryPink }}>{dishStats.totalDishes}</span>
-                                </div>
-                                <div className="d-flex justify-content-between align-items-center">
-                                    <span className="text-muted small">Món nổi bật:</span>
-                                    <span className="fw-bold text-warning">{dishStats.recommendedDishes}</span>
-                                </div>
-                                <div className="d-flex justify-content-between align-items-center">
-                                    <span className="text-muted small">Đang hoạt động:</span>
-                                    <span className="badge bg-success">Active</span>
+                        {/* THỐNG KÊ MÓN ĂN (chỉ hiện khi activeView === 'dishes') */}
+                        {activeView === 'dishes' && (
+                            <div className="bg-white rounded-3 p-3 shadow-sm mb-3">
+                                <h6 className="fw-bold mb-3">Thống kê nhanh</h6>
+                                <div className="d-flex flex-column gap-3">
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <span className="text-muted small">Tổng món:</span>
+                                        <span className="fw-bold" style={{color: customStyles.primaryPink}}>
+                    {dishStats.totalDishes}
+                </span>
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <span className="text-muted small">Món nổi bật:</span>
+                                        <span className="fw-bold text-warning">{dishStats.recommendedDishes}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* ✅ THỐNG KÊ ĐƠN HÀNG (chỉ hiện khi activeView === 'orders') */}
+                        {activeView === 'orders' && (
+                            <OrderStatisticsCard/>
+                        )}
 
                         <div className="bg-light rounded-3 p-3 shadow-sm">
                             <h6 className="fw-bold mb-2 d-flex align-items-center gap-1">
-                                <span style={{ fontSize: '1.2rem' }}>💡</span> Mẹo hay
+                                <span style={{fontSize: '1.2rem'}}>💡</span> Mẹo hay
                             </h6>
                             <p className="small text-muted mb-0">
                                 Món ăn có ảnh đẹp và mô tả chi tiết sẽ thu hút khách hàng hơn!
@@ -471,7 +609,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     </div>
 
                     <div className="col-lg-9">
-                        <div className="bg-white rounded-3 shadow-sm" style={{ minHeight: '500px' }}>
+                        <div className="bg-white rounded-3 shadow-sm" style={{minHeight: '500px'}}>
                             {activeView === 'dishes' && (
                                 <MerchantDishList
                                     onDishCreatedToggle={dishCreatedToggle}
@@ -490,6 +628,22 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     brandColor={customStyles.primaryPink}
                                     refreshTrigger={couponCreatedToggle}
                                 />
+                            )}
+                            {activeView === 'orders' && (
+                                <MerchantOrderManager
+                                    filters={{
+                                        keyword: searchFilters.keyword,
+                                        status: searchFilters.status || '',
+                                        date: searchFilters.date || ''
+                                    }}
+                                />
+                            )}
+                            {/* ✅ HIỂN THỊ REVENUE STATISTICS */}
+                            {activeView === 'statistics' && (
+                                <RevenueStatistics merchantId={currentMerchantId} />
+                            )}
+                            {activeView === 'orderByDish' && (
+                                <OrderByDish />
                             )}
                         </div>
                     </div>
@@ -514,9 +668,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 customStyles={customStyles}
             />
 
-            <Modal show={showEditModal} onHide={() => { setShowEditModal(false); setSelectedDishIdToEdit(null); }} size="xl" centered>
-                <Modal.Header closeButton style={{ backgroundColor: customStyles.primaryPink, color: 'white', borderBottom: 'none' }}>
-                    <Modal.Title style={{ fontWeight: 'bold' }}>Chỉnh Sửa Món Ăn</Modal.Title>
+            <Modal show={showEditModal} onHide={() => {
+                setShowEditModal(false);
+                setSelectedDishIdToEdit(null);
+            }} size="xl" centered>
+                <Modal.Header closeButton
+                              style={{backgroundColor: customStyles.primaryPink, color: 'white', borderBottom: 'none'}}>
+                    <Modal.Title style={{fontWeight: 'bold'}}>Chỉnh Sửa Món Ăn</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     {selectedDishIdToEdit ? (
@@ -533,9 +691,8 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     )}
                 </Modal.Body>
             </Modal>
-
             {categoriesError && (
-                <div className="position-fixed bottom-0 end-0 p-3" style={{ zIndex: 1050 }}>
+                <div className="position-fixed bottom-0 end-0 p-3" style={{zIndex: 1050}}>
                     <div className="alert alert-danger alert-dismissible fade show" role="alert">
                         <strong>Lỗi:</strong> {categoriesError}
                         <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
