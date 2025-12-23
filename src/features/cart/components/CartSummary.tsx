@@ -22,8 +22,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
                                                      totalPrice,
                                                      onCheckout
                                                  }) => {
-    const shippingFee = 15000;
-    const finalTotal = totalPrice + shippingFee;
+    const finalTotal = totalPrice;
 
     return (
         <Card className="shadow-sm sticky-top" style={{ top: '20px' }}>
@@ -41,11 +40,6 @@ const CartSummary: React.FC<CartSummaryProps> = ({
                 <div className="d-flex justify-content-between mb-2">
                     <span>Tạm tính:</span>
                     <span className="fw-bold">{formatCurrency(totalPrice)}</span>
-                </div>
-
-                <div className="d-flex justify-content-between mb-2">
-                    <span>Phí vận chuyển:</span>
-                    <span className="fw-bold">{formatCurrency(shippingFee)}</span>
                 </div>
 
                 <div className="d-flex justify-content-between mb-4">

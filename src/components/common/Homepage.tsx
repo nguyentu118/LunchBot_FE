@@ -12,6 +12,7 @@ import useCategoriesWithDishes from "../../features/category/hooks/useCategories
 import {CategoryIconWithBackground} from './CategoryIconMapper.tsx';
 import usePopularMerchants from '../../features/merchants/hooks/usePopularMerchants';
 import {PopularMerchantDto} from "../../features/merchants/types/merchant.ts";
+import {useNavigate} from "react-router-dom";
 
 interface CategoryDisplay {
     id: number;
@@ -53,14 +54,14 @@ const HomePage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [currentSlide, setCurrentSlide] = useState<number>(0);
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
-
+    const navigate = useNavigate();
 
     // ⭐ Fetch categories từ API
     const {categories: apiCategories, loading: categoriesLoading, error: categoriesError} = useCategoriesWithDishes();
 
     const {merchants: apiMerchants, loading: merchantsLoading, error: merchantsError} = usePopularMerchants(8);
 
-    
+
     const popularRestaurants: Restaurant[] = apiMerchants.map(formatMerchantForDisplay);
 
     // ⭐ Hàm generate màu cho categories
@@ -77,6 +78,10 @@ const HomePage: React.FC = () => {
             {bg: '#f1f8e9', icon: '#689f38'}, // Xanh olive
         ];
         return colors[index % colors.length];
+    };
+
+    const handleRestaurantClick = (restaurantId: number) => {
+        navigate(`/merchants/profile/${restaurantId}`);
     };
 
     // ⭐ Map dữ liệu từ API
@@ -350,6 +355,7 @@ const HomePage: React.FC = () => {
                                 Nhà Hàng Nổi Tiếng
                             </h2>
                         </div>
+
                         {/* Loading State */}
                         {merchantsLoading && (
                             <div className="text-center py-5">
@@ -359,6 +365,7 @@ const HomePage: React.FC = () => {
                                 <p className="mt-3 text-muted">Đang tải danh sách nhà hàng...</p>
                             </div>
                         )}
+
                         {/* Error State */}
                         {merchantsError && (
                             <Alert variant="danger" className="text-center">
@@ -372,18 +379,49 @@ const HomePage: React.FC = () => {
                                 <Row className="g-3 mb-3">
                                     {popularRestaurants.map((restaurant) => (
                                         <Col xs={12} sm={6} md={3} key={restaurant.id}>
-                                            <Card className="shadow-sm rounded-3 border-0 h-100 overflow-hidden">
-                                                <div className="position-relative">
+                                            <Card
+                                                className="shadow-sm rounded-3 border-0 h-100 overflow-hidden"
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-8px)';
+                                                    e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '';
+                                                }}
+                                            >
+                                                <div
+                                                    className="position-relative overflow-hidden"
+                                                    onClick={() => handleRestaurantClick(restaurant.id)}
+                                                >
                                                     <Image
                                                         src={restaurant.image}
                                                         alt={restaurant.name}
                                                         className="w-100"
-                                                        style={{height: '220px', objectFit: 'cover', borderRadius: '0.375rem 0.375rem 0 0'}}
+                                                        style={{
+                                                            height: '220px',
+                                                            objectFit: 'cover',
+                                                            borderRadius: '0.375rem 0.375rem 0 0'
+                                                        }}
                                                     />
                                                     <Button
-                                                        onClick={() => toggleFavorite(restaurant.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleFavorite(restaurant.id);
+                                                        }}
                                                         variant="light"
                                                         className="rounded-circle p-2 position-absolute top-0 end-0 m-3 shadow-sm"
+                                                        style={{ transition: 'all 0.2s ease' }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1.15)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1)';
+                                                        }}
                                                     >
                                                         <Heart
                                                             size={20}
@@ -392,19 +430,34 @@ const HomePage: React.FC = () => {
                                                             stroke={favorites[restaurant.id] ? '#FF5E62' : 'currentColor'}
                                                         />
                                                     </Button>
-                                                    <Badge bg="primary"
-                                                           className="position-absolute bottom-0 start-0 m-3 p-2 fw-bold shadow-sm">
+                                                    <Badge
+                                                        bg="primary"
+                                                        className="position-absolute bottom-0 start-0 m-3 p-2 fw-bold shadow-sm"
+                                                        style={{ transition: 'transform 0.3s ease' }}
+                                                    >
                                                         <Star size={14} fill="white" className="me-1"/>
                                                         {restaurant.rating.toFixed(2)} ({restaurant.reviews})
                                                     </Badge>
                                                 </div>
 
-                                                <Card.Body className="p-3 d-flex flex-column">
+                                                <Card.Body
+                                                    className="p-3 d-flex flex-column"
+                                                    onClick={() => handleRestaurantClick(restaurant.id)}
+                                                >
                                                     <div className="d-flex align-items-start justify-content-between mb-2">
                                                         <div className="flex-grow-1">
                                                             <Card.Title
                                                                 className="h6 fw-bold mb-1"
-                                                                style={{lineHeight: '1.4'}}
+                                                                style={{
+                                                                    lineHeight: '1.4',
+                                                                    transition: 'color 0.3s ease'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    e.currentTarget.style.color = '#dc3545';
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    e.currentTarget.style.color = '';
+                                                                }}
                                                             >
                                                                 {restaurant.name}
                                                             </Card.Title>
@@ -415,10 +468,19 @@ const HomePage: React.FC = () => {
                                                         <Button
                                                             variant="link"
                                                             className="p-1 ms-2 border-0 bg-transparent text-primary rounded-circle d-flex align-items-center justify-content-center"
-                                                            style={{minWidth: 'auto', width: '28px', height: '28px', transition: 'all 0.2s'}}
+                                                            style={{
+                                                                minWidth: 'auto',
+                                                                width: '28px',
+                                                                height: '28px',
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRestaurantClick(restaurant.id);
+                                                            }}
                                                             onMouseEnter={(e) => {
                                                                 e.currentTarget.style.backgroundColor = '#e3f2fd';
-                                                                e.currentTarget.style.transform = 'translateX(3px)';
+                                                                e.currentTarget.style.transform = 'translateX(4px)';
                                                             }}
                                                             onMouseLeave={(e) => {
                                                                 e.currentTarget.style.backgroundColor = 'transparent';
@@ -440,14 +502,25 @@ const HomePage: React.FC = () => {
                                                         </Button>
                                                     </div>
 
-                                                    <div
-                                                        className="d-flex align-items-center justify-content-between small text-dark mt-3">
+                                                    <div className="d-flex align-items-center justify-content-between small text-dark mt-3">
                                                         <div className="d-flex align-items-center gap-1">
                                                             <Clock size={16} className="text-primary"/>
                                                             <span>{restaurant.time}</span>
                                                         </div>
                                                         <span
-                                                            className="fw-semibold text-danger">{restaurant.price}</span>
+                                                            className="fw-semibold text-danger"
+                                                            style={{ transition: 'all 0.3s ease' }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.fontWeight = '700';
+                                                                e.currentTarget.style.transform = 'scale(1.05)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.fontWeight = '600';
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                            }}
+                                                        >
+                                                    {restaurant.price}
+                                                </span>
                                                     </div>
                                                 </Card.Body>
                                             </Card>
@@ -456,13 +529,26 @@ const HomePage: React.FC = () => {
                                 </Row>
 
                                 <div className="text-center mt-3">
-                                    <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg">
+                                    <Button
+                                        variant="danger"
+                                        className="fw-bold px-4 py-2 shadow-lg"
+                                        style={{ transition: 'all 0.3s ease' }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1.05)';
+                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(220, 53, 69, 0.4)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                            e.currentTarget.style.boxShadow = '';
+                                        }}
+                                    >
                                         Xem tất cả nhà hàng
                                         <ChevronRight size={20} className="ms-2"/>
                                     </Button>
                                 </div>
                             </>
                         )}
+
                         {/* Empty State */}
                         {!merchantsLoading && !merchantsError && popularRestaurants.length === 0 && (
                             <Alert variant="info" className="text-center">

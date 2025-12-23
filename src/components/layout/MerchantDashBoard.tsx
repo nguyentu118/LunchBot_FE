@@ -1,6 +1,6 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3, UserCog, Ticket} from 'lucide-react';
-import {Modal} from "react-bootstrap";
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3, UserCog, User, Camera} from 'lucide-react';
+import {Modal, Spinner} from "react-bootstrap";
 import toast from "react-hot-toast";
 import {AxiosResponse} from 'axios';
 
@@ -12,14 +12,16 @@ import MerchantCouponManager from "../../features/coupon/components/MerchantCoup
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
 import Navigation from "./Navigation.tsx";
 import MerchantOrderManager from "../../features/merchants/MerchantOrderManager";
-// Hooks & Config
-import useCategories from "../../features/category/useCategories.ts";
-import axiosInstance from "../../config/axiosConfig.ts";
 import OrderStatisticsCard from "../../features/merchants/OrderStatisticsCard.tsx";
 import RevenueStatistics from "../../features/merchants/RevenueStatistics.tsx";
 import OrderByDish from "../../features/order/components/OrderByDish.tsx";
 import OrderByCustomer from "../../features/order/components/OrderByCustomer.tsx";
 import OrderByCoupons from "../../features/order/components/OrderByCoupon.tsx";
+
+// Hooks & Config
+import useCategories from "../../features/category/useCategories.ts";
+import axiosInstance from "../../config/axiosConfig.ts";
+import {useParams} from "react-router-dom";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -73,7 +75,6 @@ interface Category {
     name: string;
 }
 
-// ==================== CONSTANTS ====================
 const customStyles = {
     primaryPink: '#ff5e62',
     secondaryYellow: '#ffe033',
@@ -129,6 +130,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [currentMerchantId, setCurrentMerchantId] = useState<number | null>(null);
     const [merchantName, setMerchantName] = useState<string>('Đang tải...');
     const [isLoadingId, setIsLoadingId] = useState<boolean>(true);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Stats State
     const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
@@ -138,7 +140,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -159,30 +160,34 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>(initialDishData);
 
     // ==================== EFFECTS ====================
+    // ✅ CONSOLIDATED: Fetch merchantId và profile trong 1 useEffect
     useEffect(() => {
-        const fetchMerchantId = async () => {
+        const fetchMerchantData = async () => {
             setIsLoadingId(true);
             try {
-                const response = await axiosInstance.get('/merchants/current/id');
-                setCurrentMerchantId(response.data.merchantId);
-            } catch (error) {
-                console.error("Lỗi tải Merchant ID:", error);
-                toast.error("Không thể tải Merchant ID. Vui lòng đăng nhập lại.");
-                setCurrentMerchantId(null);
-            }
+                // Bước 1: Lấy merchantId
+                const idResponse = await axiosInstance.get('/merchants/current/id');
+                const fetchedMerchantId = idResponse.data.merchantId;
+                setCurrentMerchantId(fetchedMerchantId);
 
-            try {
-                const profileResponse = await axiosInstance.get('/merchants/profile');
+                // Bước 2: Lấy profile đầy đủ (bao gồm avatarUrl)
+                // ⚠️ QUAN TRỌNG: Dùng đúng endpoint mà backend trả về avatarUrl
+                const profileResponse = await axiosInstance.get('/merchants/my-profile');
+
+                setMerchantInfo(profileResponse.data);
                 setMerchantName(profileResponse.data.restaurantName || 'Cửa hàng của tôi');
+
             } catch (error) {
-                console.warn("Không thể tải tên Merchant.", error);
-                setMerchantName('Cửa hàng của tôi');
+                console.error("❌ Lỗi tải thông tin Merchant:", error);
+                toast.error("Không thể tải thông tin Merchant");
+                setCurrentMerchantId(null);
             } finally {
                 setIsLoadingId(false);
             }
         };
-        fetchMerchantId();
-    }, []);
+
+        fetchMerchantData();
+    }, []); // Chỉ chạy 1 lần khi mount
 
     // Fetch dish statistics
     useEffect(() => {
@@ -303,6 +308,68 @@ const MerchantDashboardBootstrap: React.FC = () => {
             case 'orderByCustomer': return { subTitle: 'Thống kê theo khách', btnText: '', showButton: false, onClick: () => {} };
             case 'orderByCoupons': return { subTitle: 'Thống kê theo mã giảm giá', btnText: '', showButton: false, onClick: () => {} };
             default: return { subTitle: '', btnText: '', showButton: false, onClick: () => {} };
+    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!currentMerchantId) {
+            toast.error("Chưa xác định được Merchant ID");
+            return;
+        }
+
+        const CLOUD_NAME = "dxoln0uq3";
+        const UPLOAD_PRESET = "lunchbot_dishes";
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', UPLOAD_PRESET);
+
+        const loadingToast = toast.loading("Đang tải ảnh lên...");
+
+        try {
+            setIsUploading(true);
+
+            // Bước 1: Upload lên Cloudinary
+            const cloudinaryRes = await fetch(
+                `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+                { method: 'POST', body: formData }
+            );
+
+            if (!cloudinaryRes.ok) {
+                throw new Error('Upload Cloudinary thất bại');
+            }
+
+            const imageData = await cloudinaryRes.json();
+            const secureUrl = imageData.secure_url;
+
+            console.log('✅ Uploaded to Cloudinary:', secureUrl);
+
+            // Bước 2: Lưu URL vào backend
+            const patchResponse = await axiosInstance.patch('/merchants/my-profile/avatar', {
+                avatarUrl: secureUrl
+            });
+
+            console.log('✅ Backend response:', patchResponse.data);
+
+            // Bước 3: Cập nhật state ngay lập tức
+            setMerchantInfo((prev: any) => ({
+                ...prev,
+                avatarUrl: secureUrl
+            }));
+
+            toast.dismiss(loadingToast);
+            toast.success("Cập nhật ảnh đại diện thành công!");
+
+        } catch (error: any) {
+            console.error('❌ Upload error:', error);
+            toast.dismiss(loadingToast);
+            toast.error("Lỗi khi cập nhật ảnh: " + (error.response?.data?.message || error.message));
+        } finally {
+            setIsUploading(false);
+            // Reset input để có thể upload lại cùng file
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -322,6 +389,59 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>{merchantName}</h4>
                                 <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
                             </div>
+                            <div className="d-flex align-items-center gap-3">
+                                <div className="position-relative">
+                                    <div
+                                        className="rounded-circle border border-4 border-white shadow-sm overflow-hidden bg-light d-flex align-items-center justify-content-center"
+                                        style={{ width: '100px', height: '100px', cursor: 'pointer' }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        {merchantInfo?.avatarUrl ? (
+                                            <img
+                                                src={merchantInfo.avatarUrl}
+                                                className="w-100 h-100"
+                                                style={{ objectFit: 'cover' }}
+                                                alt="Merchant Avatar"
+                                            />
+                                        ) : (
+                                            <User size={40} className="text-secondary" />
+                                        )}
+
+                                        {isUploading && (
+                                            <div
+                                                className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                                                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                            >
+                                                <Spinner animation="border" size="sm" variant="light" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        className="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle border-0 p-2 shadow"
+                                        style={{ width: '36px', height: '36px' }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Camera size={16} />
+                                    </button>
+
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarUpload}
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
+                                        {merchantName}
+                                    </h4>
+                                    <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
+                                </div>
+                            </div>
+
                             {headerConfig.showButton && (
                                 <button className="btn btn-sm fw-semibold px-4" style={{backgroundColor: customStyles.primaryPink, color: 'white', borderRadius: '0.5rem'}} onClick={headerConfig.onClick}>
                                     <Plus size={16} className="me-1"/>{headerConfig.btnText}
