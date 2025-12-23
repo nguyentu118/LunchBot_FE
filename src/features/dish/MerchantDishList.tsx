@@ -1,290 +1,497 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Clock, MapPin, Phone, Store, UtensilsCrossed } from 'lucide-react';
+import React, {useRef, useState, useEffect, useCallback, memo } from 'react';
+import { Upload, Pencil, Image as ImageIcon, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig.ts";
-import { Spinner, Alert, Container, Card, Row, Col, Badge } from 'react-bootstrap';
-import Navigation from "../../components/layout/Navigation";
+import toast from "react-hot-toast";
+import DishDeleteButton from "./DishDeleteButton.tsx";
 
 interface Dish {
     id: number;
     name: string;
     description: string;
-    price: number;
-    discountPrice?: number;
+    price: string;
+    image: string | null;
     images?: string[];
-    isRecommended?: boolean;
+    categoryIds?: number[];
+    priceNumber?: number;
 }
 
-const MerchantProfilePage = () => {
-    const { merchantId } = useParams<{ merchantId: string }>();
+interface SearchFilters {
+    keyword: string;
+    categoryId: string;
+    priceRange: string;
+}
 
-    const [merchant, setMerchant] = useState<any>(null);
+interface MerchantDishListProps {
+    onDishCreatedToggle: boolean;
+    selectedDish: Dish | null;
+    setSelectedDish: (dish: Dish | null) => void;
+    onEdit?: (dish: Dish) => void;
+    onDelete?: (dishId: number) => void;
+    onDishDeleted?: () => void; // ✅ Prop này đã có trong interface
+    searchFilters: SearchFilters;
+}
+
+const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
+                                                                    onDishCreatedToggle,
+                                                                    selectedDish,
+                                                                    setSelectedDish,
+                                                                    onEdit,
+                                                                    onDishDeleted, // ✅ THÊM DÒNG NÀY - Nhận prop từ parent
+                                                                    searchFilters
+                                                                }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingDishes, setLoadingDishes] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    useEffect(() => {
-        console.log('🔍 merchantId from params:', merchantId);
+    // 🔥 PHÂN TRANG
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const ITEMS_PER_PAGE = 6;
 
-        if (merchantId) {
-            fetchMerchantProfile();
-            fetchMerchantDishes();
-        } else {
-            console.error('❌ merchantId is undefined!');
-        }
-    }, [merchantId]);
+    // State cho Image Gallery Modal
+    const [showGallery, setShowGallery] = useState(false);
+    const [currentImages, setCurrentImages] = useState<string[]>([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    const fetchMerchantProfile = async () => {
-        if (!merchantId) return;
+    // State để track ảnh bị lỗi
+    const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
+    const fetchMerchantDishes = useCallback(async (showToast = true) => {
+        setIsLoading(true);
         try {
-            setLoading(true);
-            console.log('📡 Fetching merchant profile for ID:', merchantId);
-            const response = await axiosInstance.get(`/merchants/profile/${merchantId}`);
-            console.log('✅ Merchant profile:', response.data);
-            setMerchant(response.data);
-        } catch (err: any) {
-            console.error('❌ Error fetching merchant profile:', err);
-            setError(err.response?.data?.message || 'Không thể tải thông tin nhà hàng');
-        } finally {
-            setLoading(false);
-        }
-    };
+            const response = await axiosInstance.get('/dishes/list');
 
-    const fetchMerchantDishes = async () => {
-        if (!merchantId) {
-            console.error('❌ Cannot fetch dishes: merchantId is undefined');
-            return;
-        }
+            let dishesData: any[] = [];
 
-        try {
-            setLoadingDishes(true);
-            const url = `/merchants/profile/${merchantId}/dishes`;
-            console.log('📡 Fetching dishes from:', url);
+            if (typeof response.data === 'string') {
+                try {
+                    const cleanedString = response.data.trim();
+                    const parsed = JSON.parse(cleanedString);
 
-            const response = await axiosInstance.get(url);
-            console.log('✅ Dishes response:', response.data);
-            setDishes(response.data || []);
-        } catch (err: any) {
-            console.error('❌ Error fetching dishes:', err);
-            console.error('Error details:', err.response?.data);
+                    if (Array.isArray(parsed)) {
+                        dishesData = parsed;
+                    } else if (parsed && typeof parsed === 'object') {
+                        const possibleKeys = ['dishes', 'data', 'content', 'items', 'list'];
+                        for (const key of possibleKeys) {
+                            if (Array.isArray(parsed[key])) {
+                                dishesData = parsed[key];
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Parse error:', e);
+                    toast.error('Lỗi parse dữ liệu. Vui lòng liên hệ developer.');
+                }
+            }
+            else if (Array.isArray(response.data)) {
+                dishesData = response.data;
+            }
+            else if (response.data && typeof response.data === 'object') {
+                const possibleArrayKeys = ['dishes', 'data', 'content', 'items', 'list'];
+                for (const key of possibleArrayKeys) {
+                    if (Array.isArray(response.data[key])) {
+                        dishesData = response.data[key];
+                        break;
+                    }
+                }
+            }
+
+
+            const fetchedDishes: Dish[] = dishesData.map((dish: any) => {
+                // Xử lý ảnh
+                let images: string[] = [];
+                if (dish.imagesUrls) {
+                    try {
+                        const parsed = JSON.parse(dish.imagesUrls);
+                        images = Array.isArray(parsed) ? parsed : [];
+                    } catch (e) {
+                        console.warn('Failed to parse images for dish:', dish.id);
+                    }
+                }
+
+                // Xử lý giá
+                const priceNumber = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price) || 0;
+                const formattedPrice = priceNumber.toLocaleString('vi-VN') + 'đ';
+
+                return {
+                    id: dish.id,
+                    name: dish.name || 'Món ăn không tên',
+                    description: dish.description || 'Chưa có mô tả.',
+                    price: formattedPrice,
+                    priceNumber: priceNumber,
+                    image: images.length > 0 ? images[0] : null,
+                    images: images,
+                    // ✅ Backend ĐÃ TRẢ VỀ categoryIds
+                    categoryIds: dish.categoryIds || []
+                };
+            });
+
+            setDishes(fetchedDishes);
+
+        } catch (error) {
+            console.error("Lỗi tải danh sách món ăn:", error);
+            toast.error("Không thể tải danh sách món. Vui lòng kiểm tra kết nối.");
             setDishes([]);
         } finally {
-            setLoadingDishes(false);
+            setIsLoading(false);
+        }
+    }, []);
+
+    const isFirstLoad = useRef(true);
+
+    useEffect(() => {
+        if (isFirstLoad.current) {
+            fetchMerchantDishes(true);
+            isFirstLoad.current = false;
+        } else {
+            fetchMerchantDishes(false);
+        }
+    }, [fetchMerchantDishes, onDishCreatedToggle]);
+
+    // 🔥 LỌC CLIENT-SIDE (Hoạt động sau khi Backend đã trả về categoryIds)
+    const filteredDishes = dishes.filter(dish => {
+        // 1️⃣ Lọc theo KEYWORD
+        if (searchFilters.keyword) {
+            const keyword = searchFilters.keyword.toLowerCase().trim();
+            const matchName = dish.name.toLowerCase().includes(keyword);
+            const matchDesc = dish.description.toLowerCase().includes(keyword);
+            if (!matchName && !matchDesc) {
+                return false;
+            }
+        }
+
+        // 2️⃣ Lọc theo CATEGORY
+        if (searchFilters.categoryId) {
+            const categoryId = Number(searchFilters.categoryId);
+
+            if (!dish.categoryIds || !Array.isArray(dish.categoryIds)) {
+                console.warn(`⚠️ Dish ${dish.id} has no categoryIds`);
+                return false;
+            }
+
+            if (!dish.categoryIds.includes(categoryId)) {
+                return false;
+            }
+        }
+
+        // 3️⃣ Lọc theo PRICE RANGE
+        if (searchFilters.priceRange) {
+            const [min, max] = searchFilters.priceRange.split('-').map(Number);
+            const price = dish.priceNumber || 0;
+            if (price < min || price > max) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+
+    // 🔥 TÍNH TOÁN PHÂN TRANG
+    const totalPages = Math.ceil(filteredDishes.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentDishes = filteredDishes.slice(startIndex, endIndex);
+
+    // Reset về trang 1 khi filter thay đổi
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchFilters]);
+
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(1);
+        }
+    }, [filteredDishes.length, currentPage, totalPages]);
+
+    const goToPage = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
-    const formatTime = (time: string) => {
-        if (!time) return null;
-        return time.substring(0, 5);
+    const openGallery = (images: string[], startIndex: number = 0) => {
+        setCurrentImages(images);
+        setCurrentImageIndex(startIndex);
+        setShowGallery(true);
     };
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(price);
+    const nextImage = () => {
+        setCurrentImageIndex((prev) => (prev + 1) % currentImages.length);
     };
 
-    if (loading) return (
-        <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-            <Spinner animation="border" variant="danger" />
-        </div>
-    );
+    const prevImage = () => {
+        setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+    };
+
+    const handleImageError = (imageUrl: string) => {
+        console.error('❌ Failed to load image:', imageUrl);
+        setImageErrors(prev => new Set(prev).add(imageUrl));
+    };
+
+    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
+
+    if (isLoading) {
+        return (
+            <div className="bg-white rounded-4 p-4 shadow">
+                <div className="text-center py-5">
+                    <div className="spinner-border text-danger" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="mt-3 text-muted">Đang tải danh sách món ăn...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-vh-100 bg-light">
-            <Navigation />
+        <>
+            <div className="bg-white rounded-4 p-4 shadow">
+                {hasActiveFilters && filteredDishes.length === 0 && (
+                    <div className="alert alert-info d-flex align-items-center" role="alert">
+                        <AlertCircle size={20} className="me-2" />
+                        <div>
+                            Không tìm thấy món ăn phù hợp với bộ lọc của bạn.
+                        </div>
+                    </div>
+                )}
 
-            <Container className="py-4">
-                {error ? (
-                    <Alert variant="danger">{error}</Alert>
-                ) : (
-                    <>
-                        {/* Merchant Profile Section */}
-                        <div className="bg-white rounded-3 shadow-sm overflow-hidden mb-4">
-                            <div className="bg-danger" style={{ height: '120px', opacity: 0.9 }}></div>
-
-                            <div className="px-4 pb-4" style={{ marginTop: '-30px' }}>
-                                <div className="d-flex align-items-end mb-3">
-                                    <div className="position-relative">
-                                        {merchant?.avatarUrl ? (
+                <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+                    {currentDishes.length === 0 && !hasActiveFilters ? (
+                        <div className="col-12 text-center py-5">
+                            <h4 className="text-muted">Chưa có món ăn nào.</h4>
+                            <p className="text-secondary">Hãy bấm "Thêm món ăn" để bắt đầu.</p>
+                        </div>
+                    ) : (
+                        currentDishes.map((dish: Dish) => (
+                            <div className="col" key={dish.id}>
+                                <div
+                                    onClick={() => setSelectedDish(dish)}
+                                    className={`card shadow-sm h-100 cursor-pointer ${selectedDish?.id === dish.id ? 'border-danger border-2' : ''}`}
+                                    style={{
+                                        borderRadius: '0.75rem',
+                                        transition: 'all 0.3s',
+                                        transform: selectedDish?.id === dish.id ? 'scale(1.05)' : 'scale(1)',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <div
+                                        className="card-img-top bg-light d-flex align-items-center justify-content-center position-relative overflow-hidden"
+                                        style={{
+                                            height: '180px',
+                                            borderTopLeftRadius: '0.75rem',
+                                            borderTopRightRadius: '0.75rem'
+                                        }}
+                                    >
+                                        {dish.image && !imageErrors.has(dish.image) ? (
                                             <img
-                                                src={merchant.avatarUrl}
-                                                className="rounded-circle border border-4 border-white shadow"
-                                                style={{ width: '90px', height: '90px', objectFit: 'cover' }}
-                                                alt="avatar"
+                                                src={dish.image}
+                                                alt={dish.name}
+                                                className="w-100 h-100"
+                                                style={{
+                                                    objectFit: 'cover',
+                                                    objectPosition: 'center'
+                                                }}
+                                                onError={() => handleImageError(dish.image!)}
                                             />
                                         ) : (
-                                            <div className="rounded-circle border border-4 border-white shadow bg-light d-flex align-items-center justify-content-center"
-                                                 style={{ width: '90px', height: '90px' }}>
-                                                <Store size={35} className="text-secondary" />
+                                            <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                                                {imageErrors.has(dish.image!) ? (
+                                                    <>
+                                                        <AlertCircle size={48} className="text-danger" />
+                                                        <small className="text-danger fw-bold">Lỗi tải ảnh</small>
+                                                    </>
+                                                ) : (
+                                                    <Upload size={48} className="text-secondary" />
+                                                )}
                                             </div>
                                         )}
-                                    </div>
-                                    <div className="ms-3 mb-2">
-                                        <h2 className="fw-bold mb-0" style={{ fontSize: '1.5rem' }}>
-                                            {merchant?.restaurantName}
-                                        </h2>
-                                    </div>
-                                </div>
 
-                                <div className="row g-3">
-                                    <div className="col-md-6 d-flex align-items-center text-muted">
-                                        <MapPin size={18} className="me-2 text-danger" />
-                                        <span className="text-truncate">
-                                            <strong className="text-dark">Địa chỉ: </strong>
-                                            {merchant?.address || 'Địa chỉ đang được cập nhật'}
-                                        </span>
+                                        {dish.images && dish.images.length > 1 && (
+                                            <button
+                                                className="position-absolute top-0 end-0 m-2 btn btn-sm btn-dark bg-opacity-75"
+                                                style={{ borderRadius: '0.5rem', zIndex: 10 }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openGallery(dish.images || [], 0);
+                                                }}
+                                                title="Xem tất cả ảnh"
+                                            >
+                                                <ImageIcon size={14} className="me-1" />
+                                                {dish.images.length}
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className="col-md-6 d-flex align-items-center text-muted">
-                                        <Phone size={18} className="me-2 text-danger" />
-                                        <span>
-                                            <strong className="text-dark">Số điện thoại: </strong>
-                                            {merchant?.phone || 'Chưa có số điện thoại'}
-                                        </span>
-                                    </div>
-                                    <div className="col-md-12 d-flex align-items-center text-muted mt-2">
-                                        <Clock size={18} className="me-2 text-danger" />
-                                        <span>
-                                            <strong className="text-dark">Giờ hoạt động: </strong>
-                                            {formatTime(merchant?.openTime) || '08:00'} - {formatTime(merchant?.closeTime) || '21:00'}
-                                        </span>
+
+                                    <div className="card-body">
+                                        <h4 className="card-title h6 fw-bold text-dark mb-2">{dish.name}</h4>
+                                        <p className="card-text text-muted small mb-3"
+                                           style={{
+                                               overflow: 'hidden',
+                                               textOverflow: 'ellipsis',
+                                               display: '-webkit-box',
+                                               WebkitLineClamp: 2,
+                                               WebkitBoxOrient: 'vertical'
+                                           }}>
+                                            {dish.description}
+                                        </p>
+                                        <p className="h5 fw-bold text-danger mb-3">{dish.price}</p>
+
+                                        <div className="d-flex gap-2 mt-3">
+                                            <button
+                                                className="btn btn-sm btn-outline-primary flex-fill"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEdit?.(dish);
+                                                }}
+                                            >
+                                                <Pencil size={16} className="me-1" />
+                                                Sửa
+                                            </button>
+
+                                            <DishDeleteButton
+                                                dishId={dish.id}
+                                                dishName={dish.name}
+                                                className="btn-sm flex-fill"
+                                                onDeleteSuccess={() => {
+                                                    // ✅ SỬA LẠI: Gọi CẢ 2 hàm
+                                                    fetchMerchantDishes(false); // Refresh list (không toast)
+                                                    onDishDeleted?.(); // Thông báo cho parent để cập nhật stats
+                                                }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        ))
+                    )}
+                </div>
+
+                {/* 🔥 PAGINATION UI */}
+                {totalPages > 1 && (
+                    <div className="d-flex justify-content-center align-items-center gap-2 mt-4">
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+
+                        <div className="d-flex gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    className={`btn ${currentPage === page ? 'btn-danger' : 'btn-outline-danger'}`}
+                                    onClick={() => goToPage(page)}
+                                    style={{ minWidth: '40px' }}
+                                >
+                                    {page}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Dishes Section */}
-                        <div className="bg-white rounded-3 shadow-sm p-4">
-                            <div className="d-flex align-items-center mb-4">
-                                <UtensilsCrossed size={24} className="text-danger me-2" />
-                                <h3 className="fw-bold mb-0">Thực đơn</h3>
-                                <Badge bg="danger" className="ms-2">{dishes.length} món</Badge>
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    </div>
+                )}
+
+                {totalPages > 1 && (
+                    <div className="text-center mt-3 text-muted small">
+                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredDishes.length)} của {filteredDishes.length} món
+                    </div>
+                )}
+            </div>
+
+            {/* Image Gallery Modal */}
+            {showGallery && (
+                <div
+                    className="modal fade show d-block"
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+                    onClick={() => setShowGallery(false)}
+                >
+                    <div
+                        className="modal-dialog modal-dialog-centered modal-xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-content bg-transparent border-0">
+                            <div className="d-flex justify-content-between align-items-center p-3">
+                                <span className="text-white fw-bold">
+                                    Ảnh {currentImageIndex + 1} / {currentImages.length}
+                                </span>
+                                <button
+                                    className="btn btn-close btn-close-white"
+                                    onClick={() => setShowGallery(false)}
+                                ></button>
                             </div>
 
-                            {loadingDishes ? (
-                                <div className="text-center py-5">
-                                    <Spinner animation="border" variant="danger" />
-                                    <p className="text-muted mt-2">Đang tải thực đơn...</p>
-                                </div>
-                            ) : dishes.length === 0 ? (
-                                <div className="text-center py-5">
-                                    <UtensilsCrossed size={48} className="text-muted mb-3" />
-                                    <p className="text-muted">Nhà hàng chưa có món ăn nào</p>
-                                </div>
-                            ) : (
-                                <Row className="g-4">
-                                    {dishes.map((dish) => (
-                                        <Col key={dish.id} xs={12} sm={6} md={4} lg={3}>
-                                            <Card className="h-100 border-0 shadow-sm hover-shadow transition">
-                                                {/* Dish Image */}
-                                                <div className="position-relative overflow-hidden" style={{ height: '200px' }}>
-                                                    {dish.images && dish.images.length > 0 ? (
-                                                        <Card.Img
-                                                            variant="top"
-                                                            src={dish.images[0]}
-                                                            style={{
-                                                                height: '100%',
-                                                                objectFit: 'cover',
-                                                                transition: 'transform 0.3s ease'
-                                                            }}
-                                                            className="dish-image"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
-                                                            <UtensilsCrossed size={40} className="text-muted" />
-                                                        </div>
-                                                    )}
+                            <div className="position-relative" style={{ height: '70vh' }}>
+                                <img
+                                    src={currentImages[currentImageIndex]}
+                                    alt={`Image ${currentImageIndex + 1}`}
+                                    className="w-100 h-100"
+                                    style={{ objectFit: 'contain' }}
+                                    onError={(e) => {
+                                        console.error('❌ Gallery image failed to load:', currentImages[currentImageIndex]);
+                                        e.currentTarget.style.display = 'none';
+                                    }}
+                                />
 
-                                                    {/* Recommended Badge */}
-                                                    {dish.isRecommended && (
-                                                        <Badge
-                                                            bg="warning"
-                                                            className="position-absolute top-0 start-0 m-2"
-                                                        >
-                                                            ⭐ Nổi bật
-                                                        </Badge>
-                                                    )}
+                                {currentImages.length > 1 && (
+                                    <>
+                                        <button
+                                            className="btn btn-light position-absolute top-50 start-0 translate-middle-y ms-3"
+                                            onClick={prevImage}
+                                            style={{ borderRadius: '50%', width: '50px', height: '50px' }}
+                                        >
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <button
+                                            className="btn btn-light position-absolute top-50 end-0 translate-middle-y me-3"
+                                            onClick={nextImage}
+                                            style={{ borderRadius: '50%', width: '50px', height: '50px' }}
+                                        >
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
 
-                                                    {/* Discount Badge */}
-                                                    {dish.discountPrice && dish.discountPrice < dish.price && (
-                                                        <Badge
-                                                            bg="danger"
-                                                            className="position-absolute top-0 end-0 m-2"
-                                                        >
-                                                            -{Math.round((1 - dish.discountPrice / dish.price) * 100)}%
-                                                        </Badge>
-                                                    )}
-                                                </div>
-
-                                                <Card.Body className="d-flex flex-column">
-                                                    <Card.Title className="fw-bold mb-2" style={{ fontSize: '1rem' }}>
-                                                        {dish.name}
-                                                    </Card.Title>
-
-                                                    <Card.Text
-                                                        className="text-muted small flex-grow-1"
-                                                        style={{
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            display: '-webkit-box',
-                                                            WebkitLineClamp: 2,
-                                                            WebkitBoxOrient: 'vertical'
-                                                        }}
-                                                    >
-                                                        {dish.description || 'Món ăn ngon'}
-                                                    </Card.Text>
-
-                                                    <div className="mt-2">
-                                                        {dish.discountPrice && dish.discountPrice < dish.price ? (
-                                                            <>
-                                                                <div className="fw-bold text-danger" style={{ fontSize: '1.1rem' }}>
-                                                                    {formatPrice(dish.discountPrice)}
-                                                                </div>
-                                                                <div className="text-muted text-decoration-line-through small">
-                                                                    {formatPrice(dish.price)}
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <div className="fw-bold text-danger" style={{ fontSize: '1.1rem' }}>
-                                                                {formatPrice(dish.price)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </Card.Body>
-                                            </Card>
-                                        </Col>
+                            {currentImages.length > 1 && (
+                                <div className="d-flex gap-2 p-3 overflow-auto" style={{ maxWidth: '100%' }}>
+                                    {currentImages.map((img, idx) => (
+                                        <img
+                                            key={idx}
+                                            src={img}
+                                            alt={`Thumbnail ${idx + 1}`}
+                                            className={`cursor-pointer ${idx === currentImageIndex ? 'border border-3 border-danger' : 'opacity-50'}`}
+                                            style={{
+                                                width: '80px',
+                                                height: '80px',
+                                                objectFit: 'cover',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => setCurrentImageIndex(idx)}
+                                            onError={(e) => {
+                                                console.error('❌ Thumbnail failed to load:', img);
+                                                e.currentTarget.style.opacity = '0.2';
+                                            }}
+                                        />
                                     ))}
-                                </Row>
+                                </div>
                             )}
                         </div>
-                    </>
-                )}
-            </Container>
-
-            <style>{`
-                .hover-shadow {
-                    transition: box-shadow 0.3s ease, transform 0.3s ease;
-                    cursor: pointer;
-                }
-                
-                .hover-shadow:hover {
-                    box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
-                    transform: translateY(-4px);
-                }
-
-                .dish-image:hover {
-                    transform: scale(1.05);
-                }
-
-                .transition {
-                    transition: all 0.3s ease;
-                }
-            `}</style>
-        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
-};
+});
 
-export default MerchantProfilePage;
+export default MerchantDishList;
