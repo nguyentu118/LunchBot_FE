@@ -233,6 +233,7 @@ export interface OrderResponse {
     completedAt?: string;
     cancelledAt?: string;
     cancellationReason?: string;
+    paymentMethod: 'COD' | 'CARD';
 }
 
 export interface Dish {
@@ -264,3 +265,21 @@ export const ORDER_STATUS_COLORS: Record<string, string> = {
     COMPLETED: '#28A745',
     CANCELLED: '#DC3545'
 };
+export interface UserResponseDTO{
+    id: number
+    email: string;
+    phone: string;
+    fullName: string;
+    dateOfBirth?: string;
+    gender?: string;
+    shippingAddress: string;
+}
+
+export interface CouponStatisticsResponse {
+    couponId: number;
+    couponCode: string;
+    totalOrders: number;
+    totalRevenue: number;
+    totalDiscountGiven: number;
+    orders: OrderResponse[]; // Tận dụng lại OrderResponse anh đã có
+}
