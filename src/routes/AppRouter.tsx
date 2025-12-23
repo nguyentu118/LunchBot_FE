@@ -21,6 +21,7 @@ import OrderDetailPage from "../features/order/components/OrderDetailPage.tsx";
 import DriverListPage from "../features/admin/driver/DriverListPage.tsx";
 import DriverList from "../features/admin/driver/components/DriverList.tsx";
 import DriverUpdateForm from "../features/admin/driver/components/DriverUpdateForm.tsx";
+import MerchantProfilePage from "../features/merchants/MerchantProfilePage.tsx";
 
 
 const router = createBrowserRouter([
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
     {
         path: "/orders/:orderId",
         element: <OrderDetailPage/>,
+    },
+    {
+        path: "/merchants/profile/:merchantId",
+        element: <MerchantProfilePage/>,
     },
 
 

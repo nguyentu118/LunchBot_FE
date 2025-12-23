@@ -373,7 +373,8 @@ const CheckoutPage: React.FC = () => {
                 addressId: selectedAddressId,
                 paymentMethod: selectedPaymentMethod,
                 couponCode: checkoutData?.appliedCouponCode || undefined,
-                notes: notes.trim() || undefined
+                notes: notes.trim() || undefined,
+                shippingFee: shippingFee
             };
 
             console.log('🎁 Order payload:', orderData);

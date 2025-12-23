@@ -1,6 +1,6 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3} from 'lucide-react';
-import {Modal} from "react-bootstrap";
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3, User, Camera} from 'lucide-react';
+import {Modal, Spinner} from "react-bootstrap";
 import toast from "react-hot-toast";
 import {AxiosResponse, AxiosError} from 'axios';
 
@@ -12,12 +12,14 @@ import MerchantCouponManager from "../../features/coupon/components/MerchantCoup
 import DishUpdateForm from "../../features/dish/DishUpdateForm.tsx";
 import Navigation from "./Navigation.tsx";
 import MerchantOrderManager from "../../features/merchants/MerchantOrderManager";
-// Hooks & Config
-import useCategories from "../../features/category/useCategories.ts";
-import axiosInstance from "../../config/axiosConfig.ts";
 import OrderStatisticsCard from "../../features/merchants/OrderStatisticsCard.tsx";
 import RevenueStatistics from "../../features/merchants/RevenueStatistics.tsx";
 import OrderByDish from "../../features/order/components/OrderByDish.tsx";
+
+// Hooks & Config
+import useCategories from "../../features/category/useCategories.ts";
+import axiosInstance from "../../config/axiosConfig.ts";
+import {useParams} from "react-router-dom";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -49,7 +51,6 @@ interface SidebarButtonProps {
     icon: React.ElementType;
     text: string;
     onClick: () => void;
-    color?: string;
     isActive?: boolean;
 }
 
@@ -62,20 +63,10 @@ interface SearchFilters {
     keyword: string;
     categoryId: string;
     priceRange: string;
-    status: '',
-    date: ''
+    status: string;
+    date: string;
 }
 
-interface MerchantDishListProps {
-    onDishCreatedToggle: boolean;
-    selectedDish: Dish | null;
-    setSelectedDish: (dish: Dish | null) => void;
-    onEdit?: (dish: Dish) => void;
-    onDelete?: (dishId: number) => void;
-    searchFilters: SearchFilters;
-}
-
-// ==================== CONSTANTS ====================
 const customStyles = {
     primaryPink: '#ff5e62',
     secondaryYellow: '#ffe033',
@@ -104,7 +95,6 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({
                                                          icon: Icon,
                                                          text,
                                                          onClick,
-                                                         color = 'danger',
                                                          isActive = false
                                                      }) => (
     <button
@@ -126,11 +116,15 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({
 // ==================== MAIN COMPONENT ====================
 const MerchantDashboardBootstrap: React.FC = () => {
     const {categories, isLoading: isLoadingCategories, error: categoriesError} = useCategories();
+    const [merchantInfo, setMerchantInfo] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const { merchantId } = useParams<{ merchantId: string }>();
 
     // Merchant State
     const [currentMerchantId, setCurrentMerchantId] = useState<number | null>(null);
     const [merchantName, setMerchantName] = useState<string>('Đang tải...');
     const [isLoadingId, setIsLoadingId] = useState<boolean>(true);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Stats State
     const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
@@ -140,7 +134,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -152,38 +145,43 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [searchFilters, setSearchFilters] = useState<SearchFilters>({
         keyword: '',
         categoryId: '',
-        priceRange: ''
+        priceRange: '',
+        status: '',
+        date: ''
     });
-    const [isSearching, setIsSearching] = useState<boolean>(false);
 
     // Form State
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>(initialDishData);
 
     // ==================== EFFECTS ====================
+    // ✅ CONSOLIDATED: Fetch merchantId và profile trong 1 useEffect
     useEffect(() => {
-        const fetchMerchantId = async () => {
+        const fetchMerchantData = async () => {
             setIsLoadingId(true);
             try {
-                const response = await axiosInstance.get('/merchants/current/id');
-                setCurrentMerchantId(response.data.merchantId);
-            } catch (error) {
-                console.error("Lỗi tải Merchant ID:", error);
-                toast.error("Không thể tải Merchant ID. Vui lòng đăng nhập lại.");
-                setCurrentMerchantId(null);
-            }
+                // Bước 1: Lấy merchantId
+                const idResponse = await axiosInstance.get('/merchants/current/id');
+                const fetchedMerchantId = idResponse.data.merchantId;
+                setCurrentMerchantId(fetchedMerchantId);
 
-            try {
-                const profileResponse = await axiosInstance.get('/merchants/profile');
+                // Bước 2: Lấy profile đầy đủ (bao gồm avatarUrl)
+                // ⚠️ QUAN TRỌNG: Dùng đúng endpoint mà backend trả về avatarUrl
+                const profileResponse = await axiosInstance.get('/merchants/my-profile');
+
+                setMerchantInfo(profileResponse.data);
                 setMerchantName(profileResponse.data.restaurantName || 'Cửa hàng của tôi');
+
             } catch (error) {
-                console.warn("Không thể tải tên Merchant.", error);
-                setMerchantName('Cửa hàng của tôi');
+                console.error("❌ Lỗi tải thông tin Merchant:", error);
+                toast.error("Không thể tải thông tin Merchant");
+                setCurrentMerchantId(null);
             } finally {
                 setIsLoadingId(false);
             }
         };
-        fetchMerchantId();
-    }, []);
+
+        fetchMerchantData();
+    }, []); // Chỉ chạy 1 lần khi mount
 
     // Fetch dish statistics
     useEffect(() => {
@@ -320,34 +318,71 @@ const MerchantDashboardBootstrap: React.FC = () => {
         }));
     };
 
-    const handleSearch = useCallback(async () => {
-        setIsSearching(true);
-        setDishCreatedToggle(prev => !prev);
-        setTimeout(() => setIsSearching(false), 500);
-    }, []);
+    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
 
-    const handleClearSearch = () => {
-        setSearchFilters({
-            keyword: '',
-            categoryId: '',
-            priceRange: ''
-        });
-        setDishCreatedToggle(prev => !prev);
+        if (!currentMerchantId) {
+            toast.error("Chưa xác định được Merchant ID");
+            return;
+        }
+
+        const CLOUD_NAME = "dxoln0uq3";
+        const UPLOAD_PRESET = "lunchbot_dishes";
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', UPLOAD_PRESET);
+
+        const loadingToast = toast.loading("Đang tải ảnh lên...");
+
+        try {
+            setIsUploading(true);
+
+            // Bước 1: Upload lên Cloudinary
+            const cloudinaryRes = await fetch(
+                `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+                { method: 'POST', body: formData }
+            );
+
+            if (!cloudinaryRes.ok) {
+                throw new Error('Upload Cloudinary thất bại');
+            }
+
+            const imageData = await cloudinaryRes.json();
+            const secureUrl = imageData.secure_url;
+
+            console.log('✅ Uploaded to Cloudinary:', secureUrl);
+
+            // Bước 2: Lưu URL vào backend
+            const patchResponse = await axiosInstance.patch('/merchants/my-profile/avatar', {
+                avatarUrl: secureUrl
+            });
+
+            console.log('✅ Backend response:', patchResponse.data);
+
+            // Bước 3: Cập nhật state ngay lập tức
+            setMerchantInfo((prev: any) => ({
+                ...prev,
+                avatarUrl: secureUrl
+            }));
+
+            toast.dismiss(loadingToast);
+            toast.success("Cập nhật ảnh đại diện thành công!");
+
+        } catch (error: any) {
+            console.error('❌ Upload error:', error);
+            toast.dismiss(loadingToast);
+            toast.error("Lỗi khi cập nhật ảnh: " + (error.response?.data?.message || error.message));
+        } finally {
+            setIsUploading(false);
+            // Reset input để có thể upload lại cùng file
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
     };
 
-    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
-
-    // ==================== LOADING & ERROR STATES ====================
-    if (isLoadingId || isLoadingCategories) {
-        return <div className="text-center p-5">Đang tải dữ liệu Merchant và Danh mục...</div>;
-    }
-
-    if (currentMerchantId === null) {
-        return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng
-            đăng nhập lại.</div>;
-    }
-
-    // 1. Tạo biến cấu hình cho Header
     const getHeaderConfig = () => {
         switch (activeView) {
             case 'dishes':
@@ -362,23 +397,21 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     subTitle: 'Quản lý mã giảm giá',
                     btnText: 'Thêm mã giảm giá',
                     showButton: true,
-                    onClick: () => setShowCouponModal(true) // Đảm bảo bạn đã có state này
+                    onClick: () => setShowCouponModal(true)
                 };
             case 'orders':
                 return {
                     subTitle: 'Quản lý và theo dõi đơn hàng',
                     btnText: '',
-                    showButton: false, // Ẩn nút thêm mới
-                    onClick: () => {
-                    }
+                    showButton: false,
+                    onClick: () => {}
                 };
             case 'statistics':
                 return {
                     subTitle: 'Thống kê doanh thu',
                     btnText: '',
-                    showButton: false, // Ẩn nút thêm mới
-                    onClick: () => {
-                    }
+                    showButton: false,
+                    onClick: () => {}
                 };
             case 'orderByDish':
                 return {
@@ -389,14 +422,24 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 };
             default:
                 return {
-                    subTitle: '', btnText: '', showButton: false, onClick: () => {
-                    }
+                    subTitle: '',
+                    btnText: '',
+                    showButton: false,
+                    onClick: () => {}
                 };
         }
     };
 
     const headerConfig = getHeaderConfig();
 
+    // ==================== LOADING & ERROR STATES ====================
+    if (isLoadingId || isLoadingCategories) {
+        return <div className="text-center p-5">Đang tải dữ liệu Merchant và Danh mục...</div>;
+    }
+
+    if (currentMerchantId === null) {
+        return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng đăng nhập lại.</div>;
+    }
 
     // ==================== RENDER ====================
     return (
@@ -408,17 +451,60 @@ const MerchantDashboardBootstrap: React.FC = () => {
             <div className="container-fluid px-3 py-3">
                 <div className="row mb-3">
                     <div className="col-12">
-                        <div
-                            className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
-                            <div>
-                                <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
-                                    {merchantName}
-                                </h4>
-                                {/* Sử dụng biến từ headerConfig */}
-                                <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
+                        <div className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
+                            <div className="d-flex align-items-center gap-3">
+                                <div className="position-relative">
+                                    <div
+                                        className="rounded-circle border border-4 border-white shadow-sm overflow-hidden bg-light d-flex align-items-center justify-content-center"
+                                        style={{ width: '100px', height: '100px', cursor: 'pointer' }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        {merchantInfo?.avatarUrl ? (
+                                            <img
+                                                src={merchantInfo.avatarUrl}
+                                                className="w-100 h-100"
+                                                style={{ objectFit: 'cover' }}
+                                                alt="Merchant Avatar"
+                                            />
+                                        ) : (
+                                            <User size={40} className="text-secondary" />
+                                        )}
+
+                                        {isUploading && (
+                                            <div
+                                                className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                                                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                            >
+                                                <Spinner animation="border" size="sm" variant="light" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        className="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle border-0 p-2 shadow"
+                                        style={{ width: '36px', height: '36px' }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Camera size={16} />
+                                    </button>
+
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarUpload}
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
+                                        {merchantName}
+                                    </h4>
+                                    <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
+                                </div>
                             </div>
 
-                            {/* Chỉ hiển thị nút khi showButton = true */}
                             {headerConfig.showButton && (
                                 <button
                                     className="btn btn-sm fw-semibold px-4"
@@ -443,7 +529,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                         <div className="col-12">
                             <div className="bg-white rounded-3 p-3 shadow-sm">
                                 <div className="row g-3">
-                                    {/* KEYWORD SEARCH */}
                                     <div className="col-md-6">
                                         <label className="form-label small fw-semibold text-muted mb-1">
                                             {activeView === 'orders' ? 'Tìm đơn hàng' : 'Tìm kiếm theo tên'}
@@ -475,7 +560,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* DISHES FILTERS */}
                                     {activeView === 'dishes' && (
                                         <>
                                             <div className="col-md-3">
@@ -508,7 +592,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                         </>
                                     )}
 
-                                    {/* ORDERS FILTERS */}
                                     {activeView === 'orders' && (
                                         <>
                                             <div className="col-md-3">
@@ -546,7 +629,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     </div>
                 )}
 
-
                 <div className="row g-3">
                     <div className="col-lg-3">
                         <div className="rounded-3 p-3 shadow-sm mb-3" style={customStyles.sidebarBg}>
@@ -574,7 +656,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* THỐNG KÊ MÓN ĂN (chỉ hiện khi activeView === 'dishes') */}
                         {activeView === 'dishes' && (
                             <div className="bg-white rounded-3 p-3 shadow-sm mb-3">
                                 <h6 className="fw-bold mb-3">Thống kê nhanh</h6>
@@ -582,8 +663,8 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     <div className="d-flex justify-content-between align-items-center">
                                         <span className="text-muted small">Tổng món:</span>
                                         <span className="fw-bold" style={{color: customStyles.primaryPink}}>
-                    {dishStats.totalDishes}
-                </span>
+                                            {dishStats.totalDishes}
+                                        </span>
                                     </div>
                                     <div className="d-flex justify-content-between align-items-center">
                                         <span className="text-muted small">Món nổi bật:</span>
@@ -593,7 +674,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
                             </div>
                         )}
 
-                        {/* ✅ THỐNG KÊ ĐƠN HÀNG (chỉ hiện khi activeView === 'orders') */}
                         {activeView === 'orders' && (
                             <OrderStatisticsCard/>
                         )}
@@ -616,10 +696,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     selectedDish={selectedDish}
                                     setSelectedDish={setSelectedDish}
                                     onEdit={handleEditDish}
-                                    onDishDeleted={() => {
-                                        console.log('🔥 onDishDeleted được gọi!'); // Debug log
-                                        setDishCreatedToggle(prev => !prev)
-                                    }}
+                                    onDishDeleted={() => setDishCreatedToggle(prev => !prev)}
                                     searchFilters={searchFilters}
                                 />
                             )}
@@ -633,12 +710,11 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 <MerchantOrderManager
                                     filters={{
                                         keyword: searchFilters.keyword,
-                                        status: searchFilters.status || '',
-                                        date: searchFilters.date || ''
+                                        status: searchFilters.status,
+                                        date: searchFilters.date
                                     }}
                                 />
                             )}
-                            {/* ✅ HIỂN THỊ REVENUE STATISTICS */}
                             {activeView === 'statistics' && (
                                 <RevenueStatistics merchantId={currentMerchantId} />
                             )}
@@ -691,6 +767,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     )}
                 </Modal.Body>
             </Modal>
+
             {categoriesError && (
                 <div className="position-fixed bottom-0 end-0 p-3" style={{zIndex: 1050}}>
                     <div className="alert alert-danger alert-dismissible fade show" role="alert">

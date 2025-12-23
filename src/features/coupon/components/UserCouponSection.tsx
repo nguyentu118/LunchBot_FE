@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Card } from 'react-bootstrap';
+import { Card } from 'react-bootstrap';
 import { Ticket } from 'lucide-react';
 import CouponList from './CouponList';
 

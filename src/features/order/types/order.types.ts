@@ -95,6 +95,7 @@ export interface CreateOrderRequest {
     paymentMethod: PaymentMethod;
     couponCode?: string;
     notes?: string;
+    shippingFee: number;
 }
 
 export interface CancelOrderRequest {
