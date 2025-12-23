@@ -24,17 +24,28 @@ const DashboardOverview: React.FC = () => {
         const fetchDashboardStats = async () => {
             setIsLoading(true);
             try {
-                // Fetch order statistics
+                // 1. Lấy merchantId của user hiện tại
+                const merchantIdRes = await axiosInstance.get('/merchants/current/id');
+                const merchantId = merchantIdRes.data.merchantId;
+
+                // 2. Fetch order statistics
                 const orderStatsRes = await axiosInstance.get('/merchants/orders/statistics');
 
-                // Fetch dishes count
+                // 3. Fetch revenue statistics
+                const revenueRes = await axiosInstance.get(`/merchants/${merchantId}/statistics/revenue`, {
+                    params: {
+                        timeRange: 'all' // Lấy tất cả doanh thu
+                    }
+                });
+
+                // 4. Fetch dishes count
                 const dishesRes = await axiosInstance.get('/dishes/list');
                 const dishesData = Array.isArray(dishesRes.data) ? dishesRes.data : [];
 
                 setStats({
                     totalOrders: orderStatsRes.data.totalOrders || 0,
                     pendingOrders: orderStatsRes.data.pendingCount || 0,
-                    totalRevenue: 0, // TODO: Add revenue endpoint
+                    totalRevenue: revenueRes.data.totalRevenue || 0,
                     totalDishes: dishesData.length
                 });
             } catch (error) {
@@ -101,7 +112,7 @@ const DashboardOverview: React.FC = () => {
                                 <div>
                                     <p className="text-muted small mb-1">Doanh thu</p>
                                     <h3 className="fw-bold mb-0 text-success">
-                                        {stats.totalRevenue.toLocaleString()} ₫
+                                        {stats.totalRevenue.toLocaleString('vi-VN')} ₫
                                     </h3>
                                 </div>
                                 <div className="bg-success bg-opacity-10 p-3 rounded">
