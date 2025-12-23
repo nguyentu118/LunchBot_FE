@@ -1,5 +1,18 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
-import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3, UserCog, User, Camera} from 'lucide-react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {
+    BarChart3,
+    Camera,
+    ClipboardList,
+    Grid,
+    List,
+    Plus,
+    Search,
+    Ticket,
+    TrendingUp,
+    User,
+    UserCog,
+    X
+} from 'lucide-react';
 import {Modal, Spinner} from "react-bootstrap";
 import toast from "react-hot-toast";
 import {AxiosResponse} from 'axios';
@@ -21,7 +34,6 @@ import OrderByCoupons from "../../features/order/components/OrderByCoupon.tsx";
 // Hooks & Config
 import useCategories from "../../features/category/useCategories.ts";
 import axiosInstance from "../../config/axiosConfig.ts";
-import {useParams} from "react-router-dom";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -125,6 +137,9 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({
 const MerchantDashboardBootstrap: React.FC = () => {
     // Ép kiểu hook nếu hook chưa trả về đúng định dạng mong muốn để tránh lỗi TS2339
     const {categories, loading: isLoadingCategories, error: categoriesError} = useCategories() as any;
+    const [merchantInfo, setMerchantInfo] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
 
     // Merchant State
     const [currentMerchantId, setCurrentMerchantId] = useState<number | null>(null);
@@ -136,7 +151,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
 
     // View State
-    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'|'statistics'|'orderByDish'| 'orderByCustomer'|'orderByCoupons'>('dishes');
+    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders' | 'statistics' | 'orderByDish' | 'orderByCustomer' | 'orderByCoupons'>('dishes');
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -201,7 +216,9 @@ const MerchantDashboardBootstrap: React.FC = () => {
                     try {
                         const parsed = JSON.parse(data.trim());
                         dishesData = Array.isArray(parsed) ? parsed : (parsed.dishes || parsed.data || []);
-                    } catch (e) { console.error(e); }
+                    } catch (e) {
+                        console.error(e);
+                    }
                 } else {
                     dishesData = Array.isArray(data) ? data : (data.dishes || data.data || []);
                 }
@@ -300,14 +317,53 @@ const MerchantDashboardBootstrap: React.FC = () => {
 
     const getHeaderConfig = () => {
         switch (activeView) {
-            case 'dishes': return { subTitle: 'Quản lý món ăn', btnText: 'Thêm món ăn', showButton: true, onClick: () => setShowAddModal(true) };
-            case 'coupons': return { subTitle: 'Quản lý mã giảm giá', btnText: 'Thêm mã giảm giá', showButton: true, onClick: () => setShowCouponModal(true) };
-            case 'orders': return { subTitle: 'Quản lý đơn hàng', btnText: '', showButton: false, onClick: () => {} };
-            case 'statistics': return { subTitle: 'Thống kê doanh thu', btnText: '', showButton: false, onClick: () => {} };
-            case 'orderByDish': return { subTitle: 'Thống kê theo món', btnText: '', showButton: false, onClick: () => {} };
-            case 'orderByCustomer': return { subTitle: 'Thống kê theo khách', btnText: '', showButton: false, onClick: () => {} };
-            case 'orderByCoupons': return { subTitle: 'Thống kê theo mã giảm giá', btnText: '', showButton: false, onClick: () => {} };
-            default: return { subTitle: '', btnText: '', showButton: false, onClick: () => {} };
+            case 'dishes':
+                return {
+                    subTitle: 'Quản lý món ăn',
+                    btnText: 'Thêm món ăn',
+                    showButton: true,
+                    onClick: () => setShowAddModal(true)
+                };
+            case 'coupons':
+                return {
+                    subTitle: 'Quản lý mã giảm giá',
+                    btnText: 'Thêm mã giảm giá',
+                    showButton: true,
+                    onClick: () => setShowCouponModal(true)
+                };
+            case 'orders':
+                return {
+                    subTitle: 'Quản lý đơn hàng', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+            case 'statistics':
+                return {
+                    subTitle: 'Thống kê doanh thu', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+            case 'orderByDish':
+                return {
+                    subTitle: 'Thống kê theo món', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+            case 'orderByCustomer':
+                return {
+                    subTitle: 'Thống kê theo khách', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+            case 'orderByCoupons':
+                return {
+                    subTitle: 'Thống kê theo mã giảm giá', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+            default:
+                return {
+                    subTitle: '', btnText: '', showButton: false, onClick: () => {
+                    }
+                };
+        }
+    }
+
     const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -332,7 +388,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
             // Bước 1: Upload lên Cloudinary
             const cloudinaryRes = await fetch(
                 `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-                { method: 'POST', body: formData }
+                {method: 'POST', body: formData}
             );
 
             if (!cloudinaryRes.ok) {
@@ -385,44 +441,41 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 <div className="row mb-3">
                     <div className="col-12">
                         <div className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
-                            <div>
-                                <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>{merchantName}</h4>
-                                <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
-                            </div>
-                            <div className="d-flex align-items-center gap-3">
+                            {/* Gộp Avatar và Thông tin vào 1 khối d-flex duy nhất để nó dạt về bên trái */}
+                            <div className="d-flex align-items-start gap-3">
                                 <div className="position-relative">
                                     <div
                                         className="rounded-circle border border-4 border-white shadow-sm overflow-hidden bg-light d-flex align-items-center justify-content-center"
-                                        style={{ width: '100px', height: '100px', cursor: 'pointer' }}
+                                        style={{width: '100px', height: '100px', cursor: 'pointer'}}
                                         onClick={() => fileInputRef.current?.click()}
                                     >
                                         {merchantInfo?.avatarUrl ? (
                                             <img
                                                 src={merchantInfo.avatarUrl}
                                                 className="w-100 h-100"
-                                                style={{ objectFit: 'cover' }}
+                                                style={{objectFit: 'cover'}}
                                                 alt="Merchant Avatar"
                                             />
                                         ) : (
-                                            <User size={40} className="text-secondary" />
+                                            <User size={40} className="text-secondary"/>
                                         )}
 
                                         {isUploading && (
                                             <div
                                                 className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-                                                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                                style={{backgroundColor: 'rgba(0,0,0,0.5)'}}
                                             >
-                                                <Spinner animation="border" size="sm" variant="light" />
+                                                <Spinner animation="border" size="sm" variant="light"/>
                                             </div>
                                         )}
                                     </div>
 
                                     <button
                                         className="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle border-0 p-2 shadow"
-                                        style={{ width: '36px', height: '36px' }}
+                                        style={{width: '36px', height: '36px'}}
                                         onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <Camera size={16} />
+                                        <Camera size={16}/>
                                     </button>
 
                                     <input
@@ -430,11 +483,12 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                         type="file"
                                         accept="image/*"
                                         onChange={handleAvatarUpload}
-                                        style={{ display: 'none' }}
+                                        style={{display: 'none'}}
                                     />
                                 </div>
 
-                                <div>
+                                {/* Thông tin tên cửa hàng nằm ngay sát Avatar */}
+                                <div className="pt-2">
                                     <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
                                         {merchantName}
                                     </h4>
@@ -442,8 +496,13 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* Nút bấm sẽ tự động dạt về bên phải nhờ justify-content-between của thẻ cha */}
                             {headerConfig.showButton && (
-                                <button className="btn btn-sm fw-semibold px-4" style={{backgroundColor: customStyles.primaryPink, color: 'white', borderRadius: '0.5rem'}} onClick={headerConfig.onClick}>
+                                <button className="btn btn-sm fw-semibold px-4" style={{
+                                    backgroundColor: customStyles.primaryPink,
+                                    color: 'white',
+                                    borderRadius: '0.5rem'
+                                }} onClick={headerConfig.onClick}>
                                     <Plus size={16} className="me-1"/>{headerConfig.btnText}
                                 </button>
                             )}
@@ -452,7 +511,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 </div>
 
                 {/* SEARCH & FILTER BAR */}
-                {(activeView !== 'statistics' && activeView !== 'orderByDish' && activeView !== 'orderByCustomer'&& activeView !=='orderByCoupons') && (
+                {(activeView !== 'statistics' && activeView !== 'orderByDish' && activeView !== 'orderByCustomer' && activeView !== 'orderByCoupons') && (
                     <div className="row mb-3">
                         <div className="col-12">
                             <div className="bg-white rounded-3 p-3 shadow-sm">
@@ -460,7 +519,8 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     <div className="col-md-6">
                                         <label className="form-label small fw-semibold text-muted mb-1">Tìm kiếm</label>
                                         <div className="input-group">
-                                            <span className="input-group-text bg-white border-end-0"><Search size={18} className="text-muted"/></span>
+                                            <span className="input-group-text bg-white border-end-0"><Search size={18}
+                                                                                                             className="text-muted"/></span>
                                             <input
                                                 type="text" className="form-control border-start-0 ps-0"
                                                 placeholder="Nhập từ khóa tìm kiếm..."
@@ -468,7 +528,9 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                                 onChange={(e) => handleSearchChange('keyword', e.target.value)}
                                             />
                                             {searchFilters.keyword && (
-                                                <button className="btn btn-outline-secondary border-start-0" onClick={() => handleSearchChange('keyword', '')}><X size={18}/></button>
+                                                <button className="btn btn-outline-secondary border-start-0"
+                                                        onClick={() => handleSearchChange('keyword', '')}><X size={18}/>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -476,15 +538,20 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     {activeView === 'dishes' && (
                                         <>
                                             <div className="col-md-3">
-                                                <label className="form-label small fw-semibold text-muted mb-1">Danh mục</label>
-                                                <select className="form-select" value={searchFilters.categoryId} onChange={(e) => handleSearchChange('categoryId', e.target.value)}>
+                                                <label className="form-label small fw-semibold text-muted mb-1">Danh
+                                                    mục</label>
+                                                <select className="form-select" value={searchFilters.categoryId}
+                                                        onChange={(e) => handleSearchChange('categoryId', e.target.value)}>
                                                     <option value="">Tất cả</option>
-                                                    {categories?.map((cat: Category) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
+                                                    {categories?.map((cat: Category) => (
+                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>))}
                                                 </select>
                                             </div>
                                             <div className="col-md-3">
-                                                <label className="form-label small fw-semibold text-muted mb-1">Khoảng giá</label>
-                                                <select className="form-select" value={searchFilters.priceRange} onChange={(e) => handleSearchChange('priceRange', e.target.value)}>
+                                                <label className="form-label small fw-semibold text-muted mb-1">Khoảng
+                                                    giá</label>
+                                                <select className="form-select" value={searchFilters.priceRange}
+                                                        onChange={(e) => handleSearchChange('priceRange', e.target.value)}>
                                                     <option value="">Tất cả</option>
                                                     <option value="0-50000">Dưới 50k</option>
                                                     <option value="50000-100000">50k - 100k</option>
@@ -497,8 +564,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     {activeView === 'orders' && (
                                         <>
                                             <div className="col-md-3">
-                                                <label className="form-label small fw-semibold text-muted mb-1">Trạng thái</label>
-                                                <select className="form-select" value={searchFilters.status} onChange={(e) => handleSearchChange('status', e.target.value)}>
+                                                <label className="form-label small fw-semibold text-muted mb-1">Trạng
+                                                    thái</label>
+                                                <select className="form-select" value={searchFilters.status}
+                                                        onChange={(e) => handleSearchChange('status', e.target.value)}>
                                                     <option value="">Tất cả</option>
                                                     <option value="PENDING">Chờ xác nhận</option>
                                                     <option value="COMPLETED">Hoàn thành</option>
@@ -506,8 +575,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div className="col-md-3">
-                                                <label className="form-label small fw-semibold text-muted mb-1">Ngày đặt</label>
-                                                <input type="date" className="form-control" value={searchFilters.date} onChange={(e) => handleSearchChange('date', e.target.value)}/>
+                                                <label className="form-label small fw-semibold text-muted mb-1">Ngày
+                                                    đặt</label>
+                                                <input type="date" className="form-control" value={searchFilters.date}
+                                                       onChange={(e) => handleSearchChange('date', e.target.value)}/>
                                             </div>
                                         </>
                                     )}
@@ -522,13 +593,25 @@ const MerchantDashboardBootstrap: React.FC = () => {
                         <div className="rounded-3 p-3 shadow-sm mb-3" style={customStyles.sidebarBg}>
                             <h6 className="fw-bold text-white mb-3">Menu</h6>
                             <div className="d-grid">
-                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')} isActive={activeView === 'dishes'}/>
-                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')} isActive={activeView === 'coupons'}/>
-                                <SidebarButton icon={ClipboardList} text="Đơn hàng" onClick={() => setActiveView('orders')} isActive={activeView === 'orders'}/>
-                                <SidebarButton icon={TrendingUp} text="Doanh số" onClick={() => setActiveView('statistics')} isActive={activeView === 'statistics'}/>
-                                <SidebarButton icon={BarChart3} text="Theo món" onClick={() => setActiveView('orderByDish')} isActive={activeView === 'orderByDish'}/>
-                                <SidebarButton icon={UserCog} text="Theo khách" onClick={() => setActiveView('orderByCustomer')} isActive={activeView === 'orderByCustomer'}/>
-                                <SidebarButton icon={Ticket} text="Theo mã giảm" onClick={() => setActiveView('orderByCoupons')} isActive={activeView === 'orderByCoupons'}/>
+                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')}
+                                               isActive={activeView === 'dishes'}/>
+                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')}
+                                               isActive={activeView === 'coupons'}/>
+                                <SidebarButton icon={ClipboardList} text="Đơn hàng"
+                                               onClick={() => setActiveView('orders')}
+                                               isActive={activeView === 'orders'}/>
+                                <SidebarButton icon={TrendingUp} text="Doanh số"
+                                               onClick={() => setActiveView('statistics')}
+                                               isActive={activeView === 'statistics'}/>
+                                <SidebarButton icon={BarChart3} text="Theo món"
+                                               onClick={() => setActiveView('orderByDish')}
+                                               isActive={activeView === 'orderByDish'}/>
+                                <SidebarButton icon={UserCog} text="Theo khách"
+                                               onClick={() => setActiveView('orderByCustomer')}
+                                               isActive={activeView === 'orderByCustomer'}/>
+                                <SidebarButton icon={Ticket} text="Theo mã giảm"
+                                               onClick={() => setActiveView('orderByCoupons')}
+                                               isActive={activeView === 'orderByCoupons'}/>
                             </div>
                         </div>
 
@@ -537,7 +620,8 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                 <h6 className="fw-bold mb-3">Thống kê nhanh</h6>
                                 <div className="d-flex justify-content-between mb-2">
                                     <span className="text-muted small">Tổng món:</span>
-                                    <span className="fw-bold" style={{color: customStyles.primaryPink}}>{dishStats.totalDishes}</span>
+                                    <span className="fw-bold"
+                                          style={{color: customStyles.primaryPink}}>{dishStats.totalDishes}</span>
                                 </div>
                                 <div className="d-flex justify-content-between">
                                     <span className="text-muted small">Món nổi bật:</span>
@@ -566,25 +650,27 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     searchFilters={searchFilters}
                                 />
                             )}
-                            {activeView === 'coupons' && <MerchantCouponManager brandColor={customStyles.primaryPink} refreshTrigger={couponCreatedToggle} />}
-                            {activeView === 'orders' && <MerchantOrderManager filters={searchFilters} />}
-                            {activeView === 'statistics' && <RevenueStatistics merchantId={currentMerchantId || 0} />}
-                            {activeView === 'orderByDish' && <OrderByDish />}
-                            {activeView === 'orderByCustomer' && <OrderByCustomer />}
-                            {activeView === 'orderByCoupons' && <OrderByCoupons />}
+                            {activeView === 'coupons' && <MerchantCouponManager brandColor={customStyles.primaryPink}
+                                                                                refreshTrigger={couponCreatedToggle}/>}
+                            {activeView === 'orders' && <MerchantOrderManager filters={searchFilters}/>}
+                            {activeView === 'statistics' && <RevenueStatistics merchantId={currentMerchantId || 0}/>}
+                            {activeView === 'orderByDish' && <OrderByDish/>}
+                            {activeView === 'orderByCustomer' && <OrderByCustomer/>}
+                            {activeView === 'orderByCoupons' && <OrderByCoupons/>}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <AddDishModal 
+            <AddDishModal
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
                 onSave={handleAddDish} newDishData={newDishData}
                 handleNewDishChange={handleNewDishChange}
                 handleCategoryToggle={handleCategoryToggle}
-                customStyles={customStyles} MOCK_CATEGORIES={categories || []} />
-            <AddCouponModal show={showCouponModal} onClose={() => setShowCouponModal(false)} onSuccess={() => setCouponCreatedToggle(prev => !prev)} customStyles={customStyles} />
+                customStyles={customStyles} MOCK_CATEGORIES={categories || []}/>
+            <AddCouponModal show={showCouponModal} onClose={() => setShowCouponModal(false)}
+                            onSuccess={() => setCouponCreatedToggle(prev => !prev)} customStyles={customStyles}/>
 
             <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" centered>
                 <Modal.Header closeButton style={{backgroundColor: customStyles.primaryPink, color: 'white'}}>
@@ -592,7 +678,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 </Modal.Header>
                 <Modal.Body>
                     {selectedDishIdToEdit ? (
-                        <DishUpdateForm dishId={selectedDishIdToEdit} onSuccess={() => { setDishCreatedToggle(prev => !prev); setShowEditModal(false); }} onCancel={() => setShowEditModal(false)} />
+                        <DishUpdateForm dishId={selectedDishIdToEdit} onSuccess={() => {
+                            setDishCreatedToggle(prev => !prev);
+                            setShowEditModal(false);
+                        }} onCancel={() => setShowEditModal(false)}/>
                     ) : <div>Không tìm thấy ID món ăn.</div>}
                 </Modal.Body>
             </Modal>
