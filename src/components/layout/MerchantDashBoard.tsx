@@ -1,8 +1,8 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3} from 'lucide-react';
+import {Plus, List, Grid, Search, X, ClipboardList, TrendingUp, BarChart3, UserCog, Ticket} from 'lucide-react';
 import {Modal} from "react-bootstrap";
 import toast from "react-hot-toast";
-import {AxiosResponse, AxiosError} from 'axios';
+import {AxiosResponse} from 'axios';
 
 // Components
 import AddDishModal from "../../features/dish/AddDishModal.tsx";
@@ -18,6 +18,8 @@ import axiosInstance from "../../config/axiosConfig.ts";
 import OrderStatisticsCard from "../../features/merchants/OrderStatisticsCard.tsx";
 import RevenueStatistics from "../../features/merchants/RevenueStatistics.tsx";
 import OrderByDish from "../../features/order/components/OrderByDish.tsx";
+import OrderByCustomer from "../../features/order/components/OrderByCustomer.tsx";
+import OrderByCoupons from "../../features/order/components/OrderByCoupon.tsx";
 
 // ==================== INTERFACES ====================
 interface Dish {
@@ -29,6 +31,7 @@ interface Dish {
     images?: string[];
     categoryIds?: number[];
     priceNumber?: number;
+    isRecommended?: boolean;
 }
 
 interface DishCreateRequestState {
@@ -49,7 +52,6 @@ interface SidebarButtonProps {
     icon: React.ElementType;
     text: string;
     onClick: () => void;
-    color?: string;
     isActive?: boolean;
 }
 
@@ -62,17 +64,13 @@ interface SearchFilters {
     keyword: string;
     categoryId: string;
     priceRange: string;
-    status: '',
-    date: ''
+    status: string;
+    date: string;
 }
 
-interface MerchantDishListProps {
-    onDishCreatedToggle: boolean;
-    selectedDish: Dish | null;
-    setSelectedDish: (dish: Dish | null) => void;
-    onEdit?: (dish: Dish) => void;
-    onDelete?: (dishId: number) => void;
-    searchFilters: SearchFilters;
+interface Category {
+    id: number;
+    name: string;
 }
 
 // ==================== CONSTANTS ====================
@@ -104,7 +102,6 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({
                                                          icon: Icon,
                                                          text,
                                                          onClick,
-                                                         color = 'danger',
                                                          isActive = false
                                                      }) => (
     <button
@@ -125,7 +122,8 @@ const SidebarButton: React.FC<SidebarButtonProps> = ({
 
 // ==================== MAIN COMPONENT ====================
 const MerchantDashboardBootstrap: React.FC = () => {
-    const {categories, isLoading: isLoadingCategories, error: categoriesError} = useCategories();
+    // Ép kiểu hook nếu hook chưa trả về đúng định dạng mong muốn để tránh lỗi TS2339
+    const {categories, loading: isLoadingCategories, error: categoriesError} = useCategories() as any;
 
     // Merchant State
     const [currentMerchantId, setCurrentMerchantId] = useState<number | null>(null);
@@ -136,7 +134,7 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [dishStats, setDishStats] = useState<DishStats>({totalDishes: 0, recommendedDishes: 0});
 
     // View State
-    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'|'statistics'|'orderByDish'>('dishes');
+    const [activeView, setActiveView] = useState<'dishes' | 'coupons' | 'orders'|'statistics'|'orderByDish'| 'orderByCustomer'|'orderByCoupons'>('dishes');
     const [dishCreatedToggle, setDishCreatedToggle] = useState<boolean>(false);
     const [couponCreatedToggle, setCouponCreatedToggle] = useState<boolean>(false);
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
@@ -152,9 +150,10 @@ const MerchantDashboardBootstrap: React.FC = () => {
     const [searchFilters, setSearchFilters] = useState<SearchFilters>({
         keyword: '',
         categoryId: '',
-        priceRange: ''
+        priceRange: '',
+        status: '',
+        date: ''
     });
-    const [isSearching, setIsSearching] = useState<boolean>(false);
 
     // Form State
     const [newDishData, setNewDishData] = useState<DishCreateRequestState>(initialDishData);
@@ -190,39 +189,20 @@ const MerchantDashboardBootstrap: React.FC = () => {
         const fetchDishStats = async () => {
             try {
                 const response = await axiosInstance.get('/dishes/list');
-                let dishesData: any[] = [];
+                let dishesData: Dish[] = [];
 
-                if (typeof response.data === 'string') {
+                const data = response.data;
+                if (typeof data === 'string') {
                     try {
-                        const parsed = JSON.parse(response.data.trim());
-                        if (Array.isArray(parsed)) {
-                            dishesData = parsed;
-                        } else if (parsed && typeof parsed === 'object') {
-                            const possibleKeys = ['dishes', 'data', 'content', 'items', 'list'];
-                            for (const key of possibleKeys) {
-                                if (Array.isArray(parsed[key])) {
-                                    dishesData = parsed[key];
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Parse error:', e);
-                    }
-                } else if (Array.isArray(response.data)) {
-                    dishesData = response.data;
-                } else if (response.data && typeof response.data === 'object') {
-                    const possibleKeys = ['dishes', 'data', 'content', 'items', 'list'];
-                    for (const key of possibleKeys) {
-                        if (Array.isArray(response.data[key])) {
-                            dishesData = response.data[key];
-                            break;
-                        }
-                    }
+                        const parsed = JSON.parse(data.trim());
+                        dishesData = Array.isArray(parsed) ? parsed : (parsed.dishes || parsed.data || []);
+                    } catch (e) { console.error(e); }
+                } else {
+                    dishesData = Array.isArray(data) ? data : (data.dishes || data.data || []);
                 }
 
                 const totalDishes = dishesData.length;
-                const recommendedDishes = dishesData.filter((dish: any) => dish.isRecommended === true).length;
+                const recommendedDishes = dishesData.filter((dish) => dish.isRecommended === true).length;
 
                 setDishStats({totalDishes, recommendedDishes});
             } catch (error) {
@@ -236,25 +216,19 @@ const MerchantDashboardBootstrap: React.FC = () => {
     }, [currentMerchantId, dishCreatedToggle]);
 
     // ==================== HANDLERS ====================
-    const handleAddDish = useCallback(async (data: Omit<DishCreateRequestState, 'imagesFiles' | 'merchantId'> & {
-        uploadedUrls: string[]
-    }) => {
+    const handleAddDish = useCallback(async (data: any) => {
         if (isLoadingId || currentMerchantId === null) {
-            toast.error("Thông tin Merchant chưa sẵn sàng. Vui lòng thử lại sau giây lát.");
+            toast.error("Thông tin Merchant chưa sẵn sàng.");
             return;
         }
 
         const requestBody = {
-            name: data.name,
+            ...data,
             imagesUrls: JSON.stringify(data.uploadedUrls),
-            address: data.address,
-            preparationTime: data.preparationTime,
-            description: data.description,
             price: parseFloat(data.price),
             discountPrice: parseFloat(data.discountPrice),
             serviceFee: data.serviceFee ? parseFloat(data.serviceFee) : 0,
             categoryIds: Array.from(data.categoryIds),
-            isRecommended: data.isRecommended,
             merchantId: currentMerchantId,
         };
 
@@ -264,18 +238,8 @@ const MerchantDashboardBootstrap: React.FC = () => {
             setDishCreatedToggle(prev => !prev);
             setNewDishData(initialDishData);
             setShowAddModal(false);
-        } catch (error) {
-            console.error('Lỗi khi gọi API:', error);
-            let errorMessage = 'Lỗi kết nối hoặc lỗi hệ thống khi thêm món ăn.';
-            if ((error as AxiosError).response) {
-                const errorData = (error as AxiosError).response?.data;
-                errorMessage = (errorData as any)?.message || (errorData as string) || (error as AxiosError).response?.statusText || errorMessage;
-            } else if ((error as AxiosError).request) {
-                errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.';
-            } else {
-                errorMessage = (error as Error).message || errorMessage;
-            }
-            toast.error(errorMessage);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Lỗi khi thêm món ăn");
         }
     }, [currentMerchantId, isLoadingId]);
 
@@ -320,85 +284,30 @@ const MerchantDashboardBootstrap: React.FC = () => {
         }));
     };
 
-    const handleSearch = useCallback(async () => {
-        setIsSearching(true);
-        setDishCreatedToggle(prev => !prev);
-        setTimeout(() => setIsSearching(false), 500);
-    }, []);
-
-    const handleClearSearch = () => {
-        setSearchFilters({
-            keyword: '',
-            categoryId: '',
-            priceRange: ''
-        });
-        setDishCreatedToggle(prev => !prev);
-    };
-
-    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
-
     // ==================== LOADING & ERROR STATES ====================
     if (isLoadingId || isLoadingCategories) {
         return <div className="text-center p-5">Đang tải dữ liệu Merchant và Danh mục...</div>;
     }
 
     if (currentMerchantId === null) {
-        return <div className="text-center p-5 text-danger">Lỗi nghiêm trọng: Không xác định được Merchant ID. Vui lòng
-            đăng nhập lại.</div>;
+        return <div className="text-center p-5 text-danger">Lỗi: Không xác định được Merchant ID.</div>;
     }
 
-    // 1. Tạo biến cấu hình cho Header
     const getHeaderConfig = () => {
         switch (activeView) {
-            case 'dishes':
-                return {
-                    subTitle: 'Quản lý món ăn',
-                    btnText: 'Thêm món ăn',
-                    showButton: true,
-                    onClick: () => setShowAddModal(true)
-                };
-            case 'coupons':
-                return {
-                    subTitle: 'Quản lý mã giảm giá',
-                    btnText: 'Thêm mã giảm giá',
-                    showButton: true,
-                    onClick: () => setShowCouponModal(true) // Đảm bảo bạn đã có state này
-                };
-            case 'orders':
-                return {
-                    subTitle: 'Quản lý và theo dõi đơn hàng',
-                    btnText: '',
-                    showButton: false, // Ẩn nút thêm mới
-                    onClick: () => {
-                    }
-                };
-            case 'statistics':
-                return {
-                    subTitle: 'Thống kê doanh thu',
-                    btnText: '',
-                    showButton: false, // Ẩn nút thêm mới
-                    onClick: () => {
-                    }
-                };
-            case 'orderByDish':
-                return {
-                    subTitle: 'Thống kê đơn hàng theo món ăn',
-                    btnText: '',
-                    showButton: false,
-                    onClick: () => {}
-                };
-            default:
-                return {
-                    subTitle: '', btnText: '', showButton: false, onClick: () => {
-                    }
-                };
+            case 'dishes': return { subTitle: 'Quản lý món ăn', btnText: 'Thêm món ăn', showButton: true, onClick: () => setShowAddModal(true) };
+            case 'coupons': return { subTitle: 'Quản lý mã giảm giá', btnText: 'Thêm mã giảm giá', showButton: true, onClick: () => setShowCouponModal(true) };
+            case 'orders': return { subTitle: 'Quản lý đơn hàng', btnText: '', showButton: false, onClick: () => {} };
+            case 'statistics': return { subTitle: 'Thống kê doanh thu', btnText: '', showButton: false, onClick: () => {} };
+            case 'orderByDish': return { subTitle: 'Thống kê theo món', btnText: '', showButton: false, onClick: () => {} };
+            case 'orderByCustomer': return { subTitle: 'Thống kê theo khách', btnText: '', showButton: false, onClick: () => {} };
+            case 'orderByCoupons': return { subTitle: 'Thống kê theo mã giảm giá', btnText: '', showButton: false, onClick: () => {} };
+            default: return { subTitle: '', btnText: '', showButton: false, onClick: () => {} };
         }
     };
 
     const headerConfig = getHeaderConfig();
 
-
-    // ==================== RENDER ====================
     return (
         <div className="min-vh-100" style={{backgroundColor: '#f8f9fa'}}>
             <header className="shadow-sm" style={{backgroundColor: customStyles.primaryPink}}>
@@ -408,29 +317,14 @@ const MerchantDashboardBootstrap: React.FC = () => {
             <div className="container-fluid px-3 py-3">
                 <div className="row mb-3">
                     <div className="col-12">
-                        <div
-                            className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
+                        <div className="d-flex justify-content-between align-items-center bg-white rounded-3 p-3 shadow-sm">
                             <div>
-                                <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>
-                                    {merchantName}
-                                </h4>
-                                {/* Sử dụng biến từ headerConfig */}
+                                <h4 className="mb-1 fw-bold" style={{color: customStyles.primaryPink}}>{merchantName}</h4>
                                 <p className="text-muted mb-0 small">{headerConfig.subTitle}</p>
                             </div>
-
-                            {/* Chỉ hiển thị nút khi showButton = true */}
                             {headerConfig.showButton && (
-                                <button
-                                    className="btn btn-sm fw-semibold px-4"
-                                    style={{
-                                        backgroundColor: customStyles.primaryPink,
-                                        color: 'white',
-                                        borderRadius: '0.5rem'
-                                    }}
-                                    onClick={headerConfig.onClick}
-                                >
-                                    <Plus size={16} className="me-1"/>
-                                    {headerConfig.btnText}
+                                <button className="btn btn-sm fw-semibold px-4" style={{backgroundColor: customStyles.primaryPink, color: 'white', borderRadius: '0.5rem'}} onClick={headerConfig.onClick}>
+                                    <Plus size={16} className="me-1"/>{headerConfig.btnText}
                                 </button>
                             )}
                         </div>
@@ -438,173 +332,105 @@ const MerchantDashboardBootstrap: React.FC = () => {
                 </div>
 
                 {/* SEARCH & FILTER BAR */}
-                {activeView !== 'statistics' && (
+                {(activeView !== 'statistics' && activeView !== 'orderByDish' && activeView !== 'orderByCustomer'&& activeView !=='orderByCoupons') && (
                     <div className="row mb-3">
                         <div className="col-12">
                             <div className="bg-white rounded-3 p-3 shadow-sm">
                                 <div className="row g-3">
-                                    {/* KEYWORD SEARCH */}
                                     <div className="col-md-6">
-                                        <label className="form-label small fw-semibold text-muted mb-1">
-                                            {activeView === 'orders' ? 'Tìm đơn hàng' : 'Tìm kiếm theo tên'}
-                                        </label>
+                                        <label className="form-label small fw-semibold text-muted mb-1">Tìm kiếm</label>
                                         <div className="input-group">
-                                            <span className="input-group-text bg-white border-end-0">
-                                                <Search size={18} className="text-muted"/>
-                                            </span>
+                                            <span className="input-group-text bg-white border-end-0"><Search size={18} className="text-muted"/></span>
                                             <input
-                                                type="text"
-                                                className="form-control border-start-0 ps-0"
-                                                placeholder={
-                                                    activeView === 'dishes' ? 'Nhập tên món ăn...' :
-                                                        activeView === 'orders' ? 'Mã đơn, tên khách...' :
-                                                            'Nhập tên mã giảm giá...'
-                                                }
+                                                type="text" className="form-control border-start-0 ps-0"
+                                                placeholder="Nhập từ khóa tìm kiếm..."
                                                 value={searchFilters.keyword}
                                                 onChange={(e) => handleSearchChange('keyword', e.target.value)}
                                             />
                                             {searchFilters.keyword && (
-                                                <button
-                                                    className="btn btn-outline-secondary border-start-0"
-                                                    type="button"
-                                                    onClick={() => handleSearchChange('keyword', '')}
-                                                >
-                                                    <X size={18}/>
-                                                </button>
+                                                <button className="btn btn-outline-secondary border-start-0" onClick={() => handleSearchChange('keyword', '')}><X size={18}/></button>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* DISHES FILTERS */}
                                     {activeView === 'dishes' && (
                                         <>
                                             <div className="col-md-3">
                                                 <label className="form-label small fw-semibold text-muted mb-1">Danh mục</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={searchFilters.categoryId}
-                                                    onChange={(e) => handleSearchChange('categoryId', e.target.value)}
-                                                >
-                                                    <option value="">Tất cả danh mục</option>
-                                                    {categories.map((cat: any) => (
-                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                    ))}
+                                                <select className="form-select" value={searchFilters.categoryId} onChange={(e) => handleSearchChange('categoryId', e.target.value)}>
+                                                    <option value="">Tất cả</option>
+                                                    {categories?.map((cat: Category) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
                                                 </select>
                                             </div>
                                             <div className="col-md-3">
                                                 <label className="form-label small fw-semibold text-muted mb-1">Khoảng giá</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={searchFilters.priceRange}
-                                                    onChange={(e) => handleSearchChange('priceRange', e.target.value)}
-                                                >
+                                                <select className="form-select" value={searchFilters.priceRange} onChange={(e) => handleSearchChange('priceRange', e.target.value)}>
                                                     <option value="">Tất cả</option>
                                                     <option value="0-50000">Dưới 50k</option>
                                                     <option value="50000-100000">50k - 100k</option>
-                                                    <option value="100000-200000">100k - 200k</option>
                                                     <option value="200000-999999999">Trên 200k</option>
                                                 </select>
                                             </div>
                                         </>
                                     )}
 
-                                    {/* ORDERS FILTERS */}
                                     {activeView === 'orders' && (
                                         <>
                                             <div className="col-md-3">
                                                 <label className="form-label small fw-semibold text-muted mb-1">Trạng thái</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={searchFilters.status}
-                                                    onChange={(e) => handleSearchChange('status', e.target.value)}
-                                                >
-                                                    <option value="">Tất cả trạng thái</option>
+                                                <select className="form-select" value={searchFilters.status} onChange={(e) => handleSearchChange('status', e.target.value)}>
+                                                    <option value="">Tất cả</option>
                                                     <option value="PENDING">Chờ xác nhận</option>
-                                                    <option value="PROCESSING">Đang chế biến</option>
-                                                    <option value="READY">Đã xong món</option>
-                                                    <option value="DELIVERING">Đang giao</option>
                                                     <option value="COMPLETED">Hoàn thành</option>
                                                     <option value="CANCELLED">Đã hủy</option>
                                                 </select>
                                             </div>
                                             <div className="col-md-3">
                                                 <label className="form-label small fw-semibold text-muted mb-1">Ngày đặt</label>
-                                                <input
-                                                    type="date"
-                                                    className="form-control"
-                                                    value={searchFilters.date}
-                                                    onChange={(e) => handleSearchChange('date', e.target.value)}
-                                                />
+                                                <input type="date" className="form-control" value={searchFilters.date} onChange={(e) => handleSearchChange('date', e.target.value)}/>
                                             </div>
                                         </>
                                     )}
-
-                                    {activeView === 'coupons' && <div className="col-md-6"></div>}
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-
                 <div className="row g-3">
                     <div className="col-lg-3">
                         <div className="rounded-3 p-3 shadow-sm mb-3" style={customStyles.sidebarBg}>
                             <h6 className="fw-bold text-white mb-3">Menu</h6>
                             <div className="d-grid">
-                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')}
-                                               isActive={activeView === 'dishes'}/>
-                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')}
-                                               isActive={activeView === 'coupons'}/>
-                                <SidebarButton icon={ClipboardList} text="Quản lý đơn hàng"
-                                               onClick={() => setActiveView('orders')}
-                                               isActive={activeView === 'orders'}/>
-                                <SidebarButton
-                                    icon={TrendingUp}
-                                    text="Thống kê Doanh số"
-                                    onClick={() => setActiveView('statistics')}
-                                    isActive={activeView === 'statistics'}
-                                />
-                                <SidebarButton
-                                    icon={BarChart3}
-                                    text="Thống kê theo món"
-                                    onClick={() => setActiveView('orderByDish')}
-                                    isActive={activeView === 'orderByDish'}
-                                />
+                                <SidebarButton icon={List} text="Món ăn" onClick={() => setActiveView('dishes')} isActive={activeView === 'dishes'}/>
+                                <SidebarButton icon={Grid} text="Mã giảm giá" onClick={() => setActiveView('coupons')} isActive={activeView === 'coupons'}/>
+                                <SidebarButton icon={ClipboardList} text="Đơn hàng" onClick={() => setActiveView('orders')} isActive={activeView === 'orders'}/>
+                                <SidebarButton icon={TrendingUp} text="Doanh số" onClick={() => setActiveView('statistics')} isActive={activeView === 'statistics'}/>
+                                <SidebarButton icon={BarChart3} text="Theo món" onClick={() => setActiveView('orderByDish')} isActive={activeView === 'orderByDish'}/>
+                                <SidebarButton icon={UserCog} text="Theo khách" onClick={() => setActiveView('orderByCustomer')} isActive={activeView === 'orderByCustomer'}/>
+                                <SidebarButton icon={Ticket} text="Theo mã giảm" onClick={() => setActiveView('orderByCoupons')} isActive={activeView === 'orderByCoupons'}/>
                             </div>
                         </div>
 
-                        {/* THỐNG KÊ MÓN ĂN (chỉ hiện khi activeView === 'dishes') */}
                         {activeView === 'dishes' && (
                             <div className="bg-white rounded-3 p-3 shadow-sm mb-3">
                                 <h6 className="fw-bold mb-3">Thống kê nhanh</h6>
-                                <div className="d-flex flex-column gap-3">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <span className="text-muted small">Tổng món:</span>
-                                        <span className="fw-bold" style={{color: customStyles.primaryPink}}>
-                    {dishStats.totalDishes}
-                </span>
-                                    </div>
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <span className="text-muted small">Món nổi bật:</span>
-                                        <span className="fw-bold text-warning">{dishStats.recommendedDishes}</span>
-                                    </div>
+                                <div className="d-flex justify-content-between mb-2">
+                                    <span className="text-muted small">Tổng món:</span>
+                                    <span className="fw-bold" style={{color: customStyles.primaryPink}}>{dishStats.totalDishes}</span>
+                                </div>
+                                <div className="d-flex justify-content-between">
+                                    <span className="text-muted small">Món nổi bật:</span>
+                                    <span className="fw-bold text-warning">{dishStats.recommendedDishes}</span>
                                 </div>
                             </div>
                         )}
 
-                        {/* ✅ THỐNG KÊ ĐƠN HÀNG (chỉ hiện khi activeView === 'orders') */}
-                        {activeView === 'orders' && (
-                            <OrderStatisticsCard/>
-                        )}
+                        {activeView === 'orders' && <OrderStatisticsCard/>}
 
                         <div className="bg-light rounded-3 p-3 shadow-sm">
-                            <h6 className="fw-bold mb-2 d-flex align-items-center gap-1">
-                                <span style={{fontSize: '1.2rem'}}>💡</span> Mẹo hay
-                            </h6>
-                            <p className="small text-muted mb-0">
-                                Món ăn có ảnh đẹp và mô tả chi tiết sẽ thu hút khách hàng hơn!
-                            </p>
+                            <h6 className="fw-bold mb-2">💡 Mẹo hay</h6>
+                            <p className="small text-muted mb-0">Món ăn có ảnh đẹp sẽ thu hút khách hàng hơn!</p>
                         </div>
                     </div>
 
@@ -616,86 +442,46 @@ const MerchantDashboardBootstrap: React.FC = () => {
                                     selectedDish={selectedDish}
                                     setSelectedDish={setSelectedDish}
                                     onEdit={handleEditDish}
-                                    onDishDeleted={() => {
-                                        console.log('🔥 onDishDeleted được gọi!'); // Debug log
-                                        setDishCreatedToggle(prev => !prev)
-                                    }}
+                                    onDishDeleted={() => setDishCreatedToggle(prev => !prev)}
                                     searchFilters={searchFilters}
                                 />
                             )}
-                            {activeView === 'coupons' && (
-                                <MerchantCouponManager
-                                    brandColor={customStyles.primaryPink}
-                                    refreshTrigger={couponCreatedToggle}
-                                />
-                            )}
-                            {activeView === 'orders' && (
-                                <MerchantOrderManager
-                                    filters={{
-                                        keyword: searchFilters.keyword,
-                                        status: searchFilters.status || '',
-                                        date: searchFilters.date || ''
-                                    }}
-                                />
-                            )}
-                            {/* ✅ HIỂN THỊ REVENUE STATISTICS */}
-                            {activeView === 'statistics' && (
-                                <RevenueStatistics merchantId={currentMerchantId} />
-                            )}
-                            {activeView === 'orderByDish' && (
-                                <OrderByDish />
-                            )}
+                            {activeView === 'coupons' && <MerchantCouponManager brandColor={customStyles.primaryPink} refreshTrigger={couponCreatedToggle} />}
+                            {activeView === 'orders' && <MerchantOrderManager filters={searchFilters} />}
+                            {activeView === 'statistics' && <RevenueStatistics merchantId={currentMerchantId || 0} />}
+                            {activeView === 'orderByDish' && <OrderByDish />}
+                            {activeView === 'orderByCustomer' && <OrderByCustomer />}
+                            {activeView === 'orderByCoupons' && <OrderByCoupons />}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <AddDishModal
+            <AddDishModal 
                 show={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                onSave={handleAddDish}
-                newDishData={newDishData}
+                onSave={handleAddDish} newDishData={newDishData}
                 handleNewDishChange={handleNewDishChange}
                 handleCategoryToggle={handleCategoryToggle}
-                customStyles={customStyles}
-                MOCK_CATEGORIES={categories}
-            />
+                customStyles={customStyles} MOCK_CATEGORIES={categories || []} />
+            <AddCouponModal show={showCouponModal} onClose={() => setShowCouponModal(false)} onSuccess={() => setCouponCreatedToggle(prev => !prev)} customStyles={customStyles} />
 
-            <AddCouponModal
-                show={showCouponModal}
-                onClose={() => setShowCouponModal(false)}
-                onSuccess={() => setCouponCreatedToggle(prev => !prev)}
-                customStyles={customStyles}
-            />
-
-            <Modal show={showEditModal} onHide={() => {
-                setShowEditModal(false);
-                setSelectedDishIdToEdit(null);
-            }} size="xl" centered>
-                <Modal.Header closeButton
-                              style={{backgroundColor: customStyles.primaryPink, color: 'white', borderBottom: 'none'}}>
-                    <Modal.Title style={{fontWeight: 'bold'}}>Chỉnh Sửa Món Ăn</Modal.Title>
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" centered>
+                <Modal.Header closeButton style={{backgroundColor: customStyles.primaryPink, color: 'white'}}>
+                    <Modal.Title className="fw-bold">Chỉnh Sửa Món Ăn</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     {selectedDishIdToEdit ? (
-                        <DishUpdateForm
-                            dishId={selectedDishIdToEdit}
-                            onSuccess={() => setDishCreatedToggle(prev => !prev)}
-                            onCancel={() => {
-                                setShowEditModal(false);
-                                setSelectedDishIdToEdit(null);
-                            }}
-                        />
-                    ) : (
-                        <div>Không tìm thấy ID món ăn để sửa.</div>
-                    )}
+                        <DishUpdateForm dishId={selectedDishIdToEdit} onSuccess={() => { setDishCreatedToggle(prev => !prev); setShowEditModal(false); }} onCancel={() => setShowEditModal(false)} />
+                    ) : <div>Không tìm thấy ID món ăn.</div>}
                 </Modal.Body>
             </Modal>
+
             {categoriesError && (
                 <div className="position-fixed bottom-0 end-0 p-3" style={{zIndex: 1050}}>
-                    <div className="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Lỗi:</strong> {categoriesError}
-                        <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <div className="alert alert-danger alert-dismissible fade show">
+                        <strong>Lỗi:</strong> {String(categoriesError)}
+                        <button type="button" className="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 </div>
             )}
