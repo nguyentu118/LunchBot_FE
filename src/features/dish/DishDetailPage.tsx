@@ -1,15 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Button, Badge, Spinner} from 'react-bootstrap';
+import React, {useEffect, useState} from 'react';
+import {useNavigate, useParams} from 'react-router-dom';
+import {Badge, Button, Container, Spinner} from 'react-bootstrap';
 import toast from 'react-hot-toast';
 import {
-    ArrowLeft, Eye, Clock, ShoppingCart, CreditCard,
-    ChevronLeft, ChevronRight, Store, AlertCircle
+    AlertCircle,
+    ArrowLeft,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    CreditCard,
+    Eye,
+    ShoppingCart,
+    Store
 } from 'lucide-react';
 import axiosInstance from "../../config/axiosConfig";
 import Navigation from "../../components/layout/Navigation";
 import DishGrid from "./DishGrid.tsx";
-import { useCart } from "../cart/hooks/useCart.ts";
+import {useCart} from "../cart/hooks/useCart.ts";
 import UserCouponSection from "../coupon/components/UserCouponSection.tsx";
 
 interface DishImage {
@@ -51,9 +58,9 @@ interface SuggestedDish {
 }
 
 const DishDetailPage: React.FC = () => {
-    const { dishId } = useParams<{ dishId: string }>();
+    const {dishId} = useParams<{ dishId: string }>();
     const navigate = useNavigate();
-    const { addToCart, isLoading: isAddingToCart } = useCart();
+    const {addToCart, isLoading: isAddingToCart} = useCart();
 
     const [dish, setDish] = useState<DishDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -72,7 +79,7 @@ const DishDetailPage: React.FC = () => {
 
         // ✅ VALIDATE dishId
         if (!dishId || isNaN(Number(dishId)) || Number(dishId) <= 0) {
-            navigate('/*', { replace: true });
+            navigate('/*', {replace: true});
             return;
         }
 
@@ -86,7 +93,7 @@ const DishDetailPage: React.FC = () => {
             const response = await axiosInstance.get<DishDetail>(`/dishes/${dishId}`);
 
             if (!response.data || !response.data.id) {
-                navigate('/not-found', { replace: true });
+                navigate('/not-found', {replace: true});
                 return;
             }
 
@@ -103,11 +110,11 @@ const DishDetailPage: React.FC = () => {
                 setLoading(false);
 
                 // Hiển thị toast thông báo
-                toast.error(errorMsg, { duration: 4000 });
+                toast.error(errorMsg, {duration: 4000});
 
                 // Sau 2s redirect về trang chủ
                 setTimeout(() => {
-                    navigate('/', { replace: true });
+                    navigate('/', {replace: true});
                 }, 2000);
             } else {
                 setError('Không thể tải thông tin món ăn');
@@ -171,11 +178,6 @@ const DishDetailPage: React.FC = () => {
 
         await addToCart(dish.id, 1);
 
-        toast.success('Đang chuyển đến giỏ hàng...', {
-            icon: '🚀',
-            duration: 1500,
-        });
-
         setTimeout(() => {
             navigate('/cart');
         }, 1500);
@@ -184,7 +186,7 @@ const DishDetailPage: React.FC = () => {
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center vh-100">
-                <Spinner animation="border" style={{ color: brandColor }} />
+                <Spinner animation="border" style={{color: brandColor}}/>
             </div>
         );
     }
@@ -192,11 +194,11 @@ const DishDetailPage: React.FC = () => {
     if (error || !dish) {
         return (
             <div className="min-vh-100 bg-light">
-                <Navigation />
+                <Navigation/>
                 <Container className="py-5">
                     <div className="text-center">
                         <div className="mb-4">
-                            <AlertCircle size={80} className="text-danger opacity-50" />
+                            <AlertCircle size={80} className="text-danger opacity-50"/>
                         </div>
                         <h3 className="text-danger mb-3">{error || 'Không tìm thấy món ăn'}</h3>
                         <p className="text-muted mb-4">
@@ -204,7 +206,7 @@ const DishDetailPage: React.FC = () => {
                         </p>
                         <div className="d-flex gap-2 justify-content-center">
                             <Button variant="outline-secondary" onClick={() => navigate(-1)}>
-                                <ArrowLeft size={16} className="me-2" />
+                                <ArrowLeft size={16} className="me-2"/>
                                 Quay lại
                             </Button>
                             <Button variant="danger" onClick={() => navigate('/')}>
@@ -223,16 +225,16 @@ const DishDetailPage: React.FC = () => {
 
     return (
         <>
-            <Navigation />
+            <Navigation/>
             <div className="bg-light min-vh-100 py-4">
                 <Container>
                     <Button
                         variant="link"
                         className="text-decoration-none mb-3 p-0 d-flex align-items-center"
-                        style={{ color: '#6c757d' }}
+                        style={{color: '#6c757d'}}
                         onClick={() => navigate(-1)}
                     >
-                        <ArrowLeft size={20} className="me-1" />
+                        <ArrowLeft size={20} className="me-1"/>
                         Quay lại danh sách
                     </Button>
 
@@ -242,7 +244,7 @@ const DishDetailPage: React.FC = () => {
                             <div className="col-lg-6 p-4">
                                 <div
                                     className="position-relative mb-3 rounded-4 overflow-hidden"
-                                    style={{ height: '400px', backgroundColor: '#f8f9fa' }}
+                                    style={{height: '400px', backgroundColor: '#f8f9fa'}}
                                 >
                                     <img
                                         src={
@@ -252,7 +254,7 @@ const DishDetailPage: React.FC = () => {
                                         }
                                         alt={dish.name}
                                         className="w-100 h-100 object-fit-cover"
-                                        style={{ transition: 'all 0.3s ease' }}
+                                        style={{transition: 'all 0.3s ease'}}
                                     />
 
                                     {dish.images && dish.images.length > 1 && (
@@ -267,7 +269,7 @@ const DishDetailPage: React.FC = () => {
                                                     border: 'none'
                                                 }}
                                             >
-                                                <ChevronLeft size={24} color="#333" />
+                                                <ChevronLeft size={24} color="#333"/>
                                             </button>
 
                                             <button
@@ -280,17 +282,18 @@ const DishDetailPage: React.FC = () => {
                                                     border: 'none'
                                                 }}
                                             >
-                                                <ChevronRight size={24} color="#333" />
+                                                <ChevronRight size={24} color="#333"/>
                                             </button>
 
-                                            <div className="position-absolute bottom-0 end-0 m-3 px-2 py-1 rounded bg-dark bg-opacity-50 text-white small">
+                                            <div
+                                                className="position-absolute bottom-0 end-0 m-3 px-2 py-1 rounded bg-dark bg-opacity-50 text-white small">
                                                 {selectedImageIndex + 1} / {dish.images.length}
                                             </div>
                                         </>
                                     )}
                                 </div>
 
-                                <div className="d-flex gap-2 overflow-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+                                <div className="d-flex gap-2 overflow-auto pb-2" style={{scrollbarWidth: 'thin'}}>
                                     {dish.images?.map((img, index) => (
                                         <div
                                             key={img.id || index}
@@ -320,7 +323,7 @@ const DishDetailPage: React.FC = () => {
                                 <div className="mb-auto">
                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                         <div className="d-flex align-items-center text-muted small">
-                                            <Eye size={16} className="me-1" />
+                                            <Eye size={16} className="me-1"/>
                                             {dish.viewCount} lượt xem
                                         </div>
                                     </div>
@@ -350,7 +353,7 @@ const DishDetailPage: React.FC = () => {
 
                                     <div className="d-flex gap-4 mb-4 text-secondary">
                                         <div className="d-flex align-items-center">
-                                            <Clock size={18} className="me-2 text-warning" />
+                                            <Clock size={18} className="me-2 text-warning"/>
                                             <span>{dish.preparationTime || 15} phút chuẩn bị</span>
                                         </div>
                                     </div>
@@ -358,7 +361,7 @@ const DishDetailPage: React.FC = () => {
                                     <div className="mb-4 p-3 bg-light rounded-3">
                                         {dish.discountPrice && dish.discountPrice < dish.price ? (
                                             <div className="d-flex align-items-end gap-2">
-                                                <span className="h2 fw-bold mb-0" style={{ color: brandColor }}>
+                                                <span className="h2 fw-bold mb-0" style={{color: brandColor}}>
                                                     {new Intl.NumberFormat('vi-VN', {
                                                         style: 'currency',
                                                         currency: 'VND'
@@ -373,7 +376,7 @@ const DishDetailPage: React.FC = () => {
                                                 <Badge bg="danger" className="mb-1">-{discountPercent}%</Badge>
                                             </div>
                                         ) : (
-                                            <span className="h2 fw-bold mb-0" style={{ color: brandColor }}>
+                                            <span className="h2 fw-bold mb-0" style={{color: brandColor}}>
                                                 {new Intl.NumberFormat('vi-VN', {
                                                     style: 'currency',
                                                     currency: 'VND'
@@ -383,17 +386,31 @@ const DishDetailPage: React.FC = () => {
                                     </div>
 
                                     <h5 className="fw-semibold mb-2">Mô tả món ăn</h5>
-                                    <p className="text-muted mb-4" style={{ lineHeight: '1.6' }}>
+                                    <p className="text-muted mb-4" style={{lineHeight: '1.6'}}>
                                         {dish.description || 'Chưa có mô tả chi tiết cho món ăn này.'}
                                     </p>
 
                                     <div className="d-flex align-items-center p-3 border rounded-3 mb-4">
                                         <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
-                                            <Store size={24} className="text-primary" />
+                                            <Store size={24} className="text-primary"/>
                                         </div>
                                         <div>
-                                            <small className="text-muted d-block">Được cung cấp bởi</small>
-                                            <span className="fw-bold">{dish.merchantName || 'Cửa hàng đối tác'}</span>
+                                            <Button
+                                                variant="link"
+                                                className="p-0 text-decoration-none d-flex align-items-center text-dark hover-opacity"
+                                                onClick={() => navigate(`/merchants/profile/${dish.merchantId}`)}
+                                                style={{textAlign: 'left'}}
+                                            >
+                                                <div>
+                                                    <small className="text-muted d-block"
+                                                           style={{fontSize: '0.75rem', lineHeight: '1'}}>
+                                                        Được cung cấp bởi
+                                                    </small>
+                                                    <span
+                                                        className="fw-bold text-danger">{dish.merchantName || 'Cửa hàng đối tác'}
+                                                     </span>
+                                                </div>
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -418,7 +435,7 @@ const DishDetailPage: React.FC = () => {
                                         }}
                                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
                                     >
-                                        <ShoppingCart size={20} className="me-2" />
+                                        <ShoppingCart size={20} className="me-2"/>
                                         {isAddingToCart ? 'Đang thêm...' : 'Thêm vào giỏ'}
                                     </Button>
 
@@ -439,7 +456,7 @@ const DishDetailPage: React.FC = () => {
                                         }}
                                         onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
                                     >
-                                        <CreditCard size={20} className="me-2" />
+                                        <CreditCard size={20} className="me-2"/>
                                         Mua ngay
                                     </Button>
                                 </div>
