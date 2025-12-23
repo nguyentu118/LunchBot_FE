@@ -22,6 +22,11 @@ export interface OrderResponse {
     paymentMethod?: string
     deliveryAddress: string;
     shippingAddress: ShippingAddress;
+    itemsTotal?: number;           // Tạm tính món ăn
+    shippingFee?: number;          // Phí giao hàng
+    serviceFee?: number;           // Phí dịch vụ
+    discountAmount?: number;       // Giảm giá
+    expectedDeliveryTime?: string; // Thời gian giao dự kiến
 }
 
 // Các trạng thái đơn hàng (Khớp với Enum Backend)

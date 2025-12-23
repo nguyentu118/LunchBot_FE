@@ -116,6 +116,7 @@ const RevenueStatistics: React.FC<Props> = ({ merchantId }) => {
 
     return (
         <div className="container-fluid p-0">
+            <h5 className="fw-bold mb-3">Thống kê doanh số</h5>
             {/* 1. BỘ LỌC - GỌN, 1 HÀNG */}
             <div className="mb-4">
                 <div className="d-flex gap-2 align-items-end flex-wrap">
