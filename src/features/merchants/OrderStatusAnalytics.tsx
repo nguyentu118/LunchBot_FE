@@ -134,7 +134,7 @@ const OrderStatusAnalytics: React.FC = () => {
             {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h4 className="fw-bold mb-1">Thống kê trạng thái đơn hàng</h4>
+                    <h5 className="fw-bold mb-1">Thống kê theo trạng thái đơn hàng</h5>
                     <p className="text-muted mb-0 small">
                         Cập nhật tự động mỗi 30 giây
                     </p>

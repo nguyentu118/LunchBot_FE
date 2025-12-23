@@ -10,7 +10,7 @@ const CouponsPage: React.FC = () => {
     return (
         <div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="fw-bold mb-0 p-2">Quản lý mã giảm giá</h5>
+                <h5 className="fw-bold mb-0">Quản lý mã giảm giá</h5>
                 <button
                     className="btn btn-danger btn-sm"
                     onClick={() => setShowCouponModal(true)}

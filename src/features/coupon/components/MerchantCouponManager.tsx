@@ -36,8 +36,8 @@ const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
     };
 
     return (
-        <Container fluid className="py-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+        <Container fluid className="p-0">
+            <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex gap-2 align-items-center">
                     <ButtonGroup>
                         <Button
