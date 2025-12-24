@@ -2,7 +2,18 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
 import {
-    Briefcase, Home, LogIn, LogOut, Settings, ShoppingBag, ShoppingCart, Sparkles, User, UserCircle, UtensilsCrossed
+    Briefcase, Heart,
+    Home,
+    LogIn,
+    LogOut,
+     MapPin,
+    Settings,
+    ShoppingBag,
+    ShoppingCart,
+    Sparkles,
+    User,
+    UserCircle,
+    UtensilsCrossed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GuestCartHelper } from '../../features/cart/types/guestCart';
@@ -138,6 +149,14 @@ const Navigation: React.FC = () => {
         navigate('/user/update');
     };
 
+    const handleUpdateAddress = () => {
+        navigate('/address');
+    };
+
+    const handleFavorites = () => {
+        navigate('/favorites');
+    };
+
     const handleManageMerchant = () => {
         navigate('/merchant/update');
     };
@@ -235,6 +254,20 @@ const Navigation: React.FC = () => {
                                     {normalizedRole === 'USER' && (
                                         <>
                                             <Dropdown.Item
+                                                onClick={handleFavorites}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <Heart size={16} className="me-2 text-primary"/>
+                                                Món ăn yêu thích
+                                            </Dropdown.Item>
+                                            <Dropdown.Item
+                                                onClick={handleUpdateAddress}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <MapPin size={16} className="me-2 text-primary"/>
+                                                Địa chỉ
+                                            </Dropdown.Item>
+                                            <Dropdown.Item
                                                 onClick={handleMyOrders}
                                                 className="d-flex align-items-center"
                                             >
@@ -246,7 +279,7 @@ const Navigation: React.FC = () => {
                                                 className="d-flex align-items-center"
                                             >
                                                 <Settings size={16} className="me-2 text-primary"/>
-                                                Cập nhật Thông tin User
+                                                Thông tin
                                             </Dropdown.Item>
 
                                         </>

@@ -2,7 +2,8 @@
 
 import api from '../../../config/axiosConfig'; // Tái sử dụng axiosConfig.ts
 import { DishDiscount } from '../types/DishDiscount';
-import { SuggestedDish } from '../types/suggestedDish'; // Tái sử dụng type cũ nếu cần
+import { SuggestedDish } from '../types/suggestedDish';
+import {DishSearchRequest, DishSearchResponse, PageResponse} from "../types/dish.types.ts";
 
 const DISH_BASE_URL = '/dishes';
 
@@ -35,4 +36,37 @@ export const getSuggestedDishes = async (): Promise<SuggestedDish[]> => {
     }
 };
 
-// ... Thêm các function API liên quan đến Dish khác tại đây ...
+export const searchDishes = async (request: DishSearchRequest): Promise<PageResponse<DishSearchResponse>> => {
+    console.log('🌐 API CALL - searchDishes', request);
+
+    try {
+        const params = new URLSearchParams();
+
+        if (request.name) params.append('name', request.name);
+        if (request.categoryName) params.append('categoryName', request.categoryName);
+        if (request.minPrice) params.append('minPrice', request.minPrice.toString());
+        if (request.maxPrice) params.append('maxPrice', request.maxPrice.toString());
+        if (request.isRecommended !== undefined) params.append('isRecommended', request.isRecommended.toString());
+        params.append('page', (request.page || 0).toString());
+        params.append('size', (request.size || 12).toString());
+
+        console.log('🔗 URL:', `${DISH_BASE_URL}/search?${params.toString()}`);
+
+        const response = await api.get<PageResponse<DishSearchResponse>>(
+            `${DISH_BASE_URL}/search?${params.toString()}`
+        );
+
+        console.log('✅ API Response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Error searching dishes:", error);
+        throw error;
+    }
+};
+
+// Export object để dễ sử dụng
+export const dishService = {
+    getTopDiscountedDishes,
+    getSuggestedDishes,
+    searchDishes
+};

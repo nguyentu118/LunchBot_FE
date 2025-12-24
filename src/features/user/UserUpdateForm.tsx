@@ -335,7 +335,7 @@ const UserUpdateForm: React.FC = () => {
                     </Form>
 
                     <p className="text-center text-muted smaller mt-3 mb-0">
-                        © 2024 Food Delivery.
+                        © {new Date().getFullYear()} Food Delivery.
                     </p>
                 </Card.Body>
             </Card>
