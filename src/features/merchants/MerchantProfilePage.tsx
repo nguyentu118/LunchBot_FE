@@ -140,23 +140,7 @@ const MerchantProfilePage = () => {
             handleCloseModal();
         }
     };
-
-    const handlePrevImage = () => {
-        if (selectedDish && selectedDish.images && selectedDish.images.length > 0) {
-            setCurrentImageIndex((prev) =>
-                prev === 0 ? selectedDish.images!.length - 1 : prev - 1
-            );
-        }
-    };
-
-    const handleNextImage = () => {
-        if (selectedDish && selectedDish.images && selectedDish.images.length > 0) {
-            setCurrentImageIndex((prev) =>
-                prev === selectedDish.images!.length - 1 ? 0 : prev + 1
-            );
-        }
-    };
-
+    
     // Pagination logic
     const indexOfLastDish = currentPage * dishesPerPage;
     const indexOfFirstDish = indexOfLastDish - dishesPerPage;
@@ -377,8 +361,8 @@ const MerchantProfilePage = () => {
                                                                     className="btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
                                                                     disabled={cartLoading}
                                                                     style={{
-                                                                        width: '36px',
-                                                                        height: '36px',
+                                                                        width: '42px',
+                                                                        height: '42px',
                                                                         transition: 'transform 0.2s',
                                                                         opacity: cartLoading ? 0.6 : 1
                                                                     }}
@@ -390,7 +374,7 @@ const MerchantProfilePage = () => {
                                                                     onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                                                     title="Thêm vào giỏ hàng"
                                                                 >
-                                                                    <ShoppingCart size={16} style={{ color: "#FF5E62" }} />
+                                                                    <ShoppingCart size={18} style={{ color: "#FF5E62" }} />
                                                                 </button>
                                                             </div>
 
