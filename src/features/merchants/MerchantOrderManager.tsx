@@ -77,47 +77,6 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
         }
     };
 
-    const renderActionButtons = (order: OrderResponse) => {
-        return (
-            <div className="d-flex gap-2 justify-content-end flex-wrap">
-                {order.status === ORDER_STATUS.PENDING && (
-                    <>
-                        <Button variant="outline-danger" size="sm" onClick={() => handleStatusUpdate(order.id, ORDER_STATUS.CANCELLED)}>
-                            <XCircle size={16}/> Hủy
-                        </Button>
-                        <Button variant="primary" size="sm" onClick={() => handleStatusUpdate(order.id, ORDER_STATUS.PROCESSING)}>
-                            <CheckCircle size={16}/> Nhận đơn & Nấu
-                        </Button>
-                    </>
-                )}
-
-                {order.status === ORDER_STATUS.PROCESSING && (
-                    <Button variant="info" size="sm" className="text-white" onClick={() => handleStatusUpdate(order.id, ORDER_STATUS.READY)}>
-                        <Package size={16}/> Món đã xong
-                    </Button>
-                )}
-
-                {order.status === ORDER_STATUS.READY && (
-                    <span className="text-muted fst-italic small">
-                        <Truck size={16} className="me-1"/> Đang chờ tài xế lấy món...
-                    </span>
-                )}
-
-                {(order.status === ORDER_STATUS.DELIVERING || order.status === ORDER_STATUS.COMPLETED) && (
-                    <span className="text-success small fw-bold">
-                        <CheckCircle size={16} className="me-1"/> {order.status === ORDER_STATUS.DELIVERING ? 'Shipper đang giao' : 'Đơn thành công'}
-                    </span>
-                )}
-
-                {order.status === ORDER_STATUS.CANCELLED && (
-                    <span className="text-danger small fw-bold">
-                        <XCircle size={16} className="me-1"/> Đã hủy đơn
-                    </span>
-                )}
-            </div>
-        );
-    };
-
     return (
         <Container fluid className="p-0">
             {loading ? (
@@ -150,15 +109,82 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                                                 {customerName}
                                             </div>
                                         </div>
-                                        <div className="d-flex align-items-center gap-3">
-                                            <span className="text-success fw-bold">{order.totalAmount?.toLocaleString() || '0'} đ</span>
+                                        <div className="d-flex align-items-center gap-2">
+                                            <span className="fw-semibold" style={{ color: '#6c757d', fontSize: '0.95rem' }}>
+                                                {order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} món
+                                            </span>
+                                            <span style={{ color: '#dee2e6', fontSize: '1.1rem' }}>|</span>
+                                            <span className="text-success fw-bold" style={{ fontSize: '1.05rem' }}>
+                                                {order.totalAmount?.toLocaleString() || '0'} ₫
+                                            </span>
                                             {getStatusBadge(order.status)}
+
+                                            {/* Action buttons on header */}
+                                            <div className="d-flex gap-2 ms-2" onClick={(e) => e.stopPropagation()}>
+                                                {order.status === ORDER_STATUS.PENDING && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusUpdate(order.id, ORDER_STATUS.CANCELLED);
+                                                            }}
+                                                        >
+                                                            <XCircle size={16}/> Hủy
+                                                        </Button>
+                                                        <Button
+                                                            variant="primary"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusUpdate(order.id, ORDER_STATUS.PROCESSING);
+                                                            }}
+                                                        >
+                                                            <CheckCircle size={16}/> Nhận đơn
+                                                        </Button>
+                                                    </>
+                                                )}
+
+                                                {order.status === ORDER_STATUS.PROCESSING && (
+                                                    <Button
+                                                        variant="info"
+                                                        size="sm"
+                                                        className="text-white"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusUpdate(order.id, ORDER_STATUS.READY);
+                                                        }}
+                                                    >
+                                                        <Package size={16}/> Món đã xong
+                                                    </Button>
+                                                )}
+
+                                                {order.status === ORDER_STATUS.READY && (
+                                                    <span className="text-muted fst-italic small">
+                                                        <Truck size={16} className="me-1"/> Đang chờ tài xế lấy món...
+                                                    </span>
+                                                )}
+
+                                                {(order.status === ORDER_STATUS.DELIVERING || order.status === ORDER_STATUS.COMPLETED) && (
+                                                    <span className="text-success small fw-bold">
+                                                        <CheckCircle size={16} className="me-1"/>
+                                                        {order.status === ORDER_STATUS.DELIVERING ? 'Đang giao' : 'Hoàn thành'}
+                                                    </span>
+                                                )}
+
+                                                {order.status === ORDER_STATUS.CANCELLED && (
+                                                    <span className="text-danger small fw-bold">
+                                                        <XCircle size={16} className="me-1"/> Đã hủy
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </Accordion.Header>
                                 <Accordion.Body>
                                     <Row>
-                                        <Col md={8}>
+                                        <Col md={7}>
                                             <h6 className="text-muted mb-3">
                                                 <Package size={18} className="me-2" />
                                                 Chi tiết món ăn:
@@ -182,14 +208,14 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                                                         <td className="align-middle">{item.dishName || 'N/A'}</td>
                                                         <td className="align-middle text-center">x{item.quantity || 0}</td>
                                                         <td className="align-middle text-end fw-semibold">
-                                                            {item.totalPrice?.toLocaleString() || '0'} đ
+                                                            {item.totalPrice?.toLocaleString() || '0'} ₫
                                                         </td>
                                                     </tr>
                                                 ))}
                                                 </tbody>
                                             </Table>
                                         </Col>
-                                        <Col md={4} className="border-start">
+                                        <Col md={5} className="border-start">
                                             <h6 className="text-muted mb-3">
                                                 <User size={18} className="me-2" />
                                                 Thông tin khách hàng:
@@ -211,7 +237,7 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                                                     </div>
                                                 </div>
 
-                                                <div className="d-flex align-items-start mb-3">
+                                                <div className="d-flex align-items-start mb-2">
                                                     <MapPin size={16} className="me-2 mt-1 text-muted flex-shrink-0" />
                                                     <div>
                                                         <small className="text-muted d-block">Địa chỉ giao hàng</small>
@@ -219,25 +245,76 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                                                     </div>
                                                 </div>
 
-                                                <div className="d-flex align-items-center p-2 rounded"
-                                                     style={{backgroundColor: '#f8f9fa'}}>
-                                                    <strong className="me-2">Thanh toán:</strong>
-                                                    {order.paymentStatus === 'PAID' ? (
-                                                        <span className="text-success fw-semibold">
-                                                            <CheckCircle size={16} className="me-1" />
-                                                            Đã thanh toán
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-warning fw-semibold">
-                                                            ⏳ Chưa thanh toán ({order.paymentMethod || 'COD'})
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                {order.expectedDeliveryTime && order.status !== ORDER_STATUS.CANCELLED &&(
+                                                    <div className="d-flex align-items-start mb-3">
+                                                        <Package size={16} className="me-2 mt-1 text-muted flex-shrink-0" />
+                                                        <div>
+                                                            <small className="text-muted d-block">Thời gian giao dự kiến</small>
+                                                            <span className="text-primary fw-semibold">
+                                                                {format(new Date(order.expectedDeliveryTime), 'HH:mm dd/MM/yyyy')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <hr/>
-                                            <h6 className="text-muted mb-3">Hành động:</h6>
-                                            {renderActionButtons(order)}
+                                            <hr className="my-3" />
+
+                                            {/* Chi tiết thanh toán */}
+                                            <h6 className="text-muted mb-3">Chi tiết thanh toán:</h6>
+                                            <div className="mb-3">
+                                                <div className="d-flex justify-content-between mb-2">
+                                                    <span className="text-muted small">Tạm tính:</span>
+                                                    <span className="fw-semibold">
+                                                        {(order.itemsTotal || 0).toLocaleString()} ₫
+                                                    </span>
+                                                </div>
+
+                                                <div className="d-flex justify-content-between mb-2">
+                                                    <span className="text-muted small">Phí giao hàng:</span>
+                                                    <span className="fw-semibold">
+                                                        {(order.shippingFee || 0).toLocaleString()} ₫
+                                                    </span>
+                                                </div>
+
+                                                <div className="d-flex justify-content-between mb-2">
+                                                    <span className="text-muted small">Phí dịch vụ:</span>
+                                                    <span className="fw-semibold">
+                                                        {(order.serviceFee || 0).toLocaleString()} ₫
+                                                    </span>
+                                                </div>
+
+                                                {order.discountAmount && order.discountAmount > 0 && (
+                                                    <div className="d-flex justify-content-between mb-2">
+                                                        <span className="text-success small">Giảm giá:</span>
+                                                        <span className="text-success fw-semibold">
+                                                            -{order.discountAmount.toLocaleString()} ₫
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <div className="d-flex justify-content-between pt-2 border-top mt-2">
+                                                    <span className="fw-bold">Tổng thanh toán:</span>
+                                                    <span className="text-success fw-bold" style={{ fontSize: '1.15rem' }}>
+                                                        {order.totalAmount?.toLocaleString() || '0'} ₫
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {order.status !== ORDER_STATUS.CANCELLED && (<div className="d-flex align-items-center p-2 rounded"
+                                                                                              style={{backgroundColor: '#f8f9fa'}}>
+                                                <strong className="me-2 small">Trạng thái:</strong>
+                                                {order.paymentStatus === 'PAID' ? (
+                                                    <span className="text-success fw-semibold small">
+                                                        <CheckCircle size={16} className="me-1" />
+                                                        Đã thanh toán
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-warning fw-semibold small">
+                                                        ⏳ Chưa thanh toán ({order.paymentMethod || 'COD'})
+                                                    </span>
+                                                )}
+                                            </div>
+                                            )}
                                         </Col>
                                     </Row>
                                 </Accordion.Body>

@@ -5,12 +5,12 @@ import axiosInstance from "../../config/axiosConfig.ts";
 
 interface OrderStatistics {
     totalOrders: number;
-    pendingCount: number;      // ✅ Đổi từ pendingOrders
-    processingCount: number;   // ✅ Đổi từ processingOrders
-    readyCount: number;        // ✅ Đổi từ readyOrders
-    deliveringCount: number;   // ✅ Đổi từ deliveringOrders
-    completedCount: number;    // ✅ Đổi từ completedOrders
-    cancelledCount: number;    // ✅ Đổi từ cancelledOrders
+    pendingCount: number;
+    processingCount: number;
+    readyCount: number;
+    deliveringCount: number;
+    completedCount: number;
+    cancelledCount: number;
 }
 
 interface OrderStatItemProps {

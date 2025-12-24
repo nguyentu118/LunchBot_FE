@@ -1,5 +1,5 @@
 import React from 'react';
-import {createBrowserRouter, RouterProvider} from 'react-router-dom';
+import {createBrowserRouter, Navigate, RouterProvider} from 'react-router-dom';
 import {ROUTES} from './route.constants';
 import {AdminLayout} from '../components/layout/AdminLayout';
 import {MerchantListPage} from '../features/admin/merchants/pages/MerchantListPage';
@@ -22,6 +22,19 @@ import DriverListPage from "../features/admin/driver/DriverListPage.tsx";
 import DriverList from "../features/admin/driver/components/DriverList.tsx";
 import DriverUpdateForm from "../features/admin/driver/components/DriverUpdateForm.tsx";
 import MerchantProfilePage from "../features/merchants/MerchantProfilePage.tsx";
+import OrderByDish from '../features/order/components/OrderByDish.tsx';
+import OrderByCustomer from '../features/order/components/OrderByCustomer.tsx';
+import OrderByCoupons from '../features/order/components/OrderByCoupon.tsx';
+import MerchantLayout from "../components/layout/MerchantLayout.tsx";
+import DashboardOverview from "../components/common/DashboardOverview.tsx";
+import OrdersPage from "../features/merchants/OrdersPage.tsx";
+import MenuPage from '../features/dish/MenuPage.tsx';
+import CouponsPage from "../features/coupon/components/CouponsPage.tsx";
+import AnalyticsPage from "../components/common/AnalyticsPage.tsx";
+import RevenueAnalyticsWrapper from "../features/merchants/RevenueAnalyticsWrapper.tsx";
+import SettingsPage from "../components/common/SettingsPage.tsx";
+import RevenueReconciliationPage from "../features/merchants/RevenueReconcilitionPage.tsx";
+import OrderStatusAnalytics from "../features/merchants/OrderStatusAnalytics.tsx";
 import DishSearchPage from "../features/dish/DishSearchPage.tsx";
 import AddressManagementPage from "../features/checkout-card/components/AddressManagementPage.tsx";
 import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
@@ -51,7 +64,7 @@ const router = createBrowserRouter([
         element: <MerchantRegistrationForm/>,
     },
     {
-        path: 'merchant/dashboard',
+        path: 'merchant/dashboard-old',
         element: <MerchantDashboard/>,
     },
     {
@@ -134,6 +147,73 @@ const router = createBrowserRouter([
                 element: <div>Settings Page</div>,
             },
         ],
+    },
+    // AppRouter.tsx - Thêm routes mới cho merchant
+    {
+        path: '/merchant',
+        element: <ProtectedRoute requiredRole="MERCHANT">
+            <MerchantLayout />
+        </ProtectedRoute>,
+        children: [
+            {
+                index: true,
+                element: <Navigate to="/merchant/dashboard" replace />
+            },
+            {
+                path: 'dashboard',
+                element: <DashboardOverview />
+            },
+            {
+                path: 'orders',
+                element: <OrdersPage />
+            },
+            {
+                path: 'menu',
+                element: <MenuPage />
+            },
+            {
+                path: 'coupons',
+                element: <CouponsPage />
+            },
+            {
+                path: 'analytics',
+                element: <AnalyticsPage />,
+                children: [
+                    {
+                        index: true,
+                        element: <Navigate to="/merchant/analytics/revenue" replace />
+                    },
+                    {
+                        path: 'revenue',
+                        element: <RevenueAnalyticsWrapper />
+                    },
+                    {
+                        path: 'dishes',
+                        element: <OrderByDish />
+                    },
+                    {
+                        path: 'customers',
+                        element: <OrderByCustomer />
+                    },
+                    {
+                        path: 'coupons',
+                        element: <OrderByCoupons />
+                    },
+                    {
+                        path: 'order-status',  // ← Route mới
+                        element: <OrderStatusAnalytics />
+                    }
+                ]
+            },
+            {
+                path: 'revenue-reconciliation',
+                element: <RevenueReconciliationPage />
+            },
+            {
+                path: 'settings',
+                element: <SettingsPage />
+            }
+        ]
     },
 
     // ⭐ ROOT ROUTE - Redirect hoặc Landing Page
