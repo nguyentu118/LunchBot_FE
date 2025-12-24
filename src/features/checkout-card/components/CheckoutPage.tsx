@@ -204,23 +204,72 @@ const CheckoutPage: React.FC = () => {
     };
 
     const handleDeleteAddress = async (addressId: number) => {
-        if (!window.confirm('Bạn có chắc muốn xóa địa chỉ này?')) {
-            return;
-        }
+        // 1. Tạo Promise để xác nhận việc xóa qua Toast
+        const confirmDelete = () => new Promise((resolve, reject) => {
+            toast((t) => (
+                <div className="d-flex flex-column gap-2">
+                    <div className="fw-bold text-danger">Xóa địa chỉ?</div>
+                    <div className="text-muted small">
+                        Bạn có chắc chắn muốn xóa địa chỉ này không? Hành động này không thể hoàn tác.
+                    </div>
+                    <div className="d-flex gap-2 mt-2">
+                        <button
+                            className="btn btn-danger btn-sm flex-grow-1"
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                resolve(true); // Người dùng xác nhận xóa
+                            }}
+                        >
+                            Xóa
+                        </button>
+                        <button
+                            className="btn btn-outline-secondary btn-sm flex-grow-1"
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                reject(new Error('User cancelled')); // Người dùng hủy
+                            }}
+                        >
+                            Hủy
+                        </button>
+                    </div>
+                </div>
+            ), {
+                duration: Infinity, // Giữ toast cho đến khi người dùng chọn
+                position: 'top-center',
+            });
+        });
 
         try {
+            // 2. Đợi người dùng xác nhận
+            await confirmDelete();
+
+            // 3. Thực hiện xóa sau khi đã xác nhận
             await addressService.deleteAddress(addressId);
             toast.success('Xóa địa chỉ thành công');
+
+            // Tải lại thông tin checkout
             await loadCheckoutInfo();
 
+            // Nếu địa chỉ bị xóa đang được chọn, reset phí giao hàng và ID
             if (selectedAddressId === addressId) {
                 setSelectedAddressId(null);
                 setShippingFee(0);
+
+                // Cập nhật lại tổng tiền trong checkoutData khi mất phí ship
+                if (checkoutData) {
+                    setCheckoutData(prev => prev ? {
+                        ...prev,
+                        shippingFee: 0,
+                        totalAmount: prev.itemsTotal + prev.serviceFee - prev.discountAmount
+                    } : null);
+                }
             }
         } catch (err: any) {
+            // Nếu lỗi do người dùng bấm "Hủy", chúng ta không làm gì cả
+            if (err.message === 'User cancelled') return;
+
             console.error('Error deleting address:', err);
             toast.error(err.response?.data?.error || 'Không thể xóa địa chỉ');
-            throw err;
         }
     };
 
@@ -381,7 +430,7 @@ const CheckoutPage: React.FC = () => {
 
             const order = await orderService.createOrder(orderData);
 
-            toast.success('🎉 Đặt hàng thành công!');
+            toast.success('Đặt hàng thành công!');
 
             window.dispatchEvent(new Event('cartUpdated'));
 

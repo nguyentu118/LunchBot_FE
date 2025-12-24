@@ -3,7 +3,7 @@ import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row
 import './Homepage.css';
 import {
     ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram,
-    Mail, MapPin, Phone, Search, Star, Stars, Twitter, Youtube, Zap
+    Mail, Phone, Search, Star, Stars, Twitter, Youtube, Zap
 } from 'lucide-react';
 import Navigation from '../layout/Navigation';
 import SuggestedDishesSection from '../../features/dish/SuggestedDishesSection.tsx';
@@ -55,7 +55,6 @@ const HomePage: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState<number>(0);
     const [isTransitioning, setIsTransitioning] = useState<boolean>(true);
     const navigate = useNavigate();
-
     // ⭐ Fetch categories từ API
     const {categories: apiCategories, loading: categoriesLoading, error: categoriesError} = useCategoriesWithDishes();
 
@@ -82,6 +81,15 @@ const HomePage: React.FC = () => {
 
     const handleRestaurantClick = (restaurantId: number) => {
         navigate(`/merchants/profile/${restaurantId}`);
+    };
+
+    const handleQuickSearch = (e) => {
+        e.preventDefault();
+
+        if (searchQuery.trim()) {
+            // Chuyển đến trang danh sách với query parameter
+            navigate(`/dishes/search?name=${encodeURIComponent(searchQuery.trim())}`);
+        }
     };
 
     // ⭐ Map dữ liệu từ API
@@ -213,7 +221,10 @@ const HomePage: React.FC = () => {
                             <Row className="justify-content-center mb-4">
                                 <Col xs={12} lg={10} xl={9}>
                                     <Card className="p-2 shadow-lg rounded-4 border-0">
-                                        <Form className="d-flex flex-column flex-md-row gap-2 align-items-stretch">
+                                        <Form
+                                            className="d-flex flex-column flex-md-row gap-2 align-items-stretch"
+                                            onSubmit={handleQuickSearch}
+                                        >
                                             <div className="d-flex gap-2 flex-grow-1">
                                                 <InputGroup className="bg-light rounded-3 p-1 flex-grow-1">
                                                     <InputGroup.Text className="bg-light border-0">
@@ -221,19 +232,20 @@ const HomePage: React.FC = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="text"
-                                                        placeholder="Nhập vị trí giao hàng của bạn"
+                                                        placeholder="Tìm món ăn: phở, cơm, bún..."
                                                         value={searchQuery}
                                                         onChange={(e) => setSearchQuery(e.target.value)}
                                                         className="border-0 bg-light"
                                                     />
                                                 </InputGroup>
-                                                <Button variant="light" className="border">
-                                                    <MapPin size={20} className="text-danger"/>
-                                                    <span className="ms-2 d-none d-lg-inline">Định vị</span>
-                                                </Button>
                                             </div>
-                                            <Button variant="danger" type="submit" className="fw-bold px-5 shadow-sm"
-                                                    style={{minWidth: '120px'}}>
+                                            <Button
+                                                variant="danger"
+                                                type="submit"
+                                                className="fw-bold px-5 shadow-sm"
+                                                style={{minWidth: '120px'}}
+                                                disabled={!searchQuery.trim()}
+                                            >
                                                 Tìm kiếm
                                             </Button>
                                         </Form>

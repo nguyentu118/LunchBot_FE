@@ -22,6 +22,9 @@ import DriverListPage from "../features/admin/driver/DriverListPage.tsx";
 import DriverList from "../features/admin/driver/components/DriverList.tsx";
 import DriverUpdateForm from "../features/admin/driver/components/DriverUpdateForm.tsx";
 import MerchantProfilePage from "../features/merchants/MerchantProfilePage.tsx";
+import DishSearchPage from "../features/dish/DishSearchPage.tsx";
+import AddressManagementPage from "../features/checkout-card/components/AddressManagementPage.tsx";
+import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -75,6 +78,19 @@ const router = createBrowserRouter([
         path: "/merchants/profile/:merchantId",
         element: <MerchantProfilePage/>,
     },
+    {
+        path: "/dishes/search",
+        element: <DishSearchPage  />,
+    },
+    {
+        path: "/address",
+        element: <AddressManagementPage  />,
+    },
+    {
+        path: "/favorites",
+        element: <FavoriteDishesPage  />,
+    },
+
 
 
     // ⭐ ADMIN ROUTES (Protected - có AdminLayout)

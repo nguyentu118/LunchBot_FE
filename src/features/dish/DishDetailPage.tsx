@@ -10,6 +10,7 @@ import {
     Clock,
     CreditCard,
     Eye,
+    Heart,
     ShoppingCart,
     Store
 } from 'lucide-react';
@@ -66,6 +67,8 @@ const DishDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
     const [relatedDishes, setRelatedDishes] = useState<SuggestedDish[]>([]);
     const [mostViewedDishes, setMostViewedDishes] = useState<SuggestedDish[]>([]);
@@ -77,7 +80,6 @@ const DishDetailPage: React.FC = () => {
     useEffect(() => {
         window.scrollTo(0, 0);
 
-        // ✅ VALIDATE dishId
         if (!dishId || isNaN(Number(dishId)) || Number(dishId) <= 0) {
             navigate('/*', {replace: true});
             return;
@@ -86,6 +88,7 @@ const DishDetailPage: React.FC = () => {
         fetchDishDetail();
         fetchRelatedDishes();
         fetchMostViewedDishes();
+        checkFavoriteStatus();
     }, [dishId]);
 
     const fetchDishDetail = async () => {
@@ -103,16 +106,13 @@ const DishDetailPage: React.FC = () => {
             console.error('Error fetching dish:', err);
 
             if (err.response?.status === 404) {
-                // ✅ THÊM: Hiển thị thông báo cụ thể
                 const errorMsg = err.response?.data?.error || 'Món ăn không tồn tại hoặc không còn khả dụng';
 
                 setError(errorMsg);
                 setLoading(false);
 
-                // Hiển thị toast thông báo
                 toast.error(errorMsg, {duration: 4000});
 
-                // Sau 2s redirect về trang chủ
                 setTimeout(() => {
                     navigate('/', {replace: true});
                 }, 2000);
@@ -144,6 +144,40 @@ const DishDetailPage: React.FC = () => {
             console.error('Lỗi khi tải món ăn phổ biến:', err);
         } finally {
             setLoadingMostViewed(false);
+        }
+    };
+
+    // Kiểm tra trạng thái yêu thích ban đầu
+    const checkFavoriteStatus = async () => {
+        try {
+            const response = await axiosInstance.get(`/favorites/check/${dishId}`);
+            setIsFavorite(response.data.isFavorite);
+        } catch (err) {
+            console.error('Lỗi khi kiểm tra trạng thái yêu thích:', err);
+        }
+    };
+
+    // Toggle yêu thích - gọi API
+    const handleToggleFavorite = async () => {
+        if (isFavoriteLoading) return;
+
+        setIsFavoriteLoading(true);
+
+        try {
+            const response = await axiosInstance.post('/favorites/toggle', {
+                dishId: Number(dishId)
+            });
+            if (response.data && typeof response.data.isFavorite === 'boolean') {
+                setIsFavorite(response.data.isFavorite);
+            } else {
+                // Nếu API không trả về isFavorite, toggle manually
+                setIsFavorite(prev => !prev);
+            }
+        } catch (err: any) {
+            console.error('Lỗi khi toggle favorite:', err);
+            toast.error(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
+        } finally {
+            setIsFavoriteLoading(false);
         }
     };
 
@@ -256,6 +290,37 @@ const DishDetailPage: React.FC = () => {
                                         className="w-100 h-100 object-fit-cover"
                                         style={{transition: 'all 0.3s ease'}}
                                     />
+
+                                    {/* NÚT TRÁI TIM YÊU THÍCH */}
+                                    <button
+                                        onClick={handleToggleFavorite}
+                                        disabled={isFavoriteLoading}
+                                        className="btn position-absolute top-0 end-0 m-3 rounded-circle shadow-sm d-flex align-items-center justify-content-center"
+                                        style={{
+                                            width: '48px',
+                                            height: '48px',
+                                            backgroundColor: 'rgba(255,255,255,0.95)',
+                                            border: 'none',
+                                            transition: 'all 0.2s ease',
+                                            opacity: isFavoriteLoading ? 0.6 : 1,
+                                            cursor: isFavoriteLoading ? 'not-allowed' : 'pointer'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            if (!isFavoriteLoading) {
+                                                e.currentTarget.style.transform = 'scale(1.1)';
+                                            }
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                        }}
+                                    >
+                                        <Heart
+                                            size={24}
+                                            fill={isFavorite ? brandColor : 'none'}
+                                            color={isFavorite ? brandColor : '#6c757d'}
+                                            style={{transition: 'all 0.2s ease'}}
+                                        />
+                                    </button>
 
                                     {dish.images && dish.images.length > 1 && (
                                         <>
