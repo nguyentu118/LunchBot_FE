@@ -39,6 +39,10 @@ export const ORDER_STATUS = {
     COMPLETED: 'COMPLETED',
     CANCELLED: 'CANCELLED'
 };
+interface OrderStatusMetadata {
+    cancelReason?: string;
+    cancelledBy?: string;
+}
 
 export const getMerchantOrders = async (status?: string) => {
     const params = status ? { status } : {};
@@ -46,10 +50,15 @@ export const getMerchantOrders = async (status?: string) => {
     return response.data;
 };
 
-export const updateOrderStatus = async (orderId: number, status: string) => {
-    const response = await axiosInstance.put(`/merchants/orders/${orderId}/status`, null, {
-        params: { status }
-    });
+export const updateOrderStatus = async (orderId: number, status: string, metadata?: OrderStatusMetadata) => {
+    const response = await axiosInstance.put(
+        `/merchants/orders/${orderId}/status`,
+        {
+            status: status,           // ✅ Gửi status trong body
+            cancelReason: metadata?.cancelReason || null,
+            cancelledBy: metadata?.cancelledBy || null
+        }
+    );
     return response.data;
 };
 export interface ShippingAddress {

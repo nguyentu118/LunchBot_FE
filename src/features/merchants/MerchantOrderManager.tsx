@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Container, Spinner, Table, Accordion, Row, Col } from 'react-bootstrap';
+import {
+    Badge,
+    Button,
+    Container,
+    Spinner,
+    Table,
+    Accordion,
+    Row,
+    Col,
+    Modal,
+    Form,
+    useAccordionButton,
+    Card
+} from 'react-bootstrap';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { getMerchantOrders, updateOrderStatus, OrderResponse, ORDER_STATUS } from './services/merchantOrderService';
@@ -16,6 +29,35 @@ interface MerchantOrderManagerProps {
 const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) => {
     const [orders, setOrders] = useState<OrderResponse[]>([]);
     const [loading, setLoading] = useState(false);
+    const [debouncedKeyword, setDebouncedKeyword] = useState(filters.keyword);
+
+
+    // State cho modal xác nhận hủy
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+    const [cancelReason, setCancelReason] = useState('');
+    const [customReason, setCustomReason] = useState('');
+
+    // Danh sách lý do hủy phổ biến
+    const cancelReasons = [
+        'Hết nguyên liệu',
+        'Quán quá đông, không kịp chuẩn bị',
+        'Khách hàng yêu cầu hủy',
+        'Địa chỉ giao hàng quá xa',
+        'Không liên lạc được với khách hàng',
+        'Khác (tự nhập)'
+    ];
+
+
+    //  Debounce keyword - chỉ update sau 500ms user ngừng gõ
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedKeyword(filters.keyword);
+        }, 500); // 500ms delay
+
+        // Cleanup: Hủy timer cũ khi user gõ tiếp
+        return () => clearTimeout(timer);
+    }, [filters.keyword]);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -49,10 +91,57 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
             setLoading(false);
         }
     };
-
+// Chỉ fetch khi debouncedKeyword, status hoặc date thay đổi
     useEffect(() => {
         fetchOrders();
-    }, [filters]);
+    }, [debouncedKeyword, filters.status, filters.date]);
+    // Mở modal xác nhận hủy
+    const handleCancelClick = (orderId: number) => {
+        setSelectedOrderId(orderId);
+        setShowCancelModal(true);
+        setCancelReason('');
+        setCustomReason('');
+    };
+
+    // Đóng modal
+    const handleCloseModal = () => {
+        setShowCancelModal(false);
+        setSelectedOrderId(null);
+        setCancelReason('');
+        setCustomReason('');
+    };
+
+    // Xử lý hủy đơn hàng
+    const handleConfirmCancel = async () => {
+        if (!selectedOrderId) return;
+
+        // Xác định lý do cuối cùng
+        let finalReason = cancelReason;
+        if (cancelReason === 'Khác (tự nhập)') {
+            if (!customReason.trim()) {
+                toast.error('Vui lòng nhập lý do hủy');
+                return;
+            }
+            finalReason = customReason.trim();
+        } else if (!cancelReason) {
+            toast.error('Vui lòng chọn lý do hủy');
+            return;
+        }
+
+        try {
+            // Gửi lý do hủy đến backend
+            await updateOrderStatus(selectedOrderId, ORDER_STATUS.CANCELLED, {
+                cancelReason: finalReason,
+                cancelledBy: 'merchant'
+            });
+
+            toast.success(`Đã hủy đơn hàng. Khách hàng sẽ nhận được thông báo.`);
+            handleCloseModal();
+            fetchOrders();
+        } catch (error) {
+            toast.error("Hủy đơn hàng thất bại");
+        }
+    };
 
     const handleStatusUpdate = async (orderId: number, newStatus: string) => {
         try {
@@ -77,6 +166,21 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
         }
     };
 
+    function CustomToggle({ children, eventKey }: { children: React.ReactNode, eventKey: string }) {
+        const decoratedOnClick = useAccordionButton(eventKey);
+
+        return (
+            <div
+                className="accordion-button" // Class này giúp giữ nguyên giao diện mũi tên và style của Bootstrap
+                onClick={decoratedOnClick}
+                style={{ cursor: 'pointer', border: 'none', background: 'white' }}
+            >
+                {children}
+            </div>
+        );
+    }
+
+
     return (
         <Container fluid className="p-0">
             {loading ? (
@@ -97,91 +201,93 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
 
                         return (
                             <Accordion.Item eventKey={index.toString()} key={order.id} className="mb-3 border rounded shadow-sm">
-                                <Accordion.Header>
-                                    <div className="d-flex justify-content-between align-items-center w-100 me-3">
-                                        <div>
-                                            <span className="fw-bold">#{order.orderNumber || order.id}</span>
-                                            <span className="text-muted ms-2 small">
+                                <Card.Header className="p-0 bg-white border-0">
+                                    <CustomToggle eventKey={index.toString()}>
+                                        <div className="d-flex justify-content-between align-items-center w-100 me-3">
+                                            <div>
+                                                <span className="fw-bold">#{order.orderNumber || order.id}</span>
+                                                <span className="text-muted ms-2 small">
                                                 {format(new Date(order.orderDate), 'HH:mm dd/MM/yyyy')}
                                             </span>
-                                            <div className="small text-muted mt-1">
-                                                <User size={14} className="me-1" />
-                                                {customerName}
+                                                <div className="small text-muted mt-1">
+                                                    <User size={14} className="me-1" />
+                                                    {customerName}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="d-flex align-items-center gap-2">
+                                            <div className="d-flex align-items-center gap-2">
                                             <span className="fw-semibold" style={{ color: '#6c757d', fontSize: '0.95rem' }}>
                                                 {order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0} món
                                             </span>
-                                            <span style={{ color: '#dee2e6', fontSize: '1.1rem' }}>|</span>
-                                            <span className="text-success fw-bold" style={{ fontSize: '1.05rem' }}>
+                                                <span style={{ color: '#dee2e6', fontSize: '1.1rem' }}>|</span>
+                                                <span className="text-success fw-bold" style={{ fontSize: '1.05rem' }}>
                                                 {order.totalAmount?.toLocaleString() || '0'} ₫
                                             </span>
-                                            {getStatusBadge(order.status)}
+                                                {getStatusBadge(order.status)}
 
-                                            {/* Action buttons on header */}
-                                            <div className="d-flex gap-2 ms-2" onClick={(e) => e.stopPropagation()}>
-                                                {order.status === ORDER_STATUS.PENDING && (
-                                                    <>
+                                                {/* Action buttons on header */}
+                                                <div className="d-flex gap-2 ms-2" onClick={(e) => e.stopPropagation()}>
+                                                    {order.status === ORDER_STATUS.PENDING && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline-danger"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleCancelClick(order.id);
+                                                                }}
+                                                            >
+                                                                <XCircle size={16}/> Hủy
+                                                            </Button>
+                                                            <Button
+                                                                variant="primary"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleStatusUpdate(order.id, ORDER_STATUS.PROCESSING);
+                                                                }}
+                                                            >
+                                                                <CheckCircle size={16}/> Nhận đơn
+                                                            </Button>
+                                                        </>
+                                                    )}
+
+                                                    {order.status === ORDER_STATUS.PROCESSING && (
                                                         <Button
-                                                            variant="outline-danger"
+                                                            variant="info"
                                                             size="sm"
+                                                            className="text-white"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleStatusUpdate(order.id, ORDER_STATUS.CANCELLED);
+                                                                handleStatusUpdate(order.id, ORDER_STATUS.READY);
                                                             }}
                                                         >
-                                                            <XCircle size={16}/> Hủy
+                                                            <Package size={16}/> Món đã xong
                                                         </Button>
-                                                        <Button
-                                                            variant="primary"
-                                                            size="sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleStatusUpdate(order.id, ORDER_STATUS.PROCESSING);
-                                                            }}
-                                                        >
-                                                            <CheckCircle size={16}/> Nhận đơn
-                                                        </Button>
-                                                    </>
-                                                )}
+                                                    )}
 
-                                                {order.status === ORDER_STATUS.PROCESSING && (
-                                                    <Button
-                                                        variant="info"
-                                                        size="sm"
-                                                        className="text-white"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleStatusUpdate(order.id, ORDER_STATUS.READY);
-                                                        }}
-                                                    >
-                                                        <Package size={16}/> Món đã xong
-                                                    </Button>
-                                                )}
-
-                                                {order.status === ORDER_STATUS.READY && (
-                                                    <span className="text-muted fst-italic small">
+                                                    {order.status === ORDER_STATUS.READY && (
+                                                        <span className="text-muted fst-italic small">
                                                         <Truck size={16} className="me-1"/> Đang chờ tài xế lấy món...
                                                     </span>
-                                                )}
+                                                    )}
 
-                                                {(order.status === ORDER_STATUS.DELIVERING || order.status === ORDER_STATUS.COMPLETED) && (
-                                                    <span className="text-success small fw-bold">
+                                                    {(order.status === ORDER_STATUS.DELIVERING || order.status === ORDER_STATUS.COMPLETED) && (
+                                                        <span className="text-success small fw-bold">
                                                         <CheckCircle size={16} className="me-1"/>
-                                                        {order.status === ORDER_STATUS.DELIVERING ? 'Đang giao' : 'Hoàn thành'}
+                                                            {order.status === ORDER_STATUS.DELIVERING ? 'Đang giao' : 'Hoàn thành'}
                                                     </span>
-                                                )}
+                                                    )}
 
-                                                {order.status === ORDER_STATUS.CANCELLED && (
-                                                    <span className="text-danger small fw-bold">
+                                                    {order.status === ORDER_STATUS.CANCELLED && (
+                                                        <span className="text-danger small fw-bold">
                                                         <XCircle size={16} className="me-1"/> Đã hủy
                                                     </span>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </Accordion.Header>
+                                    </CustomToggle>
+                                </Card.Header>
                                 <Accordion.Body>
                                     <Row>
                                         <Col md={7}>
@@ -323,6 +429,74 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                     })}
                 </Accordion>
             )}
+            {/* Modal xác nhận hủy đơn hàng */}
+            <Modal show={showCancelModal} onHide={handleCloseModal} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        <XCircle size={24} className="me-2 text-danger" />
+                        Xác nhận hủy đơn hàng
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p className="text-muted mb-3">
+                        Vui lòng chọn lý do hủy đơn hàng. Khách hàng sẽ nhận được thông báo kèm lý do này.
+                    </p>
+
+                    <Form.Group className="mb-3">
+                        <Form.Label className="fw-semibold">Lý do hủy đơn <span className="text-danger">*</span></Form.Label>
+                        {cancelReasons.map((reason, idx) => (
+                            <Form.Check
+                                key={idx}
+                                type="radio"
+                                id={`reason-${idx}`}
+                                label={reason}
+                                name="cancelReason"
+                                value={reason}
+                                checked={cancelReason === reason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                className="mb-2"
+                            />
+                        ))}
+                    </Form.Group>
+
+                    {cancelReason === 'Khác (tự nhập)' && (
+                        <Form.Group className="mb-3">
+                            <Form.Label className="fw-semibold">Nhập lý do cụ thể <span className="text-danger">*</span></Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                placeholder="Ví dụ: Hệ thống bếp đang bảo trì..."
+                                value={customReason}
+                                onChange={(e) => setCustomReason(e.target.value)}
+                                maxLength={200}
+                            />
+                            <Form.Text className="text-muted">
+                                {customReason.length}/200 ký tự
+                            </Form.Text>
+                        </Form.Group>
+                    )}
+
+                    <div className="alert alert-warning d-flex align-items-start mb-0">
+                        <span className="me-2">⚠️</span>
+                        <small>
+                            Hành động này không thể hoàn tác. Khách hàng sẽ nhận được thông báo hủy đơn kèm lý do bạn đã chọn.
+                        </small>
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleCloseModal}>
+                        Đóng
+                    </Button>
+                    <Button
+                        variant="danger"
+                        onClick={handleConfirmCancel}
+                        disabled={!cancelReason || (cancelReason === 'Khác (tự nhập)' && !customReason.trim())}
+                    >
+                        <XCircle size={16} className="me-1" />
+                        Xác nhận hủy đơn
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };
