@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { MapPin, Save, AlertCircle } from 'lucide-react';
+import { MapPin, Save } from 'lucide-react';
 import { Address, AddressFormData, GHNProvince, GHNDistrict, GHNWard } from '../types/address.types';
 import { ghnService } from '../services/ghnService';
 
@@ -420,20 +420,6 @@ const AddressForm: React.FC<AddressFormProps> = ({
                                 onChange={(e) => handleChange('isDefault', e.target.checked)}
                             />
                         </Col>
-
-                        {/* ✅ Thông báo GHN fields */}
-                        {formData.provinceId && formData.districtId && formData.wardCode && (
-                            <Col xs={12}>
-                                <Alert variant="success" className="mb-0 py-2">
-                                    <AlertCircle size={16} className="me-2 d-inline" />
-                                    <small>
-                                        ✅ GHN IDs: Province={formData.provinceId},
-                                        District={formData.districtId},
-                                        Ward={formData.wardCode}
-                                    </small>
-                                </Alert>
-                            </Col>
-                        )}
                     </Row>
 
                     {Object.keys(errors).length > 0 && (

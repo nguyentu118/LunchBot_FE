@@ -114,6 +114,23 @@ const RevenueStatistics: React.FC<Props> = ({ merchantId }) => {
         return '';
     };
 
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'PENDING':
+                return <span className="badge bg-warning bg-opacity-10 text-warning">Chờ xử lý</span>;
+            case 'CONFIRMED':
+                return <span className="badge bg-info bg-opacity-10 text-info">Đã xác nhận</span>;
+            case 'DELIVERING':
+                return <span className="badge bg-primary bg-opacity-10 text-primary">Đang giao</span>;
+            case 'COMPLETED':
+                return <span className="badge bg-success bg-opacity-10 text-success">Hoàn thành</span>;
+            case 'CANCELLED':
+                return <span className="badge bg-danger bg-opacity-10 text-danger">Đã hủy</span>;
+            default:
+                return <span className="badge bg-secondary bg-opacity-10 text-secondary">{status}</span>;
+        }
+    };
+
     return (
         <div className="container-fluid p-0">
             <h5 className="fw-bold mb-3">Thống kê doanh số</h5>
@@ -262,9 +279,7 @@ const RevenueStatistics: React.FC<Props> = ({ merchantId }) => {
                                         <td>{order.customerName}</td>
                                         <td><small className="text-muted"><Calendar size={14} className="me-1"/>{formatDate(order.orderDate)}</small></td>
                                         <td>
-                                            <span className="badge bg-success bg-opacity-10 text-success">
-                                                {order.status}
-                                            </span>
+                                            {getStatusBadge(order.status)}
                                         </td>
                                         <td className="text-end fw-bold text-primary">{formatCurrency(Number(order.totalAmount))}</td>
                                     </tr>

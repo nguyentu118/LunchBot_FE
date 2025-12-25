@@ -37,7 +37,6 @@ export const getSuggestedDishes = async (): Promise<SuggestedDish[]> => {
 };
 
 export const searchDishes = async (request: DishSearchRequest): Promise<PageResponse<DishSearchResponse>> => {
-    console.log('🌐 API CALL - searchDishes', request);
 
     try {
         const params = new URLSearchParams();
@@ -50,13 +49,10 @@ export const searchDishes = async (request: DishSearchRequest): Promise<PageResp
         params.append('page', (request.page || 0).toString());
         params.append('size', (request.size || 12).toString());
 
-        console.log('🔗 URL:', `${DISH_BASE_URL}/search?${params.toString()}`);
 
         const response = await api.get<PageResponse<DishSearchResponse>>(
             `${DISH_BASE_URL}/search?${params.toString()}`
         );
-
-        console.log('✅ API Response:', response.data);
         return response.data;
     } catch (error) {
         console.error("❌ Error searching dishes:", error);
