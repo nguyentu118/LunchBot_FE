@@ -31,7 +31,7 @@ const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
             icon: '🎉',
             duration: 3000
         });
-        // // Trigger refresh của CouponList
+        // Trigger refresh của CouponList
         setRefreshKey(prev => prev + 1);
     };
 
@@ -75,6 +75,7 @@ const MerchantCouponManager: React.FC<MerchantCouponManagerProps> = ({
                 onlyActive={filterActive === 'active'}
                 showMerchantView={true}
                 brandColor={brandColor}
+                viewMode="list"
                 emptyMessage={
                     filterActive === 'active'
                         ? 'Chưa có mã giảm giá còn hiệu lực'

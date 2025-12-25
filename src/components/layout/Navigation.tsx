@@ -2,7 +2,6 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
 import {
-    Bell,
     Briefcase, Heart,
     Home,
     LogIn,
@@ -18,7 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GuestCartHelper } from '../../features/cart/types/guestCart';
-
+import NotificationDropdown from '../../features/notification/components/NotificationDropdown';
 
 // IMPORT SERVICES
 import {UserApiService} from '../../features/user/services/UserApi.service';
@@ -100,7 +99,6 @@ const Navigation: React.FC = () => {
             ...authData,
         }));
 
-
         fetchHeaderData(authData.isLoggedIn);
     }, [checkLocalAuth, fetchHeaderData]);
 
@@ -109,7 +107,6 @@ const Navigation: React.FC = () => {
             const token = localStorage.getItem('token');
 
             if (token) {
-                // Logged in user
                 try {
                     const cartData = await CartApiService.getCartCount();
                     setCartCount(cartData.count || 0);
@@ -117,16 +114,13 @@ const Navigation: React.FC = () => {
                     console.error("Error fetching cart count:", error);
                 }
             } else {
-                // Guest user
                 const guestCartCount = GuestCartHelper.getTotalCount();
                 setCartCount(guestCartCount);
             }
         };
 
-        // Lắng nghe event
         window.addEventListener('cartUpdated', handleCartUpdate);
 
-        // Cleanup
         return () => {
             window.removeEventListener('cartUpdated', handleCartUpdate);
         };
@@ -161,24 +155,19 @@ const Navigation: React.FC = () => {
     const handleManageMerchant = () => {
         navigate('/merchant/update');
     };
+
     const handleMyOrders = () => {
         navigate('/orders');
     };
 
-
-    // Normalize role để kiểm tra
     const normalizedRole = userInfo.userRole ? userInfo.userRole.toUpperCase().replace(/^ROLE_/, '') : null;
-
-    // Tên hiển thị ngắn gọn (chỉ lấy tên đầu tiên)
     const displayName = userInfo.fullName ? userInfo.fullName.split(' ')[0] : 'User';
-
 
     return (
         <Navbar expand="lg" className="bg-lunchbot-primary" variant="dark">
             <Container>
                 <Navbar.Brand as={Link} to="/" className="d-flex flex-column align-items-center me-4">
                     <div className="d-flex align-items-center">
-                        {/* ... Logo */}
                         <div className="bg-white p-1 rounded shadow-sm me-2">
                             <svg className="text-danger" style={{width: '24px', height: '24px'}}
                                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,6 +198,7 @@ const Navigation: React.FC = () => {
                             <UtensilsCrossed size={20} className="me-2"/>
                             <span>Nhà hàng</span>
                         </Nav.Link>
+
                         {/* ICON GIỎ HÀNG */}
                         <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
                             <ShoppingCart size={24} color="#FFF"/>
@@ -219,14 +209,12 @@ const Navigation: React.FC = () => {
                             )}
                         </Nav.Link>
 
-                        <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
-                            <Bell size={24} color="#FFF"/>
-                            {cartCount > 0 && (
-                                <Badge pill bg="warning" className="position-absolute top-0 start-100 translate-middle">
-                                    {cartCount}
-                                </Badge>
-                            )}
-                        </Nav.Link>
+                        {/* NOTIFICATION BELL - CHỈ HIỂN THỊ KHI ĐĂNG NHẬP */}
+                        {userInfo.isLoggedIn && (
+                            <Nav.Item className="mx-3 py-1">
+                                <NotificationDropdown />
+                            </Nav.Item>
+                        )}
 
                         {/* AUTH SECTION */}
                         {!userInfo.isLoggedIn ? (
@@ -244,14 +232,12 @@ const Navigation: React.FC = () => {
                                     as={Nav.Link}
                                     className="py-0 px-1 ms-md-3 d-flex align-items-center text-white "
                                 >
-                                    {/* ICON USER (Giữ nguyên kích thước 18 và me-1/me-2) */}
                                     <div>
                                         <div className="d-flex align-items-center justify-content-center rounded-circle"
                                              style={{width: '32px', height: '32px'}}>
                                             <User size={20} className="text-white"/>
                                         </div>
                                     </div>
-                                    {/* TÊN KHÁCH HÀNG (tay phải icon) */}
                                     <span className="fw-bold small">{displayName}</span>
                                 </Dropdown.Toggle>
 
@@ -291,7 +277,6 @@ const Navigation: React.FC = () => {
                                                 <Settings size={16} className="me-2 text-primary"/>
                                                 Thông tin
                                             </Dropdown.Item>
-
                                         </>
                                     )}
 
@@ -309,10 +294,8 @@ const Navigation: React.FC = () => {
                                                 className="d-flex align-items-center"
                                             >
                                                 <Briefcase size={16} className="me-2 text-primary"/>
-                                                Cập nhập thông tin Nhà hàng
+                                                Cập nhật thông tin Nhà hàng
                                             </Dropdown.Item>
-
-
                                         </>
                                     )}
 
