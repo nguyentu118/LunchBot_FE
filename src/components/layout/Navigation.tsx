@@ -2,11 +2,12 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
 import {
+    Bell,
     Briefcase, Heart,
     Home,
     LogIn,
     LogOut,
-     MapPin,
+    MapPin,
     Settings,
     ShoppingBag,
     ShoppingCart,
@@ -211,6 +212,15 @@ const Navigation: React.FC = () => {
                         {/* ICON GIỎ HÀNG */}
                         <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
                             <ShoppingCart size={24} color="#FFF"/>
+                            {cartCount > 0 && (
+                                <Badge pill bg="warning" className="position-absolute top-0 start-100 translate-middle">
+                                    {cartCount}
+                                </Badge>
+                            )}
+                        </Nav.Link>
+
+                        <Nav.Link as={Link} to="/cart" className="text-white mx-3 py-1 position-relative">
+                            <Bell size={24} color="#FFF"/>
                             {cartCount > 0 && (
                                 <Badge pill bg="warning" className="position-absolute top-0 start-100 translate-middle">
                                     {cartCount}

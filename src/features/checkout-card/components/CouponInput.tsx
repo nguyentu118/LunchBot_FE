@@ -136,8 +136,8 @@ const CouponInput: React.FC<CouponInputProps> = ({
                         >
                             <Tag size={16} className="me-2" />
                             <span className="fw-semibold">
-                Mã giảm giá khả dụng ({availableCoupons.length})
-              </span>
+                                Mã giảm giá khả dụng ({availableCoupons.length})
+                            </span>
                             {showAvailable ? (
                                 <ChevronUp size={16} className="ms-2" />
                             ) : (
@@ -158,10 +158,10 @@ const CouponInput: React.FC<CouponInputProps> = ({
                                             <div className="d-flex align-items-center gap-2 mb-1">
                                                 <Badge bg="danger">{coupon.code}</Badge>
                                                 <span className="small fw-bold text-success">
-                          {coupon.discountType === 'PERCENTAGE'
-                              ? `-${coupon.discountValue}%`
-                              : `-${formatPrice(coupon.discountValue)}`}
-                        </span>
+                                                    {coupon.discountType === 'PERCENTAGE'
+                                                        ? `-${coupon.discountValue}%`
+                                                        : `-${formatPrice(coupon.discountValue)}`}
+                                                </span>
                                             </div>
                                             <p className="mb-0 small text-muted">
                                                 {coupon.description}

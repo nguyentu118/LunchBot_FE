@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, Badge, Button } from 'react-bootstrap';
-import { Ticket, Calendar, Users, Tag, Edit, Trash2 } from 'lucide-react';
-import { Coupon } from '../hooks/useCouponList';
-import { toast } from 'react-hot-toast';
+import {Badge, Button, Card} from 'react-bootstrap';
+import {Calendar, Edit, Tag, Ticket, Trash2, Users} from 'lucide-react';
+import {Coupon} from '../hooks/useCouponList';
+import {toast} from 'react-hot-toast';
 
 interface CouponCardProps {
     coupon: Coupon;
@@ -49,10 +49,11 @@ const CouponCard: React.FC<CouponCardProps> = ({
     };
 
     const getStatusBadge = () => {
-        if (isInactive) return <Badge bg="secondary" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Đã khóa</Badge>;
-        if (isExpired) return <Badge bg="danger" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Hết hạn</Badge>;
-        if (isOutOfStock) return <Badge bg="warning" text="dark" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Hết lượt</Badge>;
-        return <Badge bg="success" className="py-1 px-2" style={{ fontSize: '0.7rem' }}>Còn hiệu lực</Badge>;
+        if (isInactive) return <Badge bg="secondary" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Đã khóa</Badge>;
+        if (isExpired) return <Badge bg="danger" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Hết hạn</Badge>;
+        if (isOutOfStock) return <Badge bg="warning" text="dark" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Hết
+            lượt</Badge>;
+        return <Badge bg="success" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Còn hiệu lực</Badge>;
     };
 
     const handleCopyCode = () => {
@@ -86,19 +87,19 @@ const CouponCard: React.FC<CouponCardProps> = ({
                 }}
             >
                 <div className="mb-2 d-flex align-items-center justify-content-center"
-                     style={{ width: '40px', height: '40px', backgroundColor: '#fff5f5', borderRadius: '50%' }}>
-                    <Trash2 size={20} color="#dc3545" />
+                     style={{width: '40px', height: '40px', backgroundColor: '#fff5f5', borderRadius: '50%'}}>
+                    <Trash2 size={20} color="#dc3545"/>
                 </div>
 
-                <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>Xác nhận xóa?</h6>
-                <p className="text-muted mb-3" style={{ fontSize: '0.8rem' }}>Xóa mã: <b>{coupon.code}</b></p>
+                <h6 className="fw-bold text-dark mb-1" style={{fontSize: '0.9rem'}}>Xác nhận xóa?</h6>
+                <p className="text-muted mb-3" style={{fontSize: '0.8rem'}}>Xóa mã: <b>{coupon.code}</b></p>
 
                 <div className="d-flex gap-2 w-100">
                     <Button
                         className="flex-grow-1"
                         variant="danger"
                         size="sm"
-                        style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                        style={{borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px'}}
                         onClick={() => {
                             onDelete?.(coupon.id);
                             toast.dismiss(t.id);
@@ -110,7 +111,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
                         className="flex-grow-1"
                         variant="light"
                         size="sm"
-                        style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                        style={{borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px'}}
                         onClick={() => toast.dismiss(t.id)}
                     >
                         Hủy
@@ -153,13 +154,14 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                 height: '32px'
                             }}
                         >
-                            <Ticket size={16} color={isDisabled ? '#6c757d' : brandColor} />
+                            <Ticket size={16} color={isDisabled ? '#6c757d' : brandColor}/>
                         </div>
                         <div>
-                            <div className="fw-bold mb-0" style={{ color: isDisabled ? '#6c757d' : brandColor, fontSize: '0.95rem' }}>
+                            <div className="fw-bold mb-0"
+                                 style={{color: isDisabled ? '#6c757d' : brandColor, fontSize: '0.95rem'}}>
                                 {getDiscountText()}
                             </div>
-                            <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+                            <small className="text-muted" style={{fontSize: '0.7rem'}}>
                                 {coupon.discountType === 'PERCENTAGE' ? 'Giảm theo %' : 'Giảm cố định'}
                             </small>
                         </div>
@@ -185,20 +187,20 @@ const CouponCard: React.FC<CouponCardProps> = ({
                         {coupon.code}
                     </code>
                     {!isDisabled && (
-                        <small className="text-muted d-block" style={{ fontSize: '0.6rem', marginTop: '2px' }}>
+                        <small className="text-muted d-block" style={{fontSize: '0.6rem', marginTop: '2px'}}>
                             Nhấn để sao chép
                         </small>
                     )}
                 </div>
 
                 {/* Thông tin chi tiết */}
-                <div className="mb-1 d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-                    <Tag size={12} />
+                <div className="mb-1 d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                    <Tag size={12}/>
                     <span>Đơn tối thiểu: <strong>{formatCurrency(coupon.minOrderValue)}</strong></span>
                 </div>
 
-                <div className="mb-2 d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-                    <Calendar size={12} />
+                <div className="mb-2 d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                    <Calendar size={12}/>
                     <span>{formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}</span>
                 </div>
 
@@ -206,17 +208,17 @@ const CouponCard: React.FC<CouponCardProps> = ({
                 {showMerchantView && (
                     <div className="mt-2 pt-2 border-top">
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                            <div className="d-flex align-items-center gap-1 text-muted" style={{ fontSize: '0.75rem' }}>
-                                <Users size={12} />
+                            <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                                <Users size={12}/>
                                 <span>Đã dùng: <strong>{coupon.usedCount}</strong></span>
                             </div>
-                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                            <div className="text-muted" style={{fontSize: '0.75rem'}}>
                                 Giới hạn: <strong>{coupon.usageLimit}</strong>
                             </div>
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="progress mb-2" style={{ height: '4px' }}>
+                        <div className="progress mb-2" style={{height: '4px'}}>
                             <div
                                 className="progress-bar"
                                 role="progressbar"
@@ -228,25 +230,27 @@ const CouponCard: React.FC<CouponCardProps> = ({
                         </div>
 
                         {/* Buttons */}
+
                         <div className="d-flex gap-2">
                             <Button
                                 variant="outline-primary"
                                 size="sm"
                                 className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
-                                style={{ fontSize: '0.75rem', padding: '4px 8px' }}
-                                onClick={() => onEdit?.(coupon)}
+                                style={{fontSize: '0.75rem', padding: '4px 8px'}}
+                                onClick={!isDisabled ? () => onEdit?.(coupon) : undefined}
                             >
-                                <Edit size={12} /> Sửa
+                                <Edit size={12}/>Sửa
                             </Button>
                             <Button
                                 variant="outline-danger"
                                 size="sm"
                                 className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
-                                style={{ fontSize: '0.75rem', padding: '4px 8px' }}
-                                onClick={handleDeleteClick}
+                                style={{fontSize: '0.75rem', padding: '4px 8px'}}
+                                onClick={!isDisabled ? handleDeleteClick : undefined}
                             >
-                                <Trash2 size={12} /> Xóa
+                                <Trash2 size={12}/> Xóa
                             </Button>
+
                         </div>
                     </div>
                 )}

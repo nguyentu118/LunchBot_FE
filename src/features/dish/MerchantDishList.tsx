@@ -9,6 +9,7 @@ interface Dish {
     name: string;
     description: string;
     price: string;
+    preparationTime: number;
     image: string | null;
     images?: string[];
     categoryIds?: number[];
@@ -27,7 +28,7 @@ interface MerchantDishListProps {
     setSelectedDish: (dish: Dish | null) => void;
     onEdit?: (dish: Dish) => void;
     onDelete?: (dishId: number) => void;
-    onDishDeleted?: () => void; // ✅ Prop này đã có trong interface
+    onDishDeleted?: () => void;
     searchFilters: SearchFilters;
 }
 
@@ -36,68 +37,109 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                                     selectedDish,
                                                                     setSelectedDish,
                                                                     onEdit,
-                                                                    onDishDeleted, // ✅ THÊM DÒNG NÀY - Nhận prop từ parent
+                                                                    onDishDeleted,
                                                                     searchFilters
                                                                 }) => {
     const [dishes, setDishes] = useState<Dish[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isSearching, setIsSearching] = useState<boolean>(false); // 🔥 Loading cho debounce
 
-    // 🔥 PHÂN TRANG
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    // 🔥 PAGINATION
+    const [currentPage, setCurrentPage] = useState<number>(0);
+    const [totalPages, setTotalPages] = useState<number>(0);
+    const [totalElements, setTotalElements] = useState<number>(0);
     const ITEMS_PER_PAGE = 6;
 
     // State cho Image Gallery Modal
     const [showGallery, setShowGallery] = useState(false);
     const [currentImages, setCurrentImages] = useState<string[]>([]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-    // State để track ảnh bị lỗi
     const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
+    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
+
+    // 🔥 FETCH DISHES - Tự động chọn API phù hợp
     const fetchMerchantDishes = useCallback(async (showToast = true) => {
         setIsLoading(true);
         try {
-            const response = await axiosInstance.get('/dishes/list');
-
             let dishesData: any[] = [];
+            let totalPagesFromServer = 0;
+            let totalElementsFromServer = 0;
 
-            if (typeof response.data === 'string') {
-                try {
-                    const cleanedString = response.data.trim();
-                    const parsed = JSON.parse(cleanedString);
+            // ✅ NẾU CÓ FILTER → Dùng API search với pagination
+            if (hasActiveFilters) {
+                const params: any = {
+                    page: currentPage,
+                    size: ITEMS_PER_PAGE
+                };
 
-                    if (Array.isArray(parsed)) {
-                        dishesData = parsed;
-                    } else if (parsed && typeof parsed === 'object') {
-                        const possibleKeys = ['dishes', 'data', 'content', 'items', 'list'];
-                        for (const key of possibleKeys) {
-                            if (Array.isArray(parsed[key])) {
-                                dishesData = parsed[key];
-                                break;
+                if (searchFilters.keyword?.trim()) {
+                    params.keyword = searchFilters.keyword.trim();
+                }
+                if (searchFilters.categoryId) {
+                    params.categoryId = searchFilters.categoryId;
+                }
+                if (searchFilters.priceRange) {
+                    params.priceRange = searchFilters.priceRange;
+                }
+
+                const response = await axiosInstance.get('/dishes/merchant/search', { params });
+                const data = response.data;
+
+                dishesData = data.content || [];
+                totalPagesFromServer = data.totalPages || 0;
+                totalElementsFromServer = data.totalElements || 0;
+            }
+            // ✅ NẾU KHÔNG CÓ FILTER → Dùng API list và phân trang client-side
+            else {
+                const response = await axiosInstance.get('/dishes/list');
+
+                // Xử lý response giống code cũ
+                if (typeof response.data === 'string') {
+                    try {
+                        const cleanedString = response.data.trim();
+                        const parsed = JSON.parse(cleanedString);
+
+                        if (Array.isArray(parsed)) {
+                            dishesData = parsed;
+                        } else if (parsed && typeof parsed === 'object') {
+                            const possibleKeys = ['dishes', 'data', 'content', 'items', 'list'];
+                            for (const key of possibleKeys) {
+                                if (Array.isArray(parsed[key])) {
+                                    dishesData = parsed[key];
+                                    break;
+                                }
                             }
                         }
-                    }
-                } catch (e) {
-                    console.error('Parse error:', e);
-                    toast.error('Lỗi parse dữ liệu. Vui lòng liên hệ developer.');
-                }
-            }
-            else if (Array.isArray(response.data)) {
-                dishesData = response.data;
-            }
-            else if (response.data && typeof response.data === 'object') {
-                const possibleArrayKeys = ['dishes', 'data', 'content', 'items', 'list'];
-                for (const key of possibleArrayKeys) {
-                    if (Array.isArray(response.data[key])) {
-                        dishesData = response.data[key];
-                        break;
+                    } catch (e) {
+                        console.error('Parse error:', e);
+                        toast.error('Lỗi parse dữ liệu. Vui lòng liên hệ developer.');
                     }
                 }
+                else if (Array.isArray(response.data)) {
+                    dishesData = response.data;
+                }
+                else if (response.data && typeof response.data === 'object') {
+                    const possibleArrayKeys = ['dishes', 'data', 'content', 'items', 'list'];
+                    for (const key of possibleArrayKeys) {
+                        if (Array.isArray(response.data[key])) {
+                            dishesData = response.data[key];
+                            break;
+                        }
+                    }
+                }
+
+                // 🔥 CLIENT-SIDE PAGINATION khi không có filter
+                totalElementsFromServer = dishesData.length;
+                totalPagesFromServer = Math.ceil(dishesData.length / ITEMS_PER_PAGE);
+
+                const startIndex = currentPage * ITEMS_PER_PAGE;
+                const endIndex = startIndex + ITEMS_PER_PAGE;
+                dishesData = dishesData.slice(startIndex, endIndex);
             }
 
-
+            // Xử lý dữ liệu chung
             const fetchedDishes: Dish[] = dishesData.map((dish: any) => {
-                // Xử lý ảnh
                 let images: string[] = [];
                 if (dish.imagesUrls) {
                     try {
@@ -108,7 +150,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     }
                 }
 
-                // Xử lý giá
                 const priceNumber = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price) || 0;
                 const formattedPrice = priceNumber.toLocaleString('vi-VN') + 'đ';
 
@@ -116,95 +157,68 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     id: dish.id,
                     name: dish.name || 'Món ăn không tên',
                     description: dish.description || 'Chưa có mô tả.',
+                    preparationTime: dish.preparationTime  || "15-20",
                     price: formattedPrice,
                     priceNumber: priceNumber,
                     image: images.length > 0 ? images[0] : null,
                     images: images,
-                    // ✅ Backend ĐÃ TRẢ VỀ categoryIds
                     categoryIds: dish.categoryIds || []
                 };
             });
 
             setDishes(fetchedDishes);
+            setTotalPages(totalPagesFromServer);
+            setTotalElements(totalElementsFromServer);
 
         } catch (error) {
             console.error("Lỗi tải danh sách món ăn:", error);
             toast.error("Không thể tải danh sách món. Vui lòng kiểm tra kết nối.");
             setDishes([]);
+            setTotalPages(0);
+            setTotalElements(0);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [currentPage, searchFilters, hasActiveFilters]);
 
     const isFirstLoad = useRef(true);
 
+    // 🔥 DEBOUNCE: Đợi 1s sau khi user ngừng gõ mới fetch
     useEffect(() => {
+        // Không debounce lần đầu load hoặc khi toggle create
         if (isFirstLoad.current) {
             fetchMerchantDishes(true);
             isFirstLoad.current = false;
-        } else {
+            return;
+        }
+
+        // ✅ Debounce cho search filters
+        const timeoutId = setTimeout(() => {
+            fetchMerchantDishes(false);
+            setIsSearching(false);
+        }, 500);
+
+        // Cleanup: Hủy timeout nếu user tiếp tục gõ
+        return () => {
+            clearTimeout(timeoutId);
+            setIsSearching(false);
+        };
+    }, [searchFilters, currentPage]);
+
+    // Fetch ngay lập tức khi có dish mới được tạo/xóa
+    useEffect(() => {
+        if (!isFirstLoad.current) {
             fetchMerchantDishes(false);
         }
-    }, [fetchMerchantDishes, onDishCreatedToggle]);
+    }, [onDishCreatedToggle]);
 
-    // 🔥 LỌC CLIENT-SIDE (Hoạt động sau khi Backend đã trả về categoryIds)
-    const filteredDishes = dishes.filter(dish => {
-        // 1️⃣ Lọc theo KEYWORD
-        if (searchFilters.keyword) {
-            const keyword = searchFilters.keyword.toLowerCase().trim();
-            const matchName = dish.name.toLowerCase().includes(keyword);
-            const matchDesc = dish.description.toLowerCase().includes(keyword);
-            if (!matchName && !matchDesc) {
-                return false;
-            }
-        }
-
-        // 2️⃣ Lọc theo CATEGORY
-        if (searchFilters.categoryId) {
-            const categoryId = Number(searchFilters.categoryId);
-
-            if (!dish.categoryIds || !Array.isArray(dish.categoryIds)) {
-                console.warn(`⚠️ Dish ${dish.id} has no categoryIds`);
-                return false;
-            }
-
-            if (!dish.categoryIds.includes(categoryId)) {
-                return false;
-            }
-        }
-
-        // 3️⃣ Lọc theo PRICE RANGE
-        if (searchFilters.priceRange) {
-            const [min, max] = searchFilters.priceRange.split('-').map(Number);
-            const price = dish.priceNumber || 0;
-            if (price < min || price > max) {
-                return false;
-            }
-        }
-
-        return true;
-    });
-
-
-    // 🔥 TÍNH TOÁN PHÂN TRANG
-    const totalPages = Math.ceil(filteredDishes.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const currentDishes = filteredDishes.slice(startIndex, endIndex);
-
-    // Reset về trang 1 khi filter thay đổi
+    // Reset về trang 0 khi filter thay đổi
     useEffect(() => {
-        setCurrentPage(1);
+        setCurrentPage(0);
     }, [searchFilters]);
 
-    useEffect(() => {
-        if (currentPage > totalPages && totalPages > 0) {
-            setCurrentPage(1);
-        }
-    }, [filteredDishes.length, currentPage, totalPages]);
-
     const goToPage = (page: number) => {
-        if (page >= 1 && page <= totalPages) {
+        if (page >= 0 && page < totalPages) {
             setCurrentPage(page);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -229,8 +243,6 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
         setImageErrors(prev => new Set(prev).add(imageUrl));
     };
 
-    const hasActiveFilters = searchFilters.keyword || searchFilters.categoryId || searchFilters.priceRange;
-
     if (isLoading) {
         return (
             <div className="bg-white rounded-4 p-4 shadow">
@@ -247,7 +259,17 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
     return (
         <>
             <div className="bg-white rounded-4 p-4 shadow">
-                {hasActiveFilters && filteredDishes.length === 0 && (
+                {/* 🔥 Searching Indicator */}
+                {isSearching && (
+                    <div className="alert alert-light d-flex align-items-center mb-3" role="alert">
+                        <div className="spinner-border spinner-border-sm text-danger me-2" role="status">
+                            <span className="visually-hidden">Searching...</span>
+                        </div>
+                        <small className="text-muted">Đang tìm kiếm...</small>
+                    </div>
+                )}
+
+                {hasActiveFilters && dishes.length === 0 && !isSearching && (
                     <div className="alert alert-info d-flex align-items-center" role="alert">
                         <AlertCircle size={20} className="me-2" />
                         <div>
@@ -256,31 +278,35 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                     </div>
                 )}
 
-                <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-                    {currentDishes.length === 0 && !hasActiveFilters ? (
-                        <div className="col-12 text-center py-5">
+                {/* 🔥 LIST LAYOUT */}
+                <div className="list-group">
+                    {dishes.length === 0 && !hasActiveFilters ? (
+                        <div className="text-center py-5">
                             <h4 className="text-muted">Chưa có món ăn nào.</h4>
                             <p className="text-secondary">Hãy bấm "Thêm món ăn" để bắt đầu.</p>
                         </div>
                     ) : (
-                        currentDishes.map((dish: Dish) => (
-                            <div className="col" key={dish.id}>
-                                <div
-                                    onClick={() => setSelectedDish(dish)}
-                                    className={`card shadow-sm h-100 cursor-pointer ${selectedDish?.id === dish.id ? 'border-danger border-2' : ''}`}
-                                    style={{
-                                        borderRadius: '0.75rem',
-                                        transition: 'all 0.3s',
-                                        transform: selectedDish?.id === dish.id ? 'scale(1.05)' : 'scale(1)',
-                                        cursor: 'pointer'
-                                    }}
-                                >
+                        dishes.map((dish: Dish) => (
+                            <div
+                                key={dish.id}
+                                onClick={() => setSelectedDish(dish)}
+                                className={`list-group-item list-group-item-action cursor-pointer mb-2 ${
+                                    selectedDish?.id === dish.id ? 'border-danger border-2 bg-light' : ''
+                                }`}
+                                style={{
+                                    borderRadius: '0.75rem',
+                                    transition: 'all 0.2s',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <div className="d-flex gap-3 align-items-start">
+                                    {/* 🖼️ Thumbnail Image */}
                                     <div
-                                        className="card-img-top bg-light d-flex align-items-center justify-content-center position-relative overflow-hidden"
+                                        className="bg-light d-flex align-items-center justify-content-center position-relative overflow-hidden flex-shrink-0"
                                         style={{
-                                            height: '180px',
-                                            borderTopLeftRadius: '0.75rem',
-                                            borderTopRightRadius: '0.75rem'
+                                            width: '120px',
+                                            height: '120px',
+                                            borderRadius: '0.5rem'
                                         }}
                                     >
                                         {dish.image && !imageErrors.has(dish.image) ? (
@@ -295,68 +321,90 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                                                 onError={() => handleImageError(dish.image!)}
                                             />
                                         ) : (
-                                            <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                                            <div className="d-flex flex-column align-items-center justify-content-center">
                                                 {imageErrors.has(dish.image!) ? (
                                                     <>
-                                                        <AlertCircle size={48} className="text-danger" />
-                                                        <small className="text-danger fw-bold">Lỗi tải ảnh</small>
+                                                        <AlertCircle size={32} className="text-danger" />
+                                                        <small className="text-danger fw-bold mt-1">Lỗi</small>
                                                     </>
                                                 ) : (
-                                                    <Upload size={48} className="text-secondary" />
+                                                    <Upload size={32} className="text-secondary" />
                                                 )}
                                             </div>
                                         )}
 
                                         {dish.images && dish.images.length > 1 && (
                                             <button
-                                                className="position-absolute top-0 end-0 m-2 btn btn-sm btn-dark bg-opacity-75"
-                                                style={{ borderRadius: '0.5rem', zIndex: 10 }}
+                                                className="position-absolute top-0 end-0 m-1 btn btn-sm btn-dark bg-opacity-75"
+                                                style={{ borderRadius: '0.375rem', padding: '0.25rem 0.5rem' }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     openGallery(dish.images || [], 0);
                                                 }}
                                                 title="Xem tất cả ảnh"
                                             >
-                                                <ImageIcon size={14} className="me-1" />
+                                                <ImageIcon size={12} className="me-1" />
                                                 {dish.images.length}
                                             </button>
                                         )}
                                     </div>
 
-                                    <div className="card-body">
-                                        <h4 className="card-title h6 fw-bold text-dark mb-2">{dish.name}</h4>
-                                        <p className="card-text text-muted small mb-3"
-                                           style={{
-                                               overflow: 'hidden',
-                                               textOverflow: 'ellipsis',
-                                               display: '-webkit-box',
-                                               WebkitLineClamp: 2,
-                                               WebkitBoxOrient: 'vertical'
-                                           }}>
-                                            {dish.description}
-                                        </p>
-                                        <p className="h5 fw-bold text-danger mb-3">{dish.price}</p>
+                                    {/* 📝 Dish Info */}
+                                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                                        <div className="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 className="fw-bold mb-0 text-dark">{dish.name}</h5>
+                                            <span className="h5 fw-bold text-danger mb-0 ms-3 flex-shrink-0">
+                                                {dish.price}
+                                            </span>
+                                        </div>
 
-                                        <div className="d-flex gap-2 mt-3">
+                                        <p
+                                            className="text-muted small mb-3"
+                                            style={{
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                lineHeight: '1.4'
+                                            }}
+                                        >
+                                            Mô tả : {dish.description}
+                                        </p>
+
+                                        <p
+                                            className="text-muted small mb-3"
+                                            style={{
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                lineHeight: '1.4'
+                                            }}
+                                        >
+                                            Thời gian chuẩn bị : {dish.preparationTime + " phút"}
+                                        </p>
+
+                                        <div className="d-flex gap-2 justify-content-end">
                                             <button
-                                                className="btn btn-sm btn-outline-primary flex-fill"
+                                                className="btn btn-sm btn-outline-primary"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     onEdit?.(dish);
                                                 }}
                                             >
-                                                <Pencil size={16} className="me-1" />
+                                                <Pencil size={14} className="me-1" />
                                                 Sửa
                                             </button>
 
                                             <DishDeleteButton
                                                 dishId={dish.id}
                                                 dishName={dish.name}
-                                                className="btn-sm flex-fill"
+                                                className="btn-sm"
                                                 onDeleteSuccess={() => {
-                                                    // ✅ SỬA LẠI: Gọi CẢ 2 hàm
-                                                    fetchMerchantDishes(false); // Refresh list (không toast)
-                                                    onDishDeleted?.(); // Thông báo cho parent để cập nhật stats
+                                                    fetchMerchantDishes(false);
+                                                    onDishDeleted?.();
                                                 }}
                                             />
                                         </div>
@@ -373,20 +421,20 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         <button
                             className="btn btn-outline-danger"
                             onClick={() => goToPage(currentPage - 1)}
-                            disabled={currentPage === 1}
+                            disabled={currentPage === 0}
                         >
                             <ChevronLeft size={20} />
                         </button>
 
                         <div className="d-flex gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            {Array.from({ length: totalPages }, (_, i) => i).map(page => (
                                 <button
                                     key={page}
                                     className={`btn ${currentPage === page ? 'btn-danger' : 'btn-outline-danger'}`}
                                     onClick={() => goToPage(page)}
                                     style={{ minWidth: '40px' }}
                                 >
-                                    {page}
+                                    {page + 1}
                                 </button>
                             ))}
                         </div>
@@ -394,7 +442,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
                         <button
                             className="btn btn-outline-danger"
                             onClick={() => goToPage(currentPage + 1)}
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === totalPages - 1}
                         >
                             <ChevronRight size={20} />
                         </button>
@@ -403,7 +451,7 @@ const MerchantDishList: React.FC<MerchantDishListProps> = memo(({
 
                 {totalPages > 1 && (
                     <div className="text-center mt-3 text-muted small">
-                        Trang {currentPage} / {totalPages} - Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredDishes.length)} của {filteredDishes.length} món
+                        Trang {currentPage + 1} / {totalPages} - Tổng {totalElements} món
                     </div>
                 )}
             </div>
