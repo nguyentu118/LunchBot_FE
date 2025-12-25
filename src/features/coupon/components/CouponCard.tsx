@@ -11,6 +11,7 @@ interface CouponCardProps {
     onCopy?: (code: string) => void;
     onDelete?: (id: number) => void;
     onEdit?: (coupon: Coupon) => void;
+    viewMode?: 'grid' | 'list';
 }
 
 const CouponCard: React.FC<CouponCardProps> = ({
@@ -19,7 +20,8 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                                    brandColor = '#FF5E62',
                                                    onCopy,
                                                    onDelete,
-                                                   onEdit
+                                                   onEdit,
+                                                   viewMode = 'grid'
                                                }) => {
     const isExpired = new Date(coupon.validTo) < new Date();
     const isOutOfStock = coupon.usedCount >= coupon.usageLimit;
@@ -124,6 +126,147 @@ const CouponCard: React.FC<CouponCardProps> = ({
         });
     };
 
+    // LIST VIEW for Merchant
+    if (viewMode === 'list' && showMerchantView) {
+        return (
+            <Card
+                className={`mb-3 shadow-sm ${isDisabled ? 'opacity-75' : ''}`}
+                style={{
+                    borderLeft: `3px solid ${isDisabled ? '#6c757d' : brandColor}`,
+                    transition: 'transform 0.2s',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    fontSize: '0.85rem'
+                }}
+                onMouseEnter={(e) => {
+                    if (!isDisabled) {
+                        e.currentTarget.style.transform = 'translateX(3px)';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateX(0)';
+                }}
+            >
+                <Card.Body className="p-3">
+                    <div className="d-flex align-items-center justify-content-between gap-3">
+                        {/* Left: Icon & Discount Info */}
+                        <div className="d-flex align-items-center gap-3" style={{minWidth: '200px'}}>
+                            <div
+                                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                                style={{
+                                    backgroundColor: isDisabled ? '#e9ecef' : `${brandColor}20`,
+                                    width: '48px',
+                                    height: '48px',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <Ticket size={24} color={isDisabled ? '#6c757d' : brandColor}/>
+                            </div>
+                            <div>
+                                <div className="fw-bold mb-0"
+                                     style={{color: isDisabled ? '#6c757d' : brandColor, fontSize: '1.1rem'}}>
+                                    {getDiscountText()}
+                                </div>
+                                <small className="text-muted" style={{fontSize: '0.75rem'}}>
+                                    {coupon.discountType === 'PERCENTAGE' ? 'Giảm theo %' : 'Giảm cố định'}
+                                </small>
+                            </div>
+                        </div>
+
+                        {/* Center: Coupon Code */}
+                        <div
+                            className="py-2 px-3 rounded text-center"
+                            style={{
+                                backgroundColor: '#f8f9fa',
+                                border: `1.5px dashed ${isDisabled ? '#6c757d' : brandColor}`,
+                                cursor: !isDisabled ? 'pointer' : 'default',
+                                minWidth: '150px'
+                            }}
+                            onClick={!isDisabled ? handleCopyCode : undefined}
+                        >
+                            <code className="fw-bold d-block" style={{
+                                color: isDisabled ? '#6c757d' : brandColor,
+                                fontSize: '0.9rem',
+                                letterSpacing: '1px'
+                            }}>
+                                {coupon.code}
+                            </code>
+                            {!isDisabled && (
+                                <small className="text-muted d-block" style={{fontSize: '0.65rem', marginTop: '2px'}}>
+                                    Nhấn để sao chép
+                                </small>
+                            )}
+                        </div>
+
+                        {/* Center-Right: Details */}
+                        <div className="d-flex flex-column gap-1" style={{minWidth: '250px'}}>
+                            <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                                <Tag size={12}/>
+                                <span>Đơn tối thiểu: <strong>{formatCurrency(coupon.minOrderValue)}</strong></span>
+                            </div>
+                            <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                                <Calendar size={12}/>
+                                <span>{formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}</span>
+                            </div>
+                        </div>
+
+                        {/* Right: Usage Stats & Actions */}
+                        <div className="d-flex align-items-center gap-3">
+                            {/* Usage Stats */}
+                            <div style={{minWidth: '150px'}}>
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize: '0.75rem'}}>
+                                        <Users size={12}/>
+                                        <span><strong>{coupon.usedCount}</strong>/{coupon.usageLimit}</span>
+                                    </div>
+                                </div>
+                                <div className="progress" style={{height: '6px'}}>
+                                    <div
+                                        className="progress-bar"
+                                        role="progressbar"
+                                        style={{
+                                            width: `${(coupon.usedCount / coupon.usageLimit) * 100}%`,
+                                            backgroundColor: brandColor
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Status Badge */}
+                            <div style={{minWidth: '100px', textAlign: 'center'}}>
+                                {getStatusBadge()}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="d-flex gap-2">
+                                <Button
+                                    variant="outline-primary"
+                                    size="sm"
+                                    className="d-flex align-items-center justify-content-center"
+                                    style={{fontSize: '0.75rem', padding: '5px 10px', width: '38px', height: '32px'}}
+                                    onClick={!isDisabled ? () => onEdit?.(coupon) : undefined}
+                                    disabled={isDisabled}
+                                >
+                                    <Edit size={14}/>
+                                </Button>
+                                <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    className="d-flex align-items-center justify-content-center"
+                                    style={{fontSize: '0.75rem', padding: '5px 10px', width: '38px', height: '32px'}}
+                                    onClick={!isDisabled ? handleDeleteClick : undefined}
+                                    disabled={isDisabled}
+                                >
+                                    <Trash2 size={14}/>
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </Card.Body>
+            </Card>
+        );
+    }
+
+    // GRID VIEW (Default - for User and original Merchant view)
     return (
         <Card
             className={`h-100 shadow-sm ${isDisabled ? 'opacity-75' : ''}`}
@@ -230,7 +373,6 @@ const CouponCard: React.FC<CouponCardProps> = ({
                         </div>
 
                         {/* Buttons */}
-
                         <div className="d-flex gap-2">
                             <Button
                                 variant="outline-primary"
@@ -250,7 +392,6 @@ const CouponCard: React.FC<CouponCardProps> = ({
                             >
                                 <Trash2 size={12}/> Xóa
                             </Button>
-
                         </div>
                     </div>
                 )}

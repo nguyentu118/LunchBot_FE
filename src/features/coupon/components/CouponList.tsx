@@ -13,6 +13,7 @@ interface CouponListProps {
     title?: string;
     brandColor?: string;
     emptyMessage?: string;
+    viewMode?: 'grid' | 'list'; // New prop
 }
 
 const CouponList: React.FC<CouponListProps> = ({
@@ -21,7 +22,8 @@ const CouponList: React.FC<CouponListProps> = ({
                                                    showMerchantView = false,
                                                    title,
                                                    brandColor = '#FF5E62',
-                                                   emptyMessage = 'Chưa có mã giảm giá nào'
+                                                   emptyMessage = 'Chưa có mã giảm giá nào',
+                                                   viewMode = 'grid'
                                                }) => {
     const { coupons: rawData, isLoading, error, refetch, deleteCoupon } = useCouponList({
         merchantId,
@@ -45,7 +47,7 @@ const CouponList: React.FC<CouponListProps> = ({
         if (listRef.current) {
             listRef.current.scrollIntoView({
                 behavior: 'smooth',
-                block: 'start' // Đưa đầu danh sách lên mép trên màn hình
+                block: 'start'
             });
         }
     };
@@ -91,7 +93,7 @@ const CouponList: React.FC<CouponListProps> = ({
     }
 
     return (
-        <div className="coupon-list-container">
+        <div className="coupon-list-container" ref={listRef}>
             {title && (
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <h3 className="fw-bold d-flex align-items-center gap-2 mb-0" style={{ fontSize: '1.25rem' }}>
@@ -111,21 +113,41 @@ const CouponList: React.FC<CouponListProps> = ({
                 </Alert>
             ) : (
                 <>
-                    {/* Hiển thị Grid: 4 coupon mỗi dòng trên màn hình lớn */}
-                    <Row className="g-4">
-                        {currentItems.map((coupon) => (
-                            <Col key={coupon.id} xs={12} sm={6} md={4} lg={3}>
+                    {/* Hiển thị theo viewMode */}
+                    {viewMode === 'list' ? (
+                        // LIST VIEW for Merchant
+                        <div>
+                            {currentItems.map((coupon) => (
                                 <CouponCard
+                                    key={coupon.id}
                                     coupon={coupon}
                                     showMerchantView={showMerchantView}
                                     brandColor={brandColor}
                                     onCopy={handleCopyCode}
                                     onDelete={handleDelete}
                                     onEdit={handleEdit}
+                                    viewMode="list"
                                 />
-                            </Col>
-                        ))}
-                    </Row>
+                            ))}
+                        </div>
+                    ) : (
+                        // GRID VIEW for User
+                        <Row className="g-4">
+                            {currentItems.map((coupon) => (
+                                <Col key={coupon.id} xs={12} sm={6} md={4} lg={3}>
+                                    <CouponCard
+                                        coupon={coupon}
+                                        showMerchantView={showMerchantView}
+                                        brandColor={brandColor}
+                                        onCopy={handleCopyCode}
+                                        onDelete={handleDelete}
+                                        onEdit={handleEdit}
+                                        viewMode="grid"
+                                    />
+                                </Col>
+                            ))}
+                        </Row>
+                    )}
 
                     {/* Điều hướng phân trang */}
                     {totalPages > 1 && (

@@ -261,10 +261,6 @@ const AddDishModal: React.FC<AddDishModalProps> = ({
                 uploadedUrls,
             });
 
-            toast.success(`🎉 Đã thêm món "${newDishData.name}" với ${uploadedUrls.length} ảnh!`, {
-                duration: 3000
-            });
-
         } catch (error) {
             toast.error("❌ Có lỗi xảy ra khi thêm món.");
             console.error("Save error:", error);
