@@ -127,44 +127,47 @@ const RevenueReconciliationPage: React.FC = () => {
                             <div>
                                 {isSubmitted ? (
                                         <div className="mb-3">
-                                            <Alert variant={
-                                                currentMonthRequest?.status === 'APPROVED' ? 'success' :
-                                                    currentMonthRequest?.status === 'REJECTED' ? 'danger' :
-                                                        currentMonthRequest?.status === 'REPORTED' ? 'warning' : 'info'
-                                            } className="mb-0 py-2 px-3 d-flex align-items-center gap-2">
-                                                {currentMonthRequest?.status === 'APPROVED' ? <CheckCircle size={18}/> :
-                                                    currentMonthRequest?.status === 'REPORTED' ? <AlertTriangle size={18}/> :
-                                                        <AlertCircle size={18}/>}
-                                                <strong>{currentMonthRequest?.statusDisplay}</strong>
-                                                <small>(Ngày gửi: {new Date(currentMonthRequest?.createdAt || '').toLocaleDateString('vi-VN')})</small>
-                                            </Alert>
-                                            {currentMonthRequest?.status === 'REJECTED' && (
-                                                <div className="bg-danger bg-opacity-10 border border-danger rounded p-3 text-danger">
-                                                    <h6 className="fw-bold mb-1">❌ Phản hồi từ Admin:</h6>
-                                                    <p className="mb-0">
-                                                        "{currentMonthRequest.rejectionReason || 'Không có lý do cụ thể.'}"
-                                                    </p>
-                                                    <div className="mt-2 small text-muted">
-                                                        Vui lòng kiểm tra lại số liệu. Nếu bạn vẫn không đồng ý, hãy liên hệ trực tiếp tổng đài.
+                                            <Alert
+                                                variant={
+                                                    currentMonthRequest?.status === 'APPROVED' ? 'success' :
+                                                        currentMonthRequest?.status === 'REJECTED' ? 'danger' :
+                                                            currentMonthRequest?.status === 'REPORTED' ? 'warning' : 'info'
+                                                }
+                                                className="mb-2 py-2 px-3" // Bỏ d-flex ở đây, xử lý bên trong div con để dễ căn chỉnh
+                                            >
+                                                <div className="d-flex justify-content-between align-items-center w-100">
+                                                    {/* PHẦN BÊN TRÁI: Icon + Trạng thái + Ngày */}
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        {currentMonthRequest?.status === 'APPROVED' ? <CheckCircle size={18}/> :
+                                                            currentMonthRequest?.status === 'REPORTED' ? <AlertTriangle size={18}/> :
+                                                                <AlertCircle size={18}/>}
+
+                                                        <strong>{currentMonthRequest?.statusDisplay}</strong>
+
+                                                        <span className="text-muted mx-1">|</span> {/* Vạch ngăn cách nhỏ */}
+
+                                                        <small className="text-muted">
+                                                            Gửi lúc: {new Date(currentMonthRequest?.createdAt || '').toLocaleDateString('vi-VN')}
+                                                        </small>
                                                     </div>
 
-                                                    {/* Tùy chọn: Cho phép gửi lại yêu cầu (Nếu nghiệp vụ cho phép) */}
-                                                    <div className="mt-3">
+                                                    {/* PHẦN BÊN PHẢI: Nút bấm (Chỉ hiện khi bị từ chối) */}
+                                                    {currentMonthRequest?.status === 'REJECTED' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline-danger"
-                                                            onClick={() => setShowClaimModal(true)} // Cho phép khiếu nại lại
+                                                            className="bg-white text-danger fw-bold border-danger ms-3"
+                                                            style={{ whiteSpace: 'nowrap' }} // Giữ chữ không bị xuống dòng
+                                                            onClick={() => {
+                                                                setClaimReason(''); // Reset form
+                                                                setShowClaimModal(true);
+                                                            }}
                                                         >
-                                                            Gửi khiếu nại khác
+                                                            Xem lý do & Gửi lại
                                                         </Button>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {currentMonthRequest?.status === 'REPORTED' && (
-                                                <div className="bg-warning bg-opacity-10 border border-warning rounded p-2 text-dark small mt-2">
-                                                    <strong>Bạn đã báo cáo: </strong> "{currentMonthRequest.merchantNotes}"
-                                                </div>
-                                            )}
+                                            </Alert>
                                         </div>
                                 ) : (
                                     <div className="d-flex gap-2">
@@ -264,9 +267,20 @@ const RevenueReconciliationPage: React.FC = () => {
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
+                    {currentMonthRequest?.status === 'REJECTED' && currentMonthRequest.rejectionReason && (
+                        <Alert variant="danger" className="mb-3 border-danger">
+                            <h6 className="fw-bold d-flex align-items-center gap-2">
+                                <AlertCircle size={16}/>
+                                Admin đã từ chối yêu cầu trước đó:
+                            </h6>
+                            <p className="mb-0 small fst-italic">
+                                "{currentMonthRequest.rejectionReason}"
+                            </p>
+                        </Alert>
+                    )}
                     <Alert variant="warning" className="small">
-                        Lưu ý: Bạn đang khiếu nại về số liệu doanh thu. Admin sẽ kiểm tra và phản hồi lại.
-                        Vui lòng cung cấp chi tiết lỗi sai (Ví dụ: Thiếu đơn hàng #123...).
+                        Lưu ý: Admin sẽ kiểm tra dựa trên thông tin bạn cung cấp.
+                        Vui lòng ghi rõ mã đơn hàng hoặc số tiền bị sai lệch.
                     </Alert>
 
                     <Form.Group>
@@ -274,7 +288,7 @@ const RevenueReconciliationPage: React.FC = () => {
                         <Form.Control
                             as="textarea"
                             rows={4}
-                            placeholder="Ví dụ: Tôi thấy tổng doanh thu thiếu 500k so với thực tế, đơn hàng #DH001 chưa được tính..."
+                            placeholder="Ví dụ: Tôi thấy tổng doanh thu thiếu 500k so với thực tế, đơn hàng #ORD-20241224-001 chưa được tính..."
                             value={claimReason}
                             onChange={(e) => setClaimReason(e.target.value)}
                             required

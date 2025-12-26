@@ -39,6 +39,7 @@ import DishSearchPage from "../features/dish/DishSearchPage.tsx";
 import AddressManagementPage from "../features/checkout-card/components/AddressManagementPage.tsx";
 import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
 import AdminReconciliationPage from "../features/admin/reconciliation/AdminReconciliationPage.tsx";
+import PartnerRequestsPage from "../features/admin/merchants/pages/PartnerRequestsPage.tsx";
 import SepayPaymentPage from "../features/checkout-card/components/SepayPaymentPage.tsx";
 
 
@@ -155,6 +156,10 @@ const router = createBrowserRouter([
             {
                 path: 'reconciliation', // Trùng với link trong route.constants
                 element: <AdminReconciliationPage />
+            },
+            {
+                path: 'merchants/partner-requests',
+                element: <PartnerRequestsPage />
             },
         ],
     },

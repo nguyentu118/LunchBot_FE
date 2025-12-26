@@ -29,7 +29,6 @@ export interface AdminMerchantResponse {
     revenueTotal: number;
     currentBalance: number;
     status: MerchantStatus;
-    isPartner: boolean;
     isLocked: boolean;
     isApproved: boolean;
     rejectionReason?: string;
@@ -42,6 +41,7 @@ export interface AdminMerchantResponse {
     cancelledOrders: number;
     monthlyRevenue: number;
     dishes: DishSimpleResponse[];
+    partnerStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
 export interface DishSimpleResponse {
@@ -80,5 +80,12 @@ export interface PageResponse<T> {
     size: number;
     number: number;
 }
-
-// ========
+export interface PartnerRequestDto {
+    merchantId: number; // Đây là Merchant ID
+    restaurantName: string;
+    address: string;
+    phone: string;
+    avatarUrl: string;
+    partnerStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+    currentMonthRevenue: number;
+}

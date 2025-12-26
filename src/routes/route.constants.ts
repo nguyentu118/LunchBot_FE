@@ -10,7 +10,8 @@ export const ROUTES = {
         ORDERS: '/admin/orders',
         REPORTS: '/admin/reports',
         SETTINGS: '/admin/settings',
-        RECONCILIATION: '/admin/reconciliation'
+        RECONCILIATION: '/admin/reconciliation',
+        PARTNER_REQUESTS: '/admin/merchants/partner-requests'
     },
 
     AUTH: {
