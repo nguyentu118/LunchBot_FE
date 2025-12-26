@@ -37,7 +37,6 @@ const useCategoriesWithDishes = (): UseCategoriesWithDishesResult => {
             // Gọi API endpoint /categories/with-dishes
             const response: AxiosResponse<CategoryWithDishes[]> = await axiosInstance.get('/categories/with-dishes');
 
-            console.log('✅ Categories fetched successfully:', response.data);
             setCategories(response.data || []);
 
         } catch (error) {

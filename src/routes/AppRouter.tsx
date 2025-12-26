@@ -40,6 +40,7 @@ import AddressManagementPage from "../features/checkout-card/components/AddressM
 import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
 import AdminReconciliationPage from "../features/admin/reconciliation/AdminReconciliationPage.tsx";
 import PartnerRequestsPage from "../features/admin/merchants/pages/PartnerRequestsPage.tsx";
+import SepayPaymentPage from "../features/checkout-card/components/SepayPaymentPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -104,6 +105,10 @@ const router = createBrowserRouter([
     {
         path: "/favorites",
         element: <FavoriteDishesPage  />,
+    },
+    {
+        path: "/payment/sepay",
+        element: <SepayPaymentPage  />,
     },
 
 

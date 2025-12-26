@@ -32,7 +32,6 @@ export class NotificationWebSocketService {
      */
     connect(token: string, onNotificationReceived: (notification: INotification) => void): void {
         if (this.isConnected) {
-            console.log('WebSocket already connected');
             return;
         }
 
@@ -45,15 +44,11 @@ export class NotificationWebSocketService {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
         const socketUrl = `${baseUrl}/ws`;
 
-        console.log('Connecting to WebSocket at:', socketUrl);
 
         this.stompClient = new Client({
             webSocketFactory: () => new window.SockJS(socketUrl),
             connectHeaders: {
                 Authorization: `Bearer ${token}`,
-            },
-            debug: (str) => {
-                console.log('STOMP Debug:', str);
             },
             reconnectDelay: this.reconnectDelay,
             heartbeatIncoming: 4000,
@@ -61,7 +56,6 @@ export class NotificationWebSocketService {
         });
 
         this.stompClient.onConnect = () => {
-            console.log('✅ WebSocket Connected');
             this.isConnected = true;
             this.reconnectAttempts = 0;
 
@@ -69,7 +63,6 @@ export class NotificationWebSocketService {
             this.stompClient?.subscribe('/user/queue/notifications', (message: IMessage) => {
                 try {
                     const notification: INotification = JSON.parse(message.body);
-                    console.log('📬 New notification received:', notification);
                     onNotificationReceived(notification);
                 } catch (error) {
                     console.error('Error parsing notification:', error);
@@ -90,7 +83,6 @@ export class NotificationWebSocketService {
         };
 
         this.stompClient.onWebSocketClose = () => {
-            console.log('WebSocket connection closed');
             this.isConnected = false;
             this.handleReconnect(token, onNotificationReceived);
         };
@@ -111,7 +103,6 @@ export class NotificationWebSocketService {
     ): void {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
             setTimeout(() => {
                 this.connect(token, onNotificationReceived);
@@ -129,7 +120,6 @@ export class NotificationWebSocketService {
             this.stompClient.deactivate();
             this.isConnected = false;
             this.reconnectAttempts = 0;
-            console.log('WebSocket disconnected');
         }
     }
 
