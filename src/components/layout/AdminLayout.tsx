@@ -1,7 +1,22 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
-import {BarChart3, Bell, Home, Menu, Moon, Package, Search, Settings, Shield, Store, Sun, Truck, Users} from 'lucide-react';
+import {
+    BarChart3,
+    Bell,
+    ClipboardCheck,
+    Home,
+    Menu,
+    Moon,
+    Package,
+    Search,
+    Settings,
+    Shield,
+    Store,
+    Sun,
+    Truck,
+    Users
+} from 'lucide-react';
 import {ROUTES} from '../../routes/route.constants';
 import './AdminLayout.css';
 import AdminProfileDropdown from "./AdminProfileDropdown.tsx";
@@ -17,10 +32,16 @@ export const AdminLayout: React.FC = () => {
         {id: 'dashboard', label: 'Dashboard', icon: Home, path: ROUTES.ADMIN.DASHBOARD},
         {id: 'users', label: 'Quản lý User', icon: Users, path: '/admin/users'},
         {id: 'merchants', label: 'Quản lý Merchant', icon: Store, path: ROUTES.ADMIN.MERCHANTS},
+        {
+            id: 'reconciliation',
+            label: 'Đối soát doanh thu',
+            icon: ClipboardCheck,
+            path: ROUTES.ADMIN.RECONCILIATION
+        },
         {id: 'drivers', label: 'Quản lý Tài xế', icon: Truck, path: '/admin/drivers'},
         {id: 'orders', label: 'Đơn hàng', icon: Package, path: '/admin/orders'},
         {id: 'reports', label: 'Báo cáo', icon: BarChart3, path: '/admin/reports'},
-        {id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings'}
+        {id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings'},
     ];
 
     const handleLogout = useCallback(() => {

@@ -33,8 +33,13 @@ const OrderTimeline: React.FC<OrderTimelineProps> = ({
             icon: Check
         },
         {
-            key: OrderStatus.PREPARING,
+            key: OrderStatus.PROCESSING,
             label: 'Đang chuẩn bị',
+            icon: Package
+        },
+        {
+            key: OrderStatus.READY,
+            label: 'Đã sẵn sàng',
             icon: Package
         },
         {
@@ -82,7 +87,8 @@ const OrderTimeline: React.FC<OrderTimelineProps> = ({
     const statusOrder = [
         OrderStatus.PENDING,
         OrderStatus.CONFIRMED,
-        OrderStatus.PREPARING,
+        OrderStatus.PROCESSING,
+        OrderStatus.READY,
         OrderStatus.DELIVERING,
         OrderStatus.COMPLETED
     ];
