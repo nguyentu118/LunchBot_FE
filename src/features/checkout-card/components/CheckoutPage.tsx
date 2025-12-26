@@ -1,10 +1,10 @@
 // src/features/checkout/pages/CheckoutPage.tsx
-// Cập nhật để tính phí giao hàng khi chọn địa chỉ
+// Cập nhật để tích hợp VNPay khi chọn thanh toán bằng thẻ
 
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Alert, Spinner, Form } from 'react-bootstrap';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Components
@@ -18,7 +18,8 @@ import Navigation from '../../../components/layout/Navigation';
 import { checkoutService } from '../services/checkoutService';
 import { addressService } from '../services/addressService';
 import { orderService } from '../services/orderService';
-import { shippingService } from '../services/shippingService'; // ✅ Thêm shipping service
+import { shippingService } from '../services/shippingService';
+import { paymentService } from '../services/paymentService'; // ✅ Import payment service
 
 // Types
 import { CheckoutResponse, PaymentMethod } from '../types/checkout.types';
@@ -36,7 +37,7 @@ const CheckoutPage: React.FC = () => {
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.COD);
     const [notes, setNotes] = useState('');
 
-    // ✅ State cho phí giao hàng
+    // Shipping fee state
     const [shippingFee, setShippingFee] = useState<number>(0);
     const [isCalculatingShippingFee, setIsCalculatingShippingFee] = useState(false);
     const [shippingFeeError, setShippingFeeError] = useState<string>('');
@@ -92,11 +93,9 @@ const CheckoutPage: React.FC = () => {
             // Auto select default address
             if (data.defaultAddressId) {
                 setSelectedAddressId(data.defaultAddressId);
-                // ✅ Tính phí giao hàng cho địa chỉ mặc định
                 await calculateShippingFeeForAddress(data.defaultAddressId);
             } else if (data.addresses.length > 0) {
                 setSelectedAddressId(data.addresses[0].id);
-                // ✅ Tính phí giao hàng cho địa chỉ đầu tiên
                 await calculateShippingFeeForAddress(data.addresses[0].id);
             }
         } catch (err: any) {
@@ -113,7 +112,6 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // ✅ Hàm tính phí giao hàng
     const calculateShippingFeeForAddress = async (addressId: number) => {
         try {
             setIsCalculatingShippingFee(true);
@@ -122,7 +120,6 @@ const CheckoutPage: React.FC = () => {
             const fee = await shippingService.calculateShippingFee(addressId);
             setShippingFee(fee);
 
-            // ✅ Cập nhật totalAmount sau khi có phí giao hàng
             if (checkoutData) {
                 const newTotalAmount =
                     checkoutData.itemsTotal +
@@ -143,7 +140,6 @@ const CheckoutPage: React.FC = () => {
             setShippingFeeError(err.message || 'Không thể tính phí giao hàng');
             toast.error('⚠️ Không thể tính phí giao hàng. Sử dụng phí mặc định.');
 
-            // ✅ Sử dụng phí mặc định nếu tính toán thất bại
             const defaultFee = 25000;
             setShippingFee(defaultFee);
 
@@ -168,7 +164,6 @@ const CheckoutPage: React.FC = () => {
     // Address handlers
     const handleSelectAddress = async (address: Address) => {
         setSelectedAddressId(address.id);
-        // ✅ Tính phí giao hàng khi chọn địa chỉ
         await calculateShippingFeeForAddress(address.id);
     };
 
@@ -178,7 +173,6 @@ const CheckoutPage: React.FC = () => {
             toast.success('Thêm địa chỉ thành công');
             await loadCheckoutInfo();
             setSelectedAddressId(newAddress.id);
-            // ✅ Tính phí giao hàng cho địa chỉ mới
             await calculateShippingFeeForAddress(newAddress.id);
         } catch (err: any) {
             console.error('Error adding address:', err);
@@ -192,7 +186,6 @@ const CheckoutPage: React.FC = () => {
             await addressService.updateAddress(addressId, data);
             toast.success('Cập nhật địa chỉ thành công');
             await loadCheckoutInfo();
-            // ✅ Tính lại phí nếu đã chọn địa chỉ này
             if (selectedAddressId === addressId) {
                 await calculateShippingFeeForAddress(addressId);
             }
@@ -204,7 +197,6 @@ const CheckoutPage: React.FC = () => {
     };
 
     const handleDeleteAddress = async (addressId: number) => {
-        // 1. Tạo Promise để xác nhận việc xóa qua Toast
         const confirmDelete = () => new Promise((resolve, reject) => {
             toast((t) => (
                 <div className="d-flex flex-column gap-2">
@@ -217,7 +209,7 @@ const CheckoutPage: React.FC = () => {
                             className="btn btn-danger btn-sm flex-grow-1"
                             onClick={() => {
                                 toast.dismiss(t.id);
-                                resolve(true); // Người dùng xác nhận xóa
+                                resolve(true);
                             }}
                         >
                             Xóa
@@ -226,7 +218,7 @@ const CheckoutPage: React.FC = () => {
                             className="btn btn-outline-secondary btn-sm flex-grow-1"
                             onClick={() => {
                                 toast.dismiss(t.id);
-                                reject(new Error('User cancelled')); // Người dùng hủy
+                                reject(new Error('User cancelled'));
                             }}
                         >
                             Hủy
@@ -234,28 +226,21 @@ const CheckoutPage: React.FC = () => {
                     </div>
                 </div>
             ), {
-                duration: Infinity, // Giữ toast cho đến khi người dùng chọn
+                duration: Infinity,
                 position: 'top-center',
             });
         });
 
         try {
-            // 2. Đợi người dùng xác nhận
             await confirmDelete();
-
-            // 3. Thực hiện xóa sau khi đã xác nhận
             await addressService.deleteAddress(addressId);
             toast.success('Xóa địa chỉ thành công');
-
-            // Tải lại thông tin checkout
             await loadCheckoutInfo();
 
-            // Nếu địa chỉ bị xóa đang được chọn, reset phí giao hàng và ID
             if (selectedAddressId === addressId) {
                 setSelectedAddressId(null);
                 setShippingFee(0);
 
-                // Cập nhật lại tổng tiền trong checkoutData khi mất phí ship
                 if (checkoutData) {
                     setCheckoutData(prev => prev ? {
                         ...prev,
@@ -265,9 +250,7 @@ const CheckoutPage: React.FC = () => {
                 }
             }
         } catch (err: any) {
-            // Nếu lỗi do người dùng bấm "Hủy", chúng ta không làm gì cả
             if (err.message === 'User cancelled') return;
-
             console.error('Error deleting address:', err);
             toast.error(err.response?.data?.error || 'Không thể xóa địa chỉ');
         }
@@ -303,7 +286,6 @@ const CheckoutPage: React.FC = () => {
 
             const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
             const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
-            // ✅ Sử dụng shippingFee hiện tại
             const totalAmount = itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
 
             setCheckoutData({
@@ -341,7 +323,6 @@ const CheckoutPage: React.FC = () => {
 
             const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
             const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
-            // ✅ Sử dụng shippingFee hiện tại
             const totalAmount = itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
 
             setCheckoutData({
@@ -362,6 +343,83 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
+    // ✅ Xử lý thanh toán VNPay
+    // CheckoutPage.tsx
+    const handleVNPayPayment = async () => {
+        try {
+            if (!checkoutData) return;
+            setIsProcessing(true);
+
+            const orderData = {
+                dishIds: selectedDishIds,
+                addressId: selectedAddressId,
+                paymentMethod: selectedPaymentMethod,
+                couponCode: checkoutData?.appliedCouponCode || undefined,
+                notes: notes.trim() || undefined,
+                shippingFee: shippingFee,
+                totalAmount: checkoutData.totalAmount,
+                userEmail: user?.email // ✅ THÊM email
+            };
+
+            // ✅ LƯU VÀO LOCALSTORAGE TRƯỚC KHI REDIRECT
+            localStorage.setItem('pendingOrderData', JSON.stringify(orderData));
+
+            const orderDescription = JSON.stringify({
+                items: selectedDishIds,
+                addressId: selectedAddressId,
+                amount: checkoutData.totalAmount,
+                merchantName: checkoutData.merchantName,
+                userEmail: user?.email // ✅ THÊM email để IPN có thể tạo order
+            });
+
+            const vnpayUrl = await paymentService.createVNPayPayment(
+                checkoutData.totalAmount,
+                orderDescription
+            );
+
+            window.location.href = vnpayUrl;
+
+        } catch (err: any) {
+            toast.error(err.message || 'Không thể tạo thanh toán VNPay');
+            setIsProcessing(false);
+        }
+    };
+
+    // ✅ Xử lý đặt hàng COD
+    const handleCODOrder = async () => {
+        try {
+            setIsProcessing(true);
+
+            const orderData = {
+                dishIds: selectedDishIds,
+                addressId: selectedAddressId,
+                paymentMethod: selectedPaymentMethod,
+                couponCode: checkoutData?.appliedCouponCode || undefined,
+                notes: notes.trim() || undefined,
+                shippingFee: shippingFee
+            };
+
+            console.log('🎁 Order payload:', orderData);
+
+            const order = await orderService.createOrder(orderData);
+
+            toast.success('Đặt hàng thành công!');
+
+            window.dispatchEvent(new Event('cartUpdated'));
+
+            navigate(`/orders/${order.id}`);
+
+        } catch (err: any) {
+            console.error('Error placing order:', err);
+            const errorMsg = err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
+            toast.error(errorMsg);
+            throw err;
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    // ✅ Handler chính cho nút đặt hàng
     const handlePlaceOrder = async () => {
         if (!selectedAddressId) {
             toast.error('Vui lòng chọn địa chỉ giao hàng');
@@ -383,7 +441,10 @@ const CheckoutPage: React.FC = () => {
                 <div className="d-flex flex-column gap-2">
                     <div className="fw-bold">Xác nhận đặt hàng?</div>
                     <div className="text-muted small">
-                        Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận
+                        {selectedPaymentMethod === PaymentMethod.CARD
+                            ? 'Bạn sẽ được chuyển đến trang thanh toán VNPay'
+                            : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận'
+                        }
                     </div>
                     <div className="d-flex gap-2 mt-2">
                         <button
@@ -415,35 +476,16 @@ const CheckoutPage: React.FC = () => {
         try {
             await confirmOrder();
 
-            setIsProcessing(true);
-
-            const orderData = {
-                dishIds: selectedDishIds,
-                addressId: selectedAddressId,
-                paymentMethod: selectedPaymentMethod,
-                couponCode: checkoutData?.appliedCouponCode || undefined,
-                notes: notes.trim() || undefined,
-                shippingFee: shippingFee
-            };
-
-            console.log('🎁 Order payload:', orderData);
-
-            const order = await orderService.createOrder(orderData);
-
-            toast.success('Đặt hàng thành công!');
-
-            window.dispatchEvent(new Event('cartUpdated'));
-
-            navigate(`/orders/${order.id}`);
+            // ✅ Kiểm tra phương thức thanh toán
+            if (selectedPaymentMethod === PaymentMethod.CARD) {
+                await handleVNPayPayment();
+            } else {
+                await handleCODOrder();
+            }
 
         } catch (err: any) {
             if (err.message === 'Đã hủy') return;
-
-            console.error('Error placing order:', err);
-            const errorMsg = err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
-            toast.error(errorMsg);
-        } finally {
-            setIsProcessing(false);
+            // Error đã được xử lý trong các hàm con
         }
     };
 
@@ -513,7 +555,7 @@ const CheckoutPage: React.FC = () => {
                                 onSetDefaultAddress={handleSetDefaultAddress}
                             />
 
-                            {/* ✅ Hiển thị trạng thái tính phí giao hàng */}
+                            {/* Shipping Fee Status */}
                             {isCalculatingShippingFee && (
                                 <Alert variant="info" className="mb-3">
                                     <Spinner animation="border" size="sm" className="me-2" />
@@ -532,6 +574,14 @@ const CheckoutPage: React.FC = () => {
                                 selectedMethod={selectedPaymentMethod}
                                 onSelectMethod={setSelectedPaymentMethod}
                             />
+
+                            {/* ✅ Thông báo khi chọn VNPay */}
+                            {selectedPaymentMethod === PaymentMethod.CARD && (
+                                <Alert variant="info" className="mb-3">
+                                    <CreditCard size={20} className="me-2" />
+                                    <strong>Thanh toán VNPay:</strong> Bạn sẽ được chuyển đến trang thanh toán an toàn của VNPay
+                                </Alert>
+                            )}
 
                             {/* Coupon */}
                             <CouponInput
@@ -573,7 +623,6 @@ const CheckoutPage: React.FC = () => {
                         {/* Right Column - Order Summary */}
                         <Col lg={4}>
                             <div className="sticky-top" style={{ top: '20px', zIndex: 10 }}>
-                                {/* ✅ Hiển thị OrderSummary với shippingFee cập nhật */}
                                 <OrderSummary
                                     merchantName={checkoutData.merchantName}
                                     merchantAddress={checkoutData.merchantAddress}
@@ -582,7 +631,7 @@ const CheckoutPage: React.FC = () => {
                                     itemsTotal={checkoutData.itemsTotal}
                                     discountAmount={checkoutData.discountAmount}
                                     serviceFee={checkoutData.serviceFee}
-                                    shippingFee={shippingFee} // ✅ Sử dụng state shippingFee
+                                    shippingFee={shippingFee}
                                     totalAmount={checkoutData.totalAmount}
                                     appliedCouponCode={checkoutData.appliedCouponCode}
                                 />
@@ -603,12 +652,24 @@ const CheckoutPage: React.FC = () => {
                                                 size="sm"
                                                 className="me-2"
                                             />
-                                            Đang xử lý...
+                                            {selectedPaymentMethod === PaymentMethod.CARD
+                                                ? 'Đang chuyển đến VNPay...'
+                                                : 'Đang xử lý...'
+                                            }
                                         </>
                                     ) : (
                                         <>
-                                            <ShoppingCart size={20} className="me-2" />
-                                            Đặt hàng
+                                            {selectedPaymentMethod === PaymentMethod.CARD ? (
+                                                <>
+                                                    <CreditCard size={20} className="me-2" />
+                                                    Thanh toán VNPay
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShoppingCart size={20} className="me-2" />
+                                                    Đặt hàng
+                                                </>
+                                            )}
                                         </>
                                     )}
                                 </Button>
