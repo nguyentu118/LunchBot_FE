@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { RevenueStatisticsResponse, OrderResponse } from './types/merchant.ts';
 import { Calendar, DollarSign, ShoppingBag } from 'lucide-react';
 import { merchantService } from "./services/merchantService.ts";
+import {Badge} from "react-bootstrap";
 
 interface Props {
     merchantId: number;
@@ -275,7 +276,7 @@ const RevenueStatistics: React.FC<Props> = ({ merchantId }) => {
                             ) : (
                                 stats?.orders.content.map((order: OrderResponse) => (
                                     <tr key={order.id}>
-                                        <td><span className="badge bg-light text-dark border">#{order.orderNumber}</span></td>
+                                        <td><Badge bg="primary" className="font-monospace fs-6">#{order.orderNumber}</Badge></td>
                                         <td>{order.customerName}</td>
                                         <td><small className="text-muted"><Calendar size={14} className="me-1"/>{formatDate(order.orderDate)}</small></td>
                                         <td>

@@ -9,7 +9,8 @@ export const ROUTES = {
         DRIVERS: '/admin/drivers',
         ORDERS: '/admin/orders',
         REPORTS: '/admin/reports',
-        SETTINGS: '/admin/settings'
+        SETTINGS: '/admin/settings',
+        RECONCILIATION: '/admin/reconciliation'
     },
 
     AUTH: {
