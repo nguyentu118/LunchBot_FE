@@ -294,7 +294,7 @@ const Navigation: React.FC = () => {
                                                 className="d-flex align-items-center"
                                             >
                                                 <Briefcase size={16} className="me-2 text-primary"/>
-                                                Cập nhật thông tin Nhà hàng
+                                                Thông tin Nhà hàng
                                             </Dropdown.Item>
                                         </>
                                     )}

@@ -4,7 +4,7 @@ import {Badge, Button, Container, Form, InputGroup, Nav, Navbar} from 'react-boo
 import {
     BarChart3,
     Bell,
-    ClipboardCheck,
+    ClipboardCheck, Crown,
     Home,
     Menu,
     Moon,
@@ -37,6 +37,12 @@ export const AdminLayout: React.FC = () => {
             label: 'Đối soát doanh thu',
             icon: ClipboardCheck,
             path: ROUTES.ADMIN.RECONCILIATION
+        },
+        {
+            id: 'partner-requests',
+            label: 'Duyệt Đối tác',
+            icon: Crown,
+            path: ROUTES.ADMIN.PARTNER_REQUESTS
         },
         {id: 'drivers', label: 'Quản lý Tài xế', icon: Truck, path: '/admin/drivers'},
         {id: 'orders', label: 'Đơn hàng', icon: Package, path: '/admin/orders'},

@@ -52,9 +52,11 @@ export const ReconciliationHistoryTable: React.FC<Props> = ({ history }) => {
                 );
             case 'REPORTED':
                 return (
-                    <Badge bg="warning" text="dark" className="d-flex align-items-center gap-1">
-                        <AlertTriangle size={12} /> Đang khiếu nại
-                    </Badge>
+                    <div className="d-flex flex-column align-items-center gap-1">
+                        <Badge bg="warning" text="dark" className="d-flex align-items-center gap-1">
+                            <Clock size={12} /> Đang khiếu nại
+                        </Badge>
+                    </div>
                 );
             default:
                 return (

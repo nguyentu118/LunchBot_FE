@@ -1,7 +1,7 @@
 // src/services/merchantService.ts
 
 import axiosInstance from '../../../config/axiosConfig';
-import {PopularMerchantDto, RevenueStatisticsResponse} from '../types/merchant';
+import {MerchantProfileResponse, PopularMerchantDto, RevenueStatisticsResponse} from '../types/merchant';
 
 export const merchantService = {
     /**
@@ -36,7 +36,6 @@ export const merchantService = {
         } = {}
     ): Promise<RevenueStatisticsResponse> => {
         try {
-            // ✅ SET DEFAULT VALUES
             const queryParams = {
                 timeRange: params.timeRange || 'MONTH',
                 page: params.page ?? 0,
@@ -56,5 +55,28 @@ export const merchantService = {
             console.error('❌ Error fetching statistics:', error);
             throw error;
         }
+    },
+
+    // 1. Lấy thông tin hồ sơ (kèm trạng thái Partner & Doanh thu tháng)
+    getMyProfile: async (): Promise<MerchantProfileResponse> => {
+        try {
+            const response = await axiosInstance.get<MerchantProfileResponse>('/merchants/my-profile');
+            return response.data;
+        } catch (error) {
+            console.error('❌ Error fetching profile:', error);
+            throw error;
+        }
+    },
+
+    // 2. Đăng ký đối tác thân thiết
+    registerPartner: async (): Promise<{ message: string }> => {
+        try {
+            const response = await axiosInstance.post('/merchants/partner-registration');
+            return response.data;
+        } catch (error) {
+            console.error('❌ Error registering partner:', error);
+            throw error;
+        }
     }
+
 };

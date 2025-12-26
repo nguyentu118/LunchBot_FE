@@ -40,3 +40,20 @@ export interface RevenueStatisticsResponse {
         number: number; // trang hiện tại
     };
 }
+
+export enum PartnerStatus {
+    NONE = 'NONE',
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED'
+}
+
+export interface MerchantProfileResponse {
+    restaurantName: string;
+    address: string;
+    phone: string;
+    avatarUrl: string;
+    // --- THÊM 2 TRƯỜNG MỚI ---
+    partnerStatus: PartnerStatus;
+    currentMonthRevenue: number;
+}

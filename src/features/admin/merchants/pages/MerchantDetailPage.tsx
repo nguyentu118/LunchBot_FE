@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, Spinner, Alert, Table, Row, Col, Badge } from 'react-bootstrap';
 import {
     Store, User, Mail, Phone, MapPin, Clock, Calendar,
-    DollarSign, Package, TrendingUp, CheckCircle, XCircle,
+    DollarSign, Package, CheckCircle, XCircle,
     ArrowLeft, Eye, ShoppingCart, Utensils, Lock, Award
 } from 'lucide-react';
 import { MerchantApiService } from '../services/merchantApi.service';
@@ -206,12 +206,10 @@ export const MerchantDetailPage: React.FC = () => {
         closeTime,
         status,
         isLocked,
-        isPartner,
         rejectionReason,
         registrationDate,
         approvalDate,
         lockedAt,
-        revenueTotal,
         currentBalance,
         monthlyRevenue,
     } = merchant;
@@ -244,12 +242,12 @@ export const MerchantDetailPage: React.FC = () => {
                     {getStatusText(status, isLocked)}
                 </Badge>
                 <Badge
-                    bg={isPartner ? 'primary' : 'secondary'}
+                    bg={merchant.partnerStatus === "APPROVED" ? 'primary' : 'secondary'}
                     className="px-3 py-2 d-flex align-items-center gap-2"
                     style={{ fontSize: '0.9rem' }}
                 >
                     <Award size={16} />
-                    {isPartner ? 'Đối tác' : 'Chưa là đối tác'}
+                    {merchant.partnerStatus === "APPROVED"  ? 'Đối tác' : 'Chưa là đối tác'}
                 </Badge>
             </div>
 
@@ -258,13 +256,61 @@ export const MerchantDetailPage: React.FC = () => {
                 <Col md={3}>
                     <Card className="border-0 shadow-sm h-100">
                         <Card.Body>
-                            <div className="d-flex align-items-center justify-content-between mb-3">
-                                <div className="p-2 bg-success bg-opacity-10 rounded">
-                                    <TrendingUp size={24} className="text-success" />
-                                </div>
+                            <div className="d-flex align-items-center mb-2">
+                                {/* Logic hiển thị Icon và Màu sắc dựa trên partnerStatus */}
+                                {(() => {
+                                    switch (merchant.partnerStatus) {
+                                        case 'APPROVED':
+                                            return (
+                                                <>
+                                                    <div className="p-2 rounded bg-warning bg-opacity-10">
+                                                        <Award size={24} className="text-warning" />
+                                                    </div>
+                                                    <div className="ms-3">
+                                                        <div className="text-muted small">Hạng đối tác</div>
+                                                        <div className="fw-bold text-warning">Đối tác thân thiết</div>
+                                                    </div>
+                                                </>
+                                            );
+                                        case 'PENDING':
+                                            return (
+                                                <>
+                                                    <div className="p-2 rounded bg-info bg-opacity-10">
+                                                        <Clock size={24} className="text-info" />
+                                                    </div>
+                                                    <div className="ms-3">
+                                                        <div className="text-muted small">Hạng đối tác</div>
+                                                        <div className="fw-bold text-info">Đang chờ duyệt</div>
+                                                    </div>
+                                                </>
+                                            );
+                                        case 'REJECTED':
+                                            return (
+                                                <>
+                                                    <div className="p-2 rounded bg-danger bg-opacity-10">
+                                                        <XCircle size={24} className="text-danger" />
+                                                    </div>
+                                                    <div className="ms-3">
+                                                        <div className="text-muted small">Hạng đối tác</div>
+                                                        <div className="fw-bold text-danger">Đã từ chối</div>
+                                                    </div>
+                                                </>
+                                            );
+                                        default: // NONE
+                                            return (
+                                                <>
+                                                    <div className="p-2 rounded bg-secondary bg-opacity-10">
+                                                        <Store size={24} className="text-secondary" />
+                                                    </div>
+                                                    <div className="ms-3">
+                                                        <div className="text-muted small">Hạng đối tác</div>
+                                                        <div className="fw-bold text-secondary">Thường</div>
+                                                    </div>
+                                                </>
+                                            );
+                                    }
+                                })()}
                             </div>
-                            <div className="text-muted small mb-1">Doanh thu Tổng</div>
-                            <h4 className="fw-bold mb-0 text-success">{formatCurrency(revenueTotal)}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
