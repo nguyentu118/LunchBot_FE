@@ -33,11 +33,12 @@ import CouponsPage from "../features/coupon/components/CouponsPage.tsx";
 import AnalyticsPage from "../components/common/AnalyticsPage.tsx";
 import RevenueAnalyticsWrapper from "../features/merchants/RevenueAnalyticsWrapper.tsx";
 import SettingsPage from "../components/common/SettingsPage.tsx";
-import RevenueReconciliationPage from "../features/merchants/RevenueReconcilitionPage.tsx";
+import RevenueReconciliationPage from "../features/merchants/revenue/RevenueReconcilitionPage.tsx";
 import OrderStatusAnalytics from "../features/merchants/OrderStatusAnalytics.tsx";
 import DishSearchPage from "../features/dish/DishSearchPage.tsx";
 import AddressManagementPage from "../features/checkout-card/components/AddressManagementPage.tsx";
 import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
+import AdminReconciliationPage from "../features/admin/reconciliation/AdminReconciliationPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -145,6 +146,10 @@ const router = createBrowserRouter([
             {
                 path: 'settings',
                 element: <div>Settings Page</div>,
+            },
+            {
+                path: 'reconciliation', // Trùng với link trong route.constants
+                element: <AdminReconciliationPage />
             },
         ],
     },

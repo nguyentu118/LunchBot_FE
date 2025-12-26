@@ -205,7 +205,7 @@ const MerchantOrderManager: React.FC<MerchantOrderManagerProps> = ({ filters }) 
                                     <CustomToggle eventKey={index.toString()}>
                                         <div className="d-flex justify-content-between align-items-center w-100 me-3">
                                             <div>
-                                                <span className="fw-bold">#{order.orderNumber || order.id}</span>
+                                                <Badge bg="primary" className="font-monospace fs-6">#{order.orderNumber || order.id}</Badge>
                                                 <span className="text-muted ms-2 small">
                                                 {format(new Date(order.orderDate), 'HH:mm dd/MM/yyyy')}
                                             </span>
