@@ -39,6 +39,7 @@ import DishSearchPage from "../features/dish/DishSearchPage.tsx";
 import AddressManagementPage from "../features/checkout-card/components/AddressManagementPage.tsx";
 import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
 import AdminReconciliationPage from "../features/admin/reconciliation/AdminReconciliationPage.tsx";
+import SepayPaymentPage from "../features/checkout-card/components/SepayPaymentPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -103,6 +104,10 @@ const router = createBrowserRouter([
     {
         path: "/favorites",
         element: <FavoriteDishesPage  />,
+    },
+    {
+        path: "/payment/sepay",
+        element: <SepayPaymentPage  />,
     },
 
 
