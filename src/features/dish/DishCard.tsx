@@ -45,7 +45,6 @@ const DishCard: React.FC<DishCardProps> = ({
             await addToCart(dish.id, 1);
         }
     };
-    console.log('Dish merchantName:', dish.merchantName);
     return (
         <div
             className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden"

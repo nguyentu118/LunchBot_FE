@@ -1,7 +1,7 @@
 // src/features/checkout/pages/CheckoutPage.tsx
 // Cập nhật để tích hợp VNPay khi chọn thanh toán bằng thẻ
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Button, Alert, Spinner, Form } from 'react-bootstrap';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react';
@@ -19,7 +19,8 @@ import { checkoutService } from '../services/checkoutService';
 import { addressService } from '../services/addressService';
 import { orderService } from '../services/orderService';
 import { shippingService } from '../services/shippingService';
-import { paymentService } from '../services/paymentService'; // ✅ Import payment service
+import { paymentService } from '../services/paymentService';
+import axiosInstance from '../../../config/axiosConfig';
 
 // Types
 import { CheckoutResponse, PaymentMethod } from '../types/checkout.types';
@@ -36,6 +37,7 @@ const CheckoutPage: React.FC = () => {
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.COD);
     const [notes, setNotes] = useState('');
+    const [userEmail, setUserEmail] = useState<string>('');
 
     // Shipping fee state
     const [shippingFee, setShippingFee] = useState<number>(0);
@@ -50,7 +52,10 @@ const CheckoutPage: React.FC = () => {
     // Error state
     const [error, setError] = useState('');
 
-    // Fetch checkout info
+    // ✅ Thêm ref để chặn hoàn toàn multiple clicks
+    const isOrderingRef = useRef(false);
+
+    // Fetch user email và checkout info
     useEffect(() => {
         if (selectedDishIds.length === 0) {
             toast.error('Vui lòng chọn món để thanh toán');
@@ -58,7 +63,26 @@ const CheckoutPage: React.FC = () => {
             return;
         }
 
-        loadCheckoutInfo();
+        const initialize = async () => {
+            try {
+                // Lấy user email từ backend
+                const response = await axiosInstance.get('/users/my');
+                setUserEmail(response.data.email);
+
+                // Sau đó load checkout info
+                await loadCheckoutInfo();
+            } catch (err: any) {
+                console.error('Error initializing checkout:', err);
+                if (err.response?.status === 401) {
+                    toast.error('Vui lòng đăng nhập để thanh toán');
+                    navigate('/login');
+                } else {
+                    toast.error('Không thể tải thông tin người dùng');
+                }
+            }
+        };
+
+        initialize();
     }, []);
 
     const loadCheckoutInfo = async () => {
@@ -134,7 +158,6 @@ const CheckoutPage: React.FC = () => {
                 } : null);
             }
 
-            console.log('✅ Phí giao hàng:', fee, 'VND');
         } catch (err: any) {
             console.error('Error calculating shipping fee:', err);
             setShippingFeeError(err.message || 'Không thể tính phí giao hàng');
@@ -343,51 +366,66 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // ✅ Xử lý thanh toán VNPay
-    // CheckoutPage.tsx
-    const handleVNPayPayment = async () => {
+    // Xử lý thanh toán VNPay
+    const handleSepayPayment = async () => {
         try {
-            if (!checkoutData) return;
+
+            if (!checkoutData) {
+                return;
+            }
+
+            if (!selectedAddressId) {
+                toast.error('Vui lòng chọn địa chỉ giao hàng');
+                return;
+            }
+
+            if (!userEmail) {
+                toast.error('Không tìm thấy thông tin người dùng');
+                navigate('/login');
+                return;
+            }
+
             setIsProcessing(true);
 
-            const orderData = {
-                dishIds: selectedDishIds,
-                addressId: selectedAddressId,
-                paymentMethod: selectedPaymentMethod,
-                couponCode: checkoutData?.appliedCouponCode || undefined,
-                notes: notes.trim() || undefined,
-                shippingFee: shippingFee,
-                totalAmount: checkoutData.totalAmount,
-                userEmail: user?.email // ✅ THÊM email
-            };
-
-            // ✅ LƯU VÀO LOCALSTORAGE TRƯỚC KHI REDIRECT
-            localStorage.setItem('pendingOrderData', JSON.stringify(orderData));
-
-            const orderDescription = JSON.stringify({
+            // Tạo payment request
+            const paymentRequest = {
                 items: selectedDishIds,
                 addressId: selectedAddressId,
                 amount: checkoutData.totalAmount,
                 merchantName: checkoutData.merchantName,
-                userEmail: user?.email // ✅ THÊM email để IPN có thể tạo order
+                userEmail: userEmail,
+                couponCode: checkoutData.appliedCouponCode,
+                notes: notes.trim() || undefined,
+                shippingFee: shippingFee
+            };
+
+
+            // Gọi API tạo payment
+            const paymentResponse = await paymentService.createSepayPayment(paymentRequest);
+
+
+            toast.success('Đã tạo thanh toán!');
+
+            // Navigate đến trang hiển thị QR
+            navigate('/payment/sepay', {
+                state: { paymentData: paymentResponse }
             });
 
-            const vnpayUrl = await paymentService.createVNPayPayment(
-                checkoutData.totalAmount,
-                orderDescription
-            );
-
-            window.location.href = vnpayUrl;
-
         } catch (err: any) {
-            toast.error(err.message || 'Không thể tạo thanh toán VNPay');
+            console.error('SePay payment error:', err);
+            toast.error(err.message || 'Không thể tạo thanh toán');
             setIsProcessing(false);
+            isOrderingRef.current = false;
         }
     };
-
-    // ✅ Xử lý đặt hàng COD
+    // Xử lý đặt hàng COD
     const handleCODOrder = async () => {
         try {
+            if (!selectedAddressId) {
+                toast.error('Vui lòng chọn địa chỉ giao hàng');
+                return;
+            }
+
             setIsProcessing(true);
 
             const orderData = {
@@ -399,7 +437,6 @@ const CheckoutPage: React.FC = () => {
                 shippingFee: shippingFee
             };
 
-            console.log('🎁 Order payload:', orderData);
 
             const order = await orderService.createOrder(orderData);
 
@@ -419,30 +456,39 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // ✅ Handler chính cho nút đặt hàng
+    // Handler chính cho nút đặt hàng (Fixed multiple clicks với useRef)
     const handlePlaceOrder = async () => {
+        if (isOrderingRef.current) {
+            return;
+        }
+
+        isOrderingRef.current = true;
+
         if (!selectedAddressId) {
             toast.error('Vui lòng chọn địa chỉ giao hàng');
+            isOrderingRef.current = false;
             return;
         }
 
         if (!selectedPaymentMethod) {
             toast.error('Vui lòng chọn phương thức thanh toán');
+            isOrderingRef.current = false;
             return;
         }
 
         if (notes.length > 500) {
             toast.error('Ghi chú không được vượt quá 500 ký tự');
+            isOrderingRef.current = false;
             return;
         }
 
-        const confirmOrder = () => new Promise((resolve, reject) => {
-            toast((t) => (
+        const confirmOrder = () => new Promise<boolean>((resolve, reject) => {
+            const toastId = toast((t) => (
                 <div className="d-flex flex-column gap-2">
                     <div className="fw-bold">Xác nhận đặt hàng?</div>
                     <div className="text-muted small">
                         {selectedPaymentMethod === PaymentMethod.CARD
-                            ? 'Bạn sẽ được chuyển đến trang thanh toán VNPay'
+                            ? 'Bạn sẽ được chuyển đến trang thanh toán SePay'
                             : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận'
                         }
                     </div>
@@ -450,7 +496,7 @@ const CheckoutPage: React.FC = () => {
                         <button
                             className="btn btn-danger btn-sm flex-grow-1"
                             onClick={() => {
-                                toast.dismiss(t.id);
+                                toast.dismiss(toastId);
                                 resolve(true);
                             }}
                         >
@@ -459,7 +505,7 @@ const CheckoutPage: React.FC = () => {
                         <button
                             className="btn btn-outline-secondary btn-sm flex-grow-1"
                             onClick={() => {
-                                toast.dismiss(t.id);
+                                toast.dismiss(toastId);
                                 reject(new Error('Đã hủy'));
                             }}
                         >
@@ -474,18 +520,28 @@ const CheckoutPage: React.FC = () => {
         });
 
         try {
-            await confirmOrder();
+            const confirmed = await confirmOrder();
 
-            // ✅ Kiểm tra phương thức thanh toán
+            if (!confirmed) {
+                isOrderingRef.current = false;
+                return;
+            }
+
+            setIsProcessing(true);
+
+            // ✅ THAY ĐỔI: Gọi SePay thay vì VNPay
             if (selectedPaymentMethod === PaymentMethod.CARD) {
-                await handleVNPayPayment();
+                await handleSepayPayment();  // ← ĐÃ THAY ĐỔI TỪ handleVNPayPayment
             } else {
                 await handleCODOrder();
             }
 
         } catch (err: any) {
-            if (err.message === 'Đã hủy') return;
-            // Error đã được xử lý trong các hàm con
+            if (err.message === 'Đã hủy') {
+                isOrderingRef.current = false;
+                return;
+            }
+            isOrderingRef.current = false;
         }
     };
 
@@ -575,11 +631,11 @@ const CheckoutPage: React.FC = () => {
                                 onSelectMethod={setSelectedPaymentMethod}
                             />
 
-                            {/* ✅ Thông báo khi chọn VNPay */}
+                            {/* Thông báo khi chọn VNPay */}
                             {selectedPaymentMethod === PaymentMethod.CARD && (
                                 <Alert variant="info" className="mb-3">
                                     <CreditCard size={20} className="me-2" />
-                                    <strong>Thanh toán VNPay:</strong> Bạn sẽ được chuyển đến trang thanh toán an toàn của VNPay
+                                    <strong>Thanh toán SePay:</strong> Bạn sẽ quét mã QR để thanh toán qua ứng dụng ngân hàng
                                 </Alert>
                             )}
 
@@ -642,7 +698,7 @@ const CheckoutPage: React.FC = () => {
                                     size="lg"
                                     className="w-100 mt-3 fw-bold"
                                     onClick={handlePlaceOrder}
-                                    disabled={isProcessing || !selectedAddressId || isCalculatingShippingFee}
+                                    disabled={isProcessing || !selectedAddressId || isCalculatingShippingFee || isOrderingRef.current}
                                 >
                                     {isProcessing ? (
                                         <>
@@ -653,7 +709,7 @@ const CheckoutPage: React.FC = () => {
                                                 className="me-2"
                                             />
                                             {selectedPaymentMethod === PaymentMethod.CARD
-                                                ? 'Đang chuyển đến VNPay...'
+                                                ? 'Đang tạo thanh toán...'
                                                 : 'Đang xử lý...'
                                             }
                                         </>
@@ -662,7 +718,7 @@ const CheckoutPage: React.FC = () => {
                                             {selectedPaymentMethod === PaymentMethod.CARD ? (
                                                 <>
                                                     <CreditCard size={20} className="me-2" />
-                                                    Thanh toán VNPay
+                                                    Thanh toán Online
                                                 </>
                                             ) : (
                                                 <>

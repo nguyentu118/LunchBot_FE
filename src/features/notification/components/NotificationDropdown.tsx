@@ -78,7 +78,6 @@ const NotificationDropdown: React.FC = () => {
 
     // Xử lý khi nhận notification mới từ WebSocket
     const handleNewNotification = useCallback((notification: INotification) => {
-        console.log('📩 Handling new notification:', notification.id);
 
         setNotifications(prev => {
             // ✅ Kiểm tra duplicate trước khi thêm
@@ -113,11 +112,9 @@ const NotificationDropdown: React.FC = () => {
 
         // ✅ Kiểm tra đã connect chưa
         if (isConnectedRef.current) {
-            console.log('✅ Already connected, skipping...');
             return;
         }
 
-        console.log('🔌 Initializing WebSocket connection...');
 
         // Load notifications
         loadNotifications();
@@ -128,7 +125,6 @@ const NotificationDropdown: React.FC = () => {
 
         // ✅ Cleanup khi unmount
         return () => {
-            console.log('🔌 Disconnecting WebSocket...');
             wsServiceRef.current.disconnect();
             isConnectedRef.current = false;
         };

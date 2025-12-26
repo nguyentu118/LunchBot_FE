@@ -47,7 +47,6 @@ export const CartApiService = {
     getCart: async (): Promise<CartResponse> => {
         try {
             const response = await axiosInstance.get(`${CART_API}`);
-            console.log('✅ Cart Data Response:', response.data);
 
             // Backend có thể trả về dạng: { data: {...} } hoặc trực tiếp {...}
             if (response.data.data) {
