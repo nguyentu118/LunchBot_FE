@@ -1,10 +1,10 @@
 // src/features/checkout/pages/CheckoutPage.tsx
 // Cập nhật để tích hợp VNPay khi chọn thanh toán bằng thẻ
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Button, Alert, Spinner, Form } from 'react-bootstrap';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react';
+import React, {useEffect, useRef, useState} from 'react';
+import {Alert, Button, Col, Container, Form, Row, Spinner} from 'react-bootstrap';
+import {useNavigate, useSearchParams} from 'react-router-dom';
+import {ArrowLeft, CreditCard, ShoppingCart, Trash2} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Components
@@ -15,16 +15,16 @@ import OrderSummary from '../components/OrderSummary';
 import Navigation from '../../../components/layout/Navigation';
 
 // Services
-import { checkoutService } from '../services/checkoutService';
-import { addressService } from '../services/addressService';
-import { orderService } from '../services/orderService';
-import { shippingService } from '../services/shippingService';
-import { paymentService } from '../services/paymentService';
+import {checkoutService} from '../services/checkoutService';
+import {addressService} from '../services/addressService';
+import {orderService} from '../services/orderService';
+import {shippingService} from '../services/shippingService';
+import {paymentService} from '../services/paymentService';
 import axiosInstance from '../../../config/axiosConfig';
 
 // Types
-import { CheckoutResponse, PaymentMethod } from '../types/checkout.types';
-import { Address, AddressFormData } from '../types/address.types';
+import {CheckoutResponse, PaymentMethod} from '../types/checkout.types';
+import {Address, AddressFormData} from '../types/address.types';
 
 const CheckoutPage: React.FC = () => {
     const navigate = useNavigate();
@@ -51,6 +51,11 @@ const CheckoutPage: React.FC = () => {
 
     // Error state
     const [error, setError] = useState('');
+
+    // ✅ Thêm state để chặn multiple popups
+    const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
+    const [isDeletingAddressId, setIsDeletingAddressId] = useState<number | null>(null);
+    const [isOrderConfirmOpen, setIsOrderConfirmOpen] = useState(false);
 
     // ✅ Thêm ref để chặn hoàn toàn multiple clicks
     const isOrderingRef = useRef(false);
@@ -220,62 +225,74 @@ const CheckoutPage: React.FC = () => {
     };
 
     const handleDeleteAddress = async (addressId: number) => {
-        const confirmDelete = () => new Promise((resolve, reject) => {
-            toast((t) => (
-                <div className="d-flex flex-column gap-2">
-                    <div className="fw-bold text-danger">Xóa địa chỉ?</div>
-                    <div className="text-muted small">
-                        Bạn có chắc chắn muốn xóa địa chỉ này không? Hành động này không thể hoàn tác.
-                    </div>
-                    <div className="d-flex gap-2 mt-2">
-                        <button
-                            className="btn btn-danger btn-sm flex-grow-1"
-                            onClick={() => {
-                                toast.dismiss(t.id);
-                                resolve(true);
-                            }}
-                        >
-                            Xóa
+        // 1. Chặn ngay lập tức nếu đang có action khác diễn ra
+        if (isDeletePopupOpen || isDeletingAddressId !== null) return;
+
+        setIsDeletePopupOpen(true);
+
+        toast((t) =>
+            (<div className="d-flex align-items-start gap-3">
+                <div
+                    className="rounded-circle bg-danger bg-opacity-10 p-2 flex-shrink-0 d-flex align-items-center justify-content-center"
+                    style={{
+                        width: '40px',
+                        height: '40px'
+                    }}>
+                    <Trash2 size={20} className="text-danger"/>
+                </div>
+                <div className="flex-grow-1">
+                    <h6 className="fw-bold text-dark mb-2">
+                        Xóa địa chỉ này?
+                    </h6>
+                    <p className="text-muted small mb-3">Hành động này không thể hoàn tác.</p>
+                    <div className="d-flex gap-2 justify-content-end">
+                        <button className="btn btn-danger btn-sm px-3"
+                                style={{backgroundColor: '#ff5e62', border: 'none'}}
+                                onClick={async () => {
+                                    toast.dismiss(t.id);
+                                    await executeDelete(addressId);
+                                }}> Xác nhận xóa
                         </button>
-                        <button
-                            className="btn btn-outline-secondary btn-sm flex-grow-1"
-                            onClick={() => {
-                                toast.dismiss(t.id);
-                                reject(new Error('User cancelled'));
-                            }}
-                        >
-                            Hủy
+                        <button className="btn btn-light btn-sm px-3"
+                                onClick={() => {
+                                    toast.dismiss(t.id);
+                                    setIsDeletePopupOpen(false);
+                                }}> Hủy
                         </button>
                     </div>
                 </div>
-            ), {
-                duration: Infinity,
-                position: 'top-center',
-            });
+            </div>),
+            {
+            duration: Infinity,
+            position: 'top-center',
+            style: {
+                background: '#fff',
+                padding: '16px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                minWidth: '320px',
+            },
+            onClose: () => setIsDeletePopupOpen(false)
         });
+    };
 
+// Hàm phụ trợ để tách logic xử lý API
+    const executeDelete = async (addressId: number) => {
         try {
-            await confirmDelete();
+            setIsDeletingAddressId(addressId);
             await addressService.deleteAddress(addressId);
-            toast.success('Xóa địa chỉ thành công');
+            toast.success('Đã xóa địa chỉ', {position: 'top-center'});
             await loadCheckoutInfo();
 
             if (selectedAddressId === addressId) {
                 setSelectedAddressId(null);
                 setShippingFee(0);
-
-                if (checkoutData) {
-                    setCheckoutData(prev => prev ? {
-                        ...prev,
-                        shippingFee: 0,
-                        totalAmount: prev.itemsTotal + prev.serviceFee - prev.discountAmount
-                    } : null);
-                }
             }
         } catch (err: any) {
-            if (err.message === 'User cancelled') return;
-            console.error('Error deleting address:', err);
-            toast.error(err.response?.data?.error || 'Không thể xóa địa chỉ');
+            toast.error('Lỗi khi xóa địa chỉ');
+        } finally {
+            setIsDeletingAddressId(null);
+            setIsDeletePopupOpen(false);
         }
     };
 
@@ -369,7 +386,6 @@ const CheckoutPage: React.FC = () => {
     // Xử lý thanh toán VNPay
     const handleSepayPayment = async () => {
         try {
-
             if (!checkoutData) {
                 return;
             }
@@ -399,16 +415,14 @@ const CheckoutPage: React.FC = () => {
                 shippingFee: shippingFee
             };
 
-
             // Gọi API tạo payment
             const paymentResponse = await paymentService.createSepayPayment(paymentRequest);
-
 
             toast.success('Đã tạo thanh toán!');
 
             // Navigate đến trang hiển thị QR
             navigate('/payment/sepay', {
-                state: { paymentData: paymentResponse }
+                state: {paymentData: paymentResponse}
             });
 
         } catch (err: any) {
@@ -418,6 +432,7 @@ const CheckoutPage: React.FC = () => {
             isOrderingRef.current = false;
         }
     };
+
     // Xử lý đặt hàng COD
     const handleCODOrder = async () => {
         try {
@@ -437,7 +452,6 @@ const CheckoutPage: React.FC = () => {
                 shippingFee: shippingFee
             };
 
-
             const order = await orderService.createOrder(orderData);
 
             toast.success('Đặt hàng thành công!');
@@ -456,61 +470,115 @@ const CheckoutPage: React.FC = () => {
         }
     };
 
-    // Handler chính cho nút đặt hàng (Fixed multiple clicks với useRef)
+    // ✅ ĐÃ FIX: handlePlaceOrder - Ngăn multiple order confirmations
     const handlePlaceOrder = async () => {
-        if (isOrderingRef.current) {
+        // NGĂN MULTIPLE CLICKS
+        if (isOrderingRef.current || isOrderConfirmOpen) {
             return;
         }
 
-        isOrderingRef.current = true;
-
         if (!selectedAddressId) {
             toast.error('Vui lòng chọn địa chỉ giao hàng');
-            isOrderingRef.current = false;
             return;
         }
 
         if (!selectedPaymentMethod) {
             toast.error('Vui lòng chọn phương thức thanh toán');
-            isOrderingRef.current = false;
             return;
         }
 
         if (notes.length > 500) {
             toast.error('Ghi chú không được vượt quá 500 ký tự');
-            isOrderingRef.current = false;
             return;
         }
 
-        const confirmOrder = () => new Promise<boolean>((resolve, reject) => {
-            const toastId = toast((t) => (
-                <div className="d-flex flex-column gap-2">
-                    <div className="fw-bold">Xác nhận đặt hàng?</div>
-                    <div className="text-muted small">
-                        {selectedPaymentMethod === PaymentMethod.CARD
-                            ? 'Bạn sẽ được chuyển đến trang thanh toán SePay'
-                            : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận'
-                        }
-                    </div>
-                    <div className="d-flex gap-2 mt-2">
-                        <button
-                            className="btn btn-danger btn-sm flex-grow-1"
-                            onClick={() => {
-                                toast.dismiss(toastId);
-                                resolve(true);
+        setIsOrderConfirmOpen(true); // ĐÁNH DẤU POPUP CONFIRM ĐANG MỞ
+        isOrderingRef.current = true;
+
+        const confirmOrder = () => new Promise<boolean>((resolve) => {
+            const toastId = toast.custom((t) => (
+                <div
+                    className="bg-white rounded-3 p-4 border"
+                    style={{
+                        width: '380px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                        opacity: t.visible ? 1 : 0,
+                        transform: t.visible ? 'translateY(0)' : 'translateY(-10px)',
+                        transition: 'all 0.15s ease-out',
+                    }}
+                >
+                    <div className="d-flex gap-3">
+                        {/* Icon */}
+                        <div
+                            className="flex-shrink-0 d-flex align-items-center justify-content-center"
+                            style={{
+                                width: '48px',
+                                height: '48px',
+                                backgroundColor: '#fff1f1',
+                                borderRadius: '14px',
+                                color: '#ff5e62'
                             }}
                         >
-                            Xác nhận
-                        </button>
-                        <button
-                            className="btn btn-outline-secondary btn-sm flex-grow-1"
-                            onClick={() => {
-                                toast.dismiss(toastId);
-                                reject(new Error('Đã hủy'));
-                            }}
-                        >
-                            Hủy
-                        </button>
+                            <ShoppingCart size={22}/>
+                        </div>
+
+                        {/* Nội dung */}
+                        <div className="flex-grow-1">
+                            <div className="fw-bold text-dark" style={{fontSize: '1rem', marginBottom: '4px'}}>
+                                Xác nhận đặt hàng?
+                            </div>
+                            <div className="text-muted"
+                                 style={{fontSize: '0.85rem', lineHeight: '1.4', marginBottom: '14px'}}>
+                                {selectedPaymentMethod === PaymentMethod.CARD
+                                    ? 'Bạn sẽ được chuyển đến trang thanh toán SePay.'
+                                    : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận.'}
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="d-flex gap-2 justify-content-end">
+                                <button
+                                    className="btn btn-sm px-3 border-0 text-white"
+                                    style={{
+                                        backgroundColor: '#ff5e62',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        fontSize: '0.8rem',
+                                        padding: '6px 12px',
+                                        transition: 'all 0.1s ease'
+                                    }}
+                                    onClick={() => {
+                                        toast.dismiss(toastId);
+                                        setTimeout(() => resolve(true), 50);
+                                    }}
+                                    disabled={isProcessing}
+                                >
+                                    Xác nhận
+                                </button>
+                                <button
+                                    className="btn btn-sm px-3 border-0"
+                                    style={{
+                                        backgroundColor: '#f1f3f5',
+                                        color: '#495057',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        fontSize: '0.8rem',
+                                        padding: '6px 12px',
+                                        transition: 'all 0.1s ease'
+                                    }}
+                                    onClick={() => {
+                                        toast.dismiss(toastId);
+                                        setTimeout(() => {
+                                            setIsOrderConfirmOpen(false);
+                                            isOrderingRef.current = false;
+                                            resolve(false);
+                                        }, 50);
+                                    }}
+                                    disabled={isProcessing}
+                                >
+                                    Hủy
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             ), {
@@ -524,24 +592,24 @@ const CheckoutPage: React.FC = () => {
 
             if (!confirmed) {
                 isOrderingRef.current = false;
+                setIsOrderConfirmOpen(false);
                 return;
             }
 
             setIsProcessing(true);
 
-            // ✅ THAY ĐỔI: Gọi SePay thay vì VNPay
             if (selectedPaymentMethod === PaymentMethod.CARD) {
-                await handleSepayPayment();  // ← ĐÃ THAY ĐỔI TỪ handleVNPayPayment
+                await handleSepayPayment();
             } else {
                 await handleCODOrder();
             }
 
         } catch (err: any) {
             if (err.message === 'Đã hủy') {
-                isOrderingRef.current = false;
                 return;
             }
             isOrderingRef.current = false;
+            setIsOrderConfirmOpen(false);
         }
     };
 
@@ -550,7 +618,7 @@ const CheckoutPage: React.FC = () => {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <div className="text-center">
-                    <Spinner animation="border" variant="primary" />
+                    <Spinner animation="border" variant="primary"/>
                     <p className="mt-3">Đang tải thông tin thanh toán...</p>
                 </div>
             </div>
@@ -576,7 +644,7 @@ const CheckoutPage: React.FC = () => {
 
     return (
         <div className="bg-light min-vh-100">
-            <Navigation />
+            <Navigation/>
 
             <Container className="py-4">
                 {/* Header */}
@@ -586,12 +654,12 @@ const CheckoutPage: React.FC = () => {
                         className="text-decoration-none p-0 mb-3"
                         onClick={() => navigate('/cart')}
                     >
-                        <ArrowLeft size={20} className="me-2" />
+                        <ArrowLeft size={20} className="me-2"/>
                         Quay lại giỏ hàng
                     </Button>
 
                     <h2 className="fw-bold d-flex align-items-center">
-                        <ShoppingCart size={32} className="text-danger me-3" />
+                        <ShoppingCart size={32} className="text-danger me-3"/>
                         Thanh toán đơn hàng
                     </h2>
                 </div>
@@ -614,7 +682,7 @@ const CheckoutPage: React.FC = () => {
                             {/* Shipping Fee Status */}
                             {isCalculatingShippingFee && (
                                 <Alert variant="info" className="mb-3">
-                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    <Spinner animation="border" size="sm" className="me-2"/>
                                     Đang tính phí giao hàng...
                                 </Alert>
                             )}
@@ -634,8 +702,9 @@ const CheckoutPage: React.FC = () => {
                             {/* Thông báo khi chọn VNPay */}
                             {selectedPaymentMethod === PaymentMethod.CARD && (
                                 <Alert variant="info" className="mb-3">
-                                    <CreditCard size={20} className="me-2" />
-                                    <strong>Thanh toán SePay:</strong> Bạn sẽ quét mã QR để thanh toán qua ứng dụng ngân hàng
+                                    <CreditCard size={20} className="me-2"/>
+                                    <strong>Thanh toán SePay:</strong> Bạn sẽ quét mã QR để thanh toán qua ứng dụng ngân
+                                    hàng
                                 </Alert>
                             )}
 
@@ -678,7 +747,7 @@ const CheckoutPage: React.FC = () => {
 
                         {/* Right Column - Order Summary */}
                         <Col lg={4}>
-                            <div className="sticky-top" style={{ top: '20px', zIndex: 10 }}>
+                            <div className="sticky-top" style={{top: '20px', zIndex: 10}}>
                                 <OrderSummary
                                     merchantName={checkoutData.merchantName}
                                     merchantAddress={checkoutData.merchantAddress}
@@ -698,7 +767,13 @@ const CheckoutPage: React.FC = () => {
                                     size="lg"
                                     className="w-100 mt-3 fw-bold"
                                     onClick={handlePlaceOrder}
-                                    disabled={isProcessing || !selectedAddressId || isCalculatingShippingFee || isOrderingRef.current}
+                                    disabled={
+                                        isProcessing ||
+                                        !selectedAddressId ||
+                                        isCalculatingShippingFee ||
+                                        isOrderingRef.current ||
+                                        isOrderConfirmOpen
+                                    }
                                 >
                                     {isProcessing ? (
                                         <>
@@ -717,12 +792,12 @@ const CheckoutPage: React.FC = () => {
                                         <>
                                             {selectedPaymentMethod === PaymentMethod.CARD ? (
                                                 <>
-                                                    <CreditCard size={20} className="me-2" />
+                                                    <CreditCard size={20} className="me-2"/>
                                                     Thanh toán Online
                                                 </>
                                             ) : (
                                                 <>
-                                                    <ShoppingCart size={20} className="me-2" />
+                                                    <ShoppingCart size={20} className="me-2"/>
                                                     Đặt hàng
                                                 </>
                                             )}

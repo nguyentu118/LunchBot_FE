@@ -27,6 +27,10 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
     // State hiển thị nội bộ (giúp UI mượt, không cần chờ server)
     const [localQuantity, setLocalQuantity] = useState(item.quantity);
 
+    // THÊM STATE ĐỂ TRACK POPUP VÀ TRẠNG THÁI XÓA
+    const [isPopupOpen, setIsPopupOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Dùng ref để chặn việc gọi API quá dồn dập (Debounce đơn giản)
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,8 +104,13 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
         }
     };
 
-    // Hàm xóa (như cũ)
+    // Hàm xóa - ĐÃ FIX
     const handleRemove = () => {
+        // NGĂN MỞ POPUP NẾU ĐÃ CÓ POPUP ĐANG MỞ
+        if (isPopupOpen || isDeleting) return;
+
+        setIsPopupOpen(true); // ĐÁNH DẤU POPUP ĐANG MỞ
+
         toast((t) => (
             <div className="d-flex align-items-start w-100" style={{ minWidth: '300px' }}>
                 <div className="bg-danger bg-opacity-10 p-2 rounded-circle me-3 flex-shrink-0">
@@ -113,17 +122,37 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                     <div className="d-flex gap-2 justify-content-end">
                         <button
                             onClick={async () => {
+                                setIsDeleting(true); // ĐÁNH DẤU ĐANG XÓA
                                 try {
                                     await onRemove(item.dishId);
                                     window.dispatchEvent(new Event('cartUpdated'));
                                     toast.dismiss(t.id);
-                                } catch (e) { console.error(e); }
+                                } catch (e) {
+                                    console.error(e);
+                                    toast.error('Có lỗi khi xóa món');
+                                } finally {
+                                    // RESET STATE SAU KHI HOÀN THÀNH
+                                    setTimeout(() => {
+                                        setIsDeleting(false);
+                                        setIsPopupOpen(false);
+                                    }, 500);
+                                }
                             }}
                             className="btn btn-sm btn-danger fw-bold px-3 rounded-3"
+                            disabled={isDeleting}
                         >
-                            Xóa ngay
+                            {isDeleting ? 'Đang xóa...' : 'Xóa ngay'}
                         </button>
-                        <button onClick={() => toast.dismiss(t.id)} className="btn btn-sm btn-light border">Hủy</button>
+                        <button
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                setIsPopupOpen(false); // RESET STATE KHI HỦY
+                            }}
+                            className="btn btn-sm btn-light border"
+                            disabled={isDeleting}
+                        >
+                            Hủy
+                        </button>
                     </div>
                 </div>
             </div>
@@ -155,8 +184,8 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                             <Button
                                 variant="outline-secondary"
                                 onClick={handleDecrease}
-                                disabled={localQuantity <= 1}
-                                type="button"  // QUAN TRỌNG: Chống reload trang
+                                disabled={localQuantity <= 1 || isDeleting || isPopupOpen}
+                                type="button"
                                 className="d-flex align-items-center justify-content-center px-2"
                             >
                                 <Minus size={14} />
@@ -170,13 +199,14 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                                 onKeyDown={handleInputKeyDown}
                                 className="text-center fw-bold text-secondary border-secondary"
                                 style={{ zIndex: 0 }}
+                                disabled={isDeleting || isPopupOpen}
                             />
 
                             <Button
                                 variant="outline-secondary"
                                 onClick={handleIncrease}
-                                disabled={localQuantity >= 999}
-                                type="button" // QUAN TRỌNG: Chống reload trang
+                                disabled={localQuantity >= 999 || isDeleting || isPopupOpen}
+                                type="button"
                                 className="d-flex align-items-center justify-content-center px-2"
                             >
                                 <Plus size={14} />
@@ -189,10 +219,19 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                     <div className="text-end ms-2">
                         <p className="fw-bold text-danger mb-3" style={{ fontSize: '1.1rem' }}>
                             {formatCurrency(item.price * localQuantity)}
-                            {/* Tính tiền theo số hiển thị cho mượt */}
                         </p>
-                        <Button variant="outline-danger" size="sm" onClick={handleRemove} type="button">
-                            <Trash2 size={16} />
+                        <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={handleRemove}
+                            type="button"
+                            disabled={isDeleting || isPopupOpen}
+                        >
+                            {isDeleting ? (
+                                <span className="spinner-border spinner-border-sm" role="status" />
+                            ) : (
+                                <Trash2 size={16} />
+                            )}
                         </Button>
                     </div>
                 </div>

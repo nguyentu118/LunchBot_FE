@@ -1,9 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
-import {Badge, Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
+import { Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
 import {
     BarChart3,
-    Bell,
     ClipboardCheck, Crown,
     Home,
     Menu,
@@ -20,13 +19,17 @@ import {
 import {ROUTES} from '../../routes/route.constants';
 import './AdminLayout.css';
 import AdminProfileDropdown from "./AdminProfileDropdown.tsx";
+import {NotificationBell} from "../../features/notification/components/NotificationBell.tsx";
 
 export const AdminLayout: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const userEmail = localStorage.getItem('userEmail') || 'admin@gmail.com';
     const [darkMode, setDarkMode] = useState(false);
     const [adminName, setAdminName] = useState('Admin');
     const location = useLocation();
     const navigate = useNavigate();
+    const token = localStorage.getItem('token');
+
 
     const menuItems = [
         {id: 'dashboard', label: 'Dashboard', icon: Home, path: ROUTES.ADMIN.DASHBOARD},
@@ -62,6 +65,9 @@ export const AdminLayout: React.FC = () => {
         const fullName = localStorage.getItem('userFullName') || 'Admin';
         setAdminName(fullName);
     }, []);
+
+    useEffect(() => {
+    }, [token, userEmail]);
 
     const isActiveRoute = (path: string) => location.pathname === path;
 
@@ -158,12 +164,11 @@ export const AdminLayout: React.FC = () => {
                             {darkMode ? <Sun size={20} className="text-warning"/> : <Moon size={20}/>}
                         </Button>
 
-                        <Button variant={darkMode ? 'dark' : 'light'} className="position-relative rounded">
-                            <Bell size={20}/>
-                            <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle p-1">
-                                <span className="visually-hidden">notifications</span>
-                            </Badge>
-                        </Button>
+                        {/* ✅ Thay thế Button cũ bằng NotificationBell */}
+                        <NotificationBell
+                            userEmail={userEmail}
+                            userRole="ADMIN"
+                        />
 
                         <div className="d-flex align-items-center gap-2 ps-3 border-start">
                             <AdminProfileDropdown

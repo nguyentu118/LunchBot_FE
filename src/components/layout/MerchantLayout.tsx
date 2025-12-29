@@ -243,14 +243,6 @@ const MerchantLayout: React.FC = () => {
                                 <SidebarLink to="/merchant/settings" icon={Settings} text="Cài đặt" />
                             </div>
                         </div>
-
-                        {/* Tips Card */}
-                        <div className="bg-light rounded-3 p-3 shadow-sm mt-3">
-                            <h6 className="fw-bold mb-2">💡 Mẹo hay</h6>
-                            <p className="small text-muted mb-0">
-                                Món ăn có ảnh đẹp sẽ thu hút khách hàng hơn!
-                            </p>
-                        </div>
                     </div>
 
                     {/* Main Content */}

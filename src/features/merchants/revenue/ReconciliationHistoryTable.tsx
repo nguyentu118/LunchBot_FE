@@ -3,7 +3,7 @@ import { Table, Card, Badge, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { ReconciliationRequestResponse } from '../types/revenue.types.ts';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import {Info, AlertCircle, CheckCircle, Clock, AlertTriangle} from 'lucide-react';
+import {Info, AlertCircle, CheckCircle, Clock} from 'lucide-react';
 
 interface Props {
     history: ReconciliationRequestResponse[];

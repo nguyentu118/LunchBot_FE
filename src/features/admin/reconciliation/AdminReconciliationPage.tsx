@@ -4,12 +4,15 @@ import {AlertTriangle, CheckCircle, XCircle} from 'lucide-react';
 import {adminReconciliationService, AdminReconciliationRequestResponse} from './service/adminReconciliationService';
 import toast from 'react-hot-toast';
 
+import { NotificationType } from '../../notification/types/notification.types';
+import { useNotifications } from '../../notification/hooks/useNotifications';
+
 const AdminReconciliationPage: React.FC = () => {
     // --- STATE ---
     const [requests, setRequests] = useState<AdminReconciliationRequestResponse[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('PENDING');
-
+    const [isProcessing, setIsProcessing] = useState(false);
     // Pagination
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -20,11 +23,14 @@ const AdminReconciliationPage: React.FC = () => {
     const [rejectionReason, setRejectionReason] = useState('');
     const [adminNotes, setAdminNotes] = useState('');
 
+    // ✅ Subscribe to notifications
+    const userEmail = localStorage.getItem('userEmail') || '';
+    const { notifications } = useNotifications(userEmail);
+
     // --- FETCH DATA ---
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            // Nếu tab là 'ALL' thì truyền status = undefined để lấy tất cả
             const statusParam = activeTab === 'ALL' ? undefined : activeTab;
 
             const data = await adminReconciliationService.getAllRequests(statusParam, page);
@@ -45,27 +51,49 @@ const AdminReconciliationPage: React.FC = () => {
         fetchRequests();
     }, [page, activeTab]);
 
+    // ✅ Auto-refresh khi nhận notification từ Merchant
+    useEffect(() => {
+        const reconciliationNotifications = notifications.filter(n =>
+            n.type === NotificationType.RECONCILIATION_REQUEST_CREATED ||
+            n.type === NotificationType.RECONCILIATION_CLAIM_SUBMITTED
+        );
+
+        if (reconciliationNotifications.length > 0) {
+            fetchRequests(); // Refresh danh sách
+
+            const latest = reconciliationNotifications[0];
+            if (latest.type === NotificationType.RECONCILIATION_REQUEST_CREATED) {
+                toast('💰 Yêu cầu đối soát mới!', { icon: '🔔' });
+            } else {
+                toast('🚨 Báo cáo sai sót mới!', { icon: '⚠️' });
+            }
+        }
+    }, [notifications]);
+
     // --- HANDLERS ---
 
-    // 1. Hàm thực thi (giữ nguyên)
+    // 1. Hàm thực thi
     const executeApprove = async (id: number) => {
         const toastId = toast.loading("Đang xử lý phê duyệt...");
         try {
             await adminReconciliationService.approveRequest(id);
-            toast.success("Đã duyệt yêu cầu thành công!", {id: toastId});
+            toast.success("Đã duyệt yêu cầu thành công!", { id: toastId });
             fetchRequests();
         } catch (error) {
-            toast.error("Lỗi khi duyệt yêu cầu", {id: toastId});
+            toast.error("Lỗi khi duyệt yêu cầu", { id: toastId });
+        } finally {
+            setIsProcessing(false);
         }
     };
 
-    // Hàm hiện Form xác nhận (Cân đối lại)
     const handleApprove = (req: AdminReconciliationRequestResponse) => {
+        if (isProcessing) return;
+
+        setIsProcessing(true);
+
         toast.custom((t) => (
             <div
-                className={`${
-                    t.visible ? 'animate-enter' : 'animate-leave'
-                } bg-white shadow-lg rounded-3`}
+                className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white shadow-lg rounded-3`}
                 style={{
                     maxWidth: '420px',
                     width: '100%',
@@ -74,50 +102,39 @@ const AdminReconciliationPage: React.FC = () => {
                 }}
             >
                 <div className="p-4">
-                    {/* Header với Icon */}
                     <div className="d-flex align-items-center mb-3">
-                        <div
-                            className="rounded-circle bg-success bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
+                        <div className="rounded-circle bg-success bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
                             <CheckCircle size={24} className="text-success"/>
                         </div>
-                        <h6 className="fw-bold text-dark mb-0 ms-3">
-                            Xác nhận duyệt đối soát?
-                        </h6>
+                        <h6 className="fw-bold text-dark mb-0 ms-3">Xác nhận duyệt đối soát?</h6>
                     </div>
 
-                    {/* Thông tin chi tiết */}
                     <div className="bg-light rounded-2 p-3 mb-4 border border-secondary border-opacity-25">
-                        {/* Dòng 1: Merchant */}
                         <div className="d-flex justify-content-between align-items-center mb-2">
                             <span className="text-secondary small">Merchant</span>
                             <span className="fw-bold text-dark">{req.merchantName}</span>
                         </div>
-
-                        {/* Dòng 2: Tháng */}
                         <div className="d-flex justify-content-between align-items-center mb-3">
                             <span className="text-secondary small">Tháng</span>
                             <span className="fw-semibold text-dark">{req.yearMonth}</span>
                         </div>
-
-                        {/* Divider */}
                         <div className="border-top border-secondary border-opacity-25 my-2"></div>
-
-                        {/* Dòng 3: Doanh thu (Highlight) */}
                         <div className="d-flex justify-content-between align-items-center">
                             <span className="text-secondary small">Thực nhận</span>
-                            <span className="fw-bold text-success fs-5">
-                            {formatCurrency(req.netRevenue)}
-                        </span>
+                            <span className="fw-bold text-success fs-5">{formatCurrency(req.netRevenue)}</span>
                         </div>
                     </div>
 
-                    {/* Nút hành động */}
                     <div className="d-flex gap-2 justify-content-end">
                         <Button
                             variant="light"
                             size="sm"
                             className="border border-secondary text-secondary fw-500 px-4"
-                            onClick={() => toast.dismiss(t.id)}
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                // Delay để animation hoàn tất trước khi reset state
+                                setTimeout(() => setIsProcessing(false), 300);
+                            }}
                         >
                             Hủy bỏ
                         </Button>
@@ -141,7 +158,6 @@ const AdminReconciliationPage: React.FC = () => {
         });
     };
 
-    // 2. Mở Modal Từ chối
     const openRejectModal = (id: number) => {
         setSelectedRequestId(id);
         setRejectionReason('');
@@ -210,13 +226,12 @@ const AdminReconciliationPage: React.FC = () => {
                                 <Badge bg={
                                     req.status === 'APPROVED' ? 'success' :
                                         req.status === 'REJECTED' ? 'danger' :
-                                            req.status === 'REPORTED' ? 'warning' : 'info' // Thêm màu warning cho REPORTED
+                                            req.status === 'REPORTED' ? 'warning' : 'info'
                                 } text={req.status === 'REPORTED' ? 'dark' : 'light'}>
                                     {req.statusDisplay}
                                 </Badge>
                             </td>
                             <td>
-                                {/* Nếu là REPORTED thì hiện icon cảnh báo và lý do màu đỏ */}
                                 {req.status === 'REPORTED' ? (
                                     <div className="text-danger fw-bold d-flex align-items-center gap-1"
                                          style={{fontSize: '0.9rem'}}>
@@ -225,22 +240,22 @@ const AdminReconciliationPage: React.FC = () => {
                                     </div>
                                 ) : (
                                     <span className="text-truncate d-inline-block" style={{maxWidth: '200px'}}>
-            {req.merchantNotes || '-'}
-        </span>
+                                        {req.merchantNotes || '-'}
+                                    </span>
                                 )}
                             </td>
                             <td className="text-end">
                                 {(req.status === 'PENDING' || req.status === 'REPORTED') && (
                                     <div className="d-flex justify-content-end gap-2">
-                                        <Button size="sm" variant="success" onClick={() => handleApprove(req)} title="Duyệt">
+                                        <Button size="sm" variant="success" onClick={() => handleApprove(req)} disabled={isProcessing} title="Duyệt">
                                             <CheckCircle size={16} />
                                         </Button>
-                                        <Button size="sm" variant="danger" onClick={() => openRejectModal(req.id)} title="Từ chối">
+                                        <Button size="sm" variant="danger" onClick={() => openRejectModal(req.id)} disabled={isProcessing} title="Từ chối">
                                             <XCircle size={16} />
                                         </Button>
                                     </div>
                                 )}
-                                {req.status !== 'PENDING' && (
+                                {req.status !== 'PENDING' && req.status !== 'REPORTED' && (
                                     <small className="text-muted">
                                         {req.reviewedByName ? `Duyệt bởi: ${req.reviewedByName}` : 'Đã xử lý'}
                                     </small>
