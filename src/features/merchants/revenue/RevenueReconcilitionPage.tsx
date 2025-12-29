@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Spinner, Button, Modal, Form, Tabs, Tab } from 'react-bootstrap';
-import {Send, CheckCircle, AlertCircle, AlertTriangle} from 'lucide-react'; // Import thêm icon
+import {Send, CheckCircle, AlertCircle, AlertTriangle} from 'lucide-react';
 import { MonthSelector } from './MonthSelector';
 import { RevenueSummary } from './RevenueSummary';
 import { OrderDetailsTable } from './OrderDetailsTable';
-import { ReconciliationHistoryTable } from './ReconciliationHistoryTable'; // Import Component mới
-import {MonthlyRevenueResponse, ReconciliationRequestResponse} from '../types/revenue.types.ts';
-import { revenueService, } from '../services/revenueService.ts';
-import toast from 'react-hot-toast'; // Giả sử bạn có dùng toast, nếu không dùng alert thường
+import { ReconciliationHistoryTable } from './ReconciliationHistoryTable';
+import {MonthlyRevenueResponse, ReconciliationRequestResponse} from '../types/revenue.types';
+import { revenueService } from '../services/revenueService';
+import toast from 'react-hot-toast';
+
+// ✅ Import từ shared notification folder
+import { NotificationType } from '../../notification/types/notification.types';
+import { useNotifications } from '../../notification/hooks/useNotifications';
 
 const RevenueReconciliationPage: React.FC = () => {
     // --- STATE ---
@@ -20,24 +24,46 @@ const RevenueReconciliationPage: React.FC = () => {
 
     const [data, setData] = useState<MonthlyRevenueResponse | null>(null);
     const [history, setHistory] = useState<ReconciliationRequestResponse[]>([]);
-
     const [loading, setLoading] = useState<boolean>(false);
     const [submitting, setSubmitting] = useState<boolean>(false);
-
-    // Modal state
     const [showModal, setShowModal] = useState(false);
     const [merchantNotes, setMerchantNotes] = useState('');
-
-    // --- STATE MỚI CHO CLAIM ---
     const [showClaimModal, setShowClaimModal] = useState(false);
     const [claimReason, setClaimReason] = useState('');
     const [submittingClaim, setSubmittingClaim] = useState(false);
+
+    // ✅ Subscribe to notifications
+    const userEmail = localStorage.getItem('userEmail') || '';
+    const { notifications } = useNotifications(userEmail);
+
+    // ✅ Auto-refresh khi nhận notification từ Admin
+    useEffect(() => {
+        // Lọc các notification về reconciliation
+        const reconciliationNotifications = notifications.filter(n =>
+            n.type === NotificationType.RECONCILIATION_REQUEST_APPROVED ||
+            n.type === NotificationType.RECONCILIATION_REQUEST_REJECTED
+        );
+
+        // Nếu có notification mới từ Admin → Auto refresh
+        if (reconciliationNotifications.length > 0) {
+            const latestNotification = reconciliationNotifications[0];
+
+            // Refresh data
+            fetchData();
+
+            // Show toast notification
+            if (latestNotification.type === NotificationType.RECONCILIATION_REQUEST_APPROVED) {
+                toast.success('🎉 Yêu cầu đối soát đã được phê duyệt!');
+            } else if (latestNotification.type === NotificationType.RECONCILIATION_REQUEST_REJECTED) {
+                toast.error('⚠️ Yêu cầu đối soát đã bị từ chối. Vui lòng xem chi tiết.');
+            }
+        }
+    }, [notifications]);
 
     // --- FETCH DATA ---
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Gọi song song cả lấy số liệu tháng và lịch sử để check trạng thái
             const [revenueData, historyData] = await Promise.all([
                 revenueService.getMonthReconciliation(selectedMonth),
                 revenueService.getHistory()
@@ -47,7 +73,6 @@ const RevenueReconciliationPage: React.FC = () => {
             setHistory(historyData);
         } catch (err: any) {
             console.error('Error:', err);
-            // Handle error logic here
         } finally {
             setLoading(false);
         }
@@ -58,7 +83,6 @@ const RevenueReconciliationPage: React.FC = () => {
     }, [selectedMonth]);
 
     // --- LOGIC CHECK TRẠNG THÁI ---
-    // Kiểm tra xem tháng đang chọn đã được gửi yêu cầu chưa
     const currentMonthRequest = history.find(req => req.yearMonth === selectedMonth);
     const isSubmitted = !!currentMonthRequest;
 
@@ -76,8 +100,6 @@ const RevenueReconciliationPage: React.FC = () => {
             toast.success(`Đã gửi yêu cầu đối soát tháng ${selectedMonth}`);
             setShowModal(false);
             setMerchantNotes('');
-
-            // Refresh lại dữ liệu để cập nhật trạng thái
             fetchData();
         } catch (error: any) {
             toast.error(error.response?.data?.message || "Lỗi khi gửi yêu cầu");
@@ -85,9 +107,8 @@ const RevenueReconciliationPage: React.FC = () => {
             setSubmitting(false);
         }
     };
-    // --- HANDLER MỚI: Gửi Claim ---
+
     const handleSubmitClaim = async () => {
-        // Validate bắt buộc nhập lý do
         if (!claimReason.trim()) {
             toast.error("Vui lòng nhập lý do sai sót/khiếu nại!");
             return;
@@ -103,7 +124,7 @@ const RevenueReconciliationPage: React.FC = () => {
             toast.success(`Đã gửi báo cáo sai sót tháng ${selectedMonth}`);
             setShowClaimModal(false);
             setClaimReason('');
-            fetchData(); // Refresh lại dữ liệu
+            fetchData();
         } catch (error: any) {
             toast.error(error.response?.data?.message || "Lỗi khi gửi báo cáo");
         } finally {
@@ -116,62 +137,54 @@ const RevenueReconciliationPage: React.FC = () => {
             <h4 className="fw-bold mb-4 text-secondary">Đối Soát Doanh Thu</h4>
 
             <Tabs defaultActiveKey="overview" id="reconciliation-tabs" className="mb-4">
-
-                {/* TAB 1: TỔNG QUAN & GỬI YÊU CẦU */}
                 <Tab eventKey="overview" title="Báo cáo tháng">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <MonthSelector selectedMonth={selectedMonth} onChange={setSelectedMonth} />
 
-                        {/* Logic hiển thị nút bấm hoặc trạng thái */}
                         {!loading && data && (
                             <div>
                                 {isSubmitted ? (
-                                        <div className="mb-3">
-                                            <Alert
-                                                variant={
-                                                    currentMonthRequest?.status === 'APPROVED' ? 'success' :
-                                                        currentMonthRequest?.status === 'REJECTED' ? 'danger' :
-                                                            currentMonthRequest?.status === 'REPORTED' ? 'warning' : 'info'
-                                                }
-                                                className="mb-2 py-2 px-3" // Bỏ d-flex ở đây, xử lý bên trong div con để dễ căn chỉnh
-                                            >
-                                                <div className="d-flex justify-content-between align-items-center w-100">
-                                                    {/* PHẦN BÊN TRÁI: Icon + Trạng thái + Ngày */}
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        {currentMonthRequest?.status === 'APPROVED' ? <CheckCircle size={18}/> :
-                                                            currentMonthRequest?.status === 'REPORTED' ? <AlertTriangle size={18}/> :
-                                                                <AlertCircle size={18}/>}
+                                    <div className="mb-3">
+                                        <Alert
+                                            variant={
+                                                currentMonthRequest?.status === 'APPROVED' ? 'success' :
+                                                    currentMonthRequest?.status === 'REJECTED' ? 'danger' :
+                                                        currentMonthRequest?.status === 'REPORTED' ? 'warning' : 'info'
+                                            }
+                                            className="mb-2 py-2 px-3"
+                                        >
+                                            <div className="d-flex justify-content-between align-items-center w-100">
+                                                <div className="d-flex align-items-center gap-2">
+                                                    {currentMonthRequest?.status === 'APPROVED' ? <CheckCircle size={18}/> :
+                                                        currentMonthRequest?.status === 'REPORTED' ? <AlertTriangle size={18}/> :
+                                                            <AlertCircle size={18}/>}
 
-                                                        <strong>{currentMonthRequest?.statusDisplay}</strong>
-
-                                                        <span className="text-muted mx-1">|</span> {/* Vạch ngăn cách nhỏ */}
-
-                                                        <small className="text-muted">
-                                                            Gửi lúc: {new Date(currentMonthRequest?.createdAt || '').toLocaleDateString('vi-VN')}
-                                                        </small>
-                                                    </div>
-
-                                                    {/* PHẦN BÊN PHẢI: Nút bấm (Chỉ hiện khi bị từ chối) */}
-                                                    {currentMonthRequest?.status === 'REJECTED' && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline-danger"
-                                                            className="bg-white text-danger fw-bold border-danger ms-3"
-                                                            style={{ whiteSpace: 'nowrap' }} // Giữ chữ không bị xuống dòng
-                                                            onClick={() => {
-                                                                setClaimReason(''); // Reset form
-                                                                setShowClaimModal(true);
-                                                            }}
-                                                        >
-                                                            Xem lý do & Gửi lại
-                                                        </Button>
-                                                    )}
+                                                    <strong>{currentMonthRequest?.statusDisplay}</strong>
+                                                    <span className="text-muted mx-1">|</span>
+                                                    <small className="text-muted">
+                                                        Gửi lúc: {new Date(currentMonthRequest?.createdAt || '').toLocaleDateString('vi-VN')}
+                                                    </small>
                                                 </div>
-                                            </Alert>
-                                        </div>
+
+                                                {currentMonthRequest?.status === 'REJECTED' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline-danger"
+                                                        className="bg-white text-danger fw-bold border-danger ms-3"
+                                                        style={{ whiteSpace: 'nowrap' }}
+                                                        onClick={() => {
+                                                            setClaimReason('');
+                                                            setShowClaimModal(true);
+                                                        }}
+                                                    >
+                                                        Xem lý do & Gửi lại
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </Alert>
+                                    </div>
                                 ) : (
                                     <div className="d-flex gap-2">
-                                        {/* Nút Báo cáo sai sót (Mới) */}
                                         <Button
                                             variant="outline-danger"
                                             onClick={() => setShowClaimModal(true)}
@@ -181,10 +194,9 @@ const RevenueReconciliationPage: React.FC = () => {
                                             Báo cáo sai sót
                                         </Button>
 
-                                        {/* Nút Xác nhận (Cũ) */}
                                         <Button
                                             variant="primary"
-                                            onClick={() => setShowModal(true)} // showModal là của Confirm
+                                            onClick={() => setShowModal(true)}
                                             disabled={data.totalOrders === 0}
                                         >
                                             <Send size={18} className="me-2" />
@@ -196,7 +208,6 @@ const RevenueReconciliationPage: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Loading & Error Display (Giữ nguyên logic cũ của bạn) */}
                     {loading && <div className="text-center py-5"><Spinner animation="border" /></div>}
 
                     {!loading && data && (
@@ -213,7 +224,6 @@ const RevenueReconciliationPage: React.FC = () => {
                     )}
                 </Tab>
 
-                {/* TAB 2: LỊCH SỬ */}
                 <Tab eventKey="history" title="Lịch sử yêu cầu">
                     <ReconciliationHistoryTable history={history} />
                 </Tab>
@@ -259,6 +269,8 @@ const RevenueReconciliationPage: React.FC = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* MODAL BÁO CÁO SAI SÓT */}
             <Modal show={showClaimModal} onHide={() => setShowClaimModal(false)} centered backdrop="static">
                 <Modal.Header closeButton className="bg-danger-subtle text-danger">
                     <Modal.Title className="fs-5 fw-bold">
@@ -292,7 +304,7 @@ const RevenueReconciliationPage: React.FC = () => {
                             value={claimReason}
                             onChange={(e) => setClaimReason(e.target.value)}
                             required
-                            className="border-danger" // Viền đỏ để nhấn mạnh
+                            className="border-danger"
                         />
                     </Form.Group>
                 </Modal.Body>
@@ -301,7 +313,7 @@ const RevenueReconciliationPage: React.FC = () => {
                     <Button
                         variant="danger"
                         onClick={handleSubmitClaim}
-                        disabled={submittingClaim || !claimReason.trim()} // Disable nếu chưa nhập lý do
+                        disabled={submittingClaim || !claimReason.trim()}
                     >
                         {submittingClaim ? <Spinner size="sm" animation="border"/> : 'Gửi báo cáo'}
                     </Button>

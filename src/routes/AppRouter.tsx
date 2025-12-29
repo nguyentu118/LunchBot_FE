@@ -43,6 +43,10 @@ import PartnerRequestsPage from "../features/admin/merchants/pages/PartnerReques
 import SepayPaymentPage from "../features/checkout-card/components/SepayPaymentPage.tsx";
 import WalletPage from "../features/financial/components/WalletPage.tsx";
 import AdminWithdrawalPage from "../features/admin/financial/components/AdminWithdrawalPage.tsx";
+import MerchantsPage from "../features/merchants/MerchantsPage.tsx";
+import PromotionsPage from "../features/coupon/components/PromotionsPage.tsx";
+import AllSuggestedPage from "../features/dish/pages/AllSuggestedPage.tsx";
+import AllDiscountsPage from "../features/dish/pages/AllDiscountsPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -111,6 +115,22 @@ const router = createBrowserRouter([
     {
         path: "/payment/sepay",
         element: <SepayPaymentPage  />,
+    },
+    {
+        path: "/restaurants",
+        element: <MerchantsPage/>,
+    },
+    {
+        path: "/deals",
+        element: <PromotionsPage/>,
+    },
+    {
+        path: "/discount",
+        element: <AllDiscountsPage/>,
+    },
+    {
+        path: "/suggested",
+        element: <AllSuggestedPage/>,
     },
 
 

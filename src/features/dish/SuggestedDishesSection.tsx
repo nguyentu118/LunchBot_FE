@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Container, Alert, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import useSuggestedDishes from './hooks/useSuggestedDishes';
 import { SuggestedDish } from './types/suggestedDish';
@@ -157,7 +157,12 @@ const SuggestedDishesSection: React.FC = () => {
             </div>
 
             <div className="text-center mt-3">
-                <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg">
+                <Button
+                    as={Link}
+                    to="/suggested"
+                    variant="danger"
+                    className="fw-bold px-4 py-2 shadow-lg d-inline-flex align-items-center"
+                >
                     Xem thêm các món gợi ý
                     <ChevronRight size={20} className="ms-2"/>
                 </Button>

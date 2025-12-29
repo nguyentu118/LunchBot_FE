@@ -4,12 +4,15 @@ import {AlertTriangle, CheckCircle, XCircle} from 'lucide-react';
 import {adminReconciliationService, AdminReconciliationRequestResponse} from './service/adminReconciliationService';
 import toast from 'react-hot-toast';
 
+import { NotificationType } from '../../notification/types/notification.types';
+import { useNotifications } from '../../notification/hooks/useNotifications';
+
 const AdminReconciliationPage: React.FC = () => {
     // --- STATE ---
     const [requests, setRequests] = useState<AdminReconciliationRequestResponse[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('PENDING');
-
+    const [isProcessing, setIsProcessing] = useState(false);
     // Pagination
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -20,6 +23,10 @@ const AdminReconciliationPage: React.FC = () => {
     const [adminNotes, setAdminNotes] = useState('');
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [showRejectToast, setShowRejectToast] = useState(false);
+
+    // ✅ Subscribe to notifications
+    const userEmail = localStorage.getItem('userEmail') || '';
+    const { notifications } = useNotifications(userEmail);
 
     // --- FETCH DATA ---
     const fetchRequests = async () => {
@@ -45,6 +52,25 @@ const AdminReconciliationPage: React.FC = () => {
         fetchRequests();
     }, [page, activeTab]);
 
+    // ✅ Auto-refresh khi nhận notification từ Merchant
+    useEffect(() => {
+        const reconciliationNotifications = notifications.filter(n =>
+            n.type === NotificationType.RECONCILIATION_REQUEST_CREATED ||
+            n.type === NotificationType.RECONCILIATION_CLAIM_SUBMITTED
+        );
+
+        if (reconciliationNotifications.length > 0) {
+            fetchRequests(); // Refresh danh sách
+
+            const latest = reconciliationNotifications[0];
+            if (latest.type === NotificationType.RECONCILIATION_REQUEST_CREATED) {
+                toast('💰 Yêu cầu đối soát mới!', { icon: '🔔' });
+            } else {
+                toast('🚨 Báo cáo sai sót mới!', { icon: '⚠️' });
+            }
+        }
+    }, [notifications]);
+
     // --- HANDLERS ---
 
     const executeApprove = async (id: number) => {
@@ -64,9 +90,7 @@ const AdminReconciliationPage: React.FC = () => {
         setProcessingId(req.id);
         toast.custom((t) => (
             <div
-                className={`${
-                    t.visible ? 'animate-enter' : 'animate-leave'
-                } bg-white shadow-lg rounded-3`}
+                className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white shadow-lg rounded-3`}
                 style={{
                     maxWidth: '380px',
                     width: '100%',
@@ -290,8 +314,8 @@ const AdminReconciliationPage: React.FC = () => {
                                     </div>
                                 ) : (
                                     <span className="text-truncate d-inline-block" style={{maxWidth: '200px'}}>
-            {req.merchantNotes || '-'}
-        </span>
+                                        {req.merchantNotes || '-'}
+                                    </span>
                                 )}
                             </td>
                             <td className="text-end">
@@ -319,7 +343,7 @@ const AdminReconciliationPage: React.FC = () => {
                                         </Button>
                                     </div>
                                 )}
-                                {req.status !== 'PENDING' && (
+                                {req.status !== 'PENDING' && req.status !== 'REPORTED' && (
                                     <small className="text-muted">
                                         {req.reviewedByName ? `Duyệt bởi: ${req.reviewedByName}` : 'Đã xử lý'}
                                     </small>

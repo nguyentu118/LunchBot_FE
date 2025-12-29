@@ -12,7 +12,7 @@ import useCategoriesWithDishes from "../../features/category/hooks/useCategories
 import {CategoryIconWithBackground} from './CategoryIconMapper.tsx';
 import usePopularMerchants from '../../features/merchants/hooks/usePopularMerchants';
 import {PopularMerchantDto} from "../../features/merchants/types/merchant.ts";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 interface CategoryDisplay {
     id: number;
@@ -420,28 +420,6 @@ const HomePage: React.FC = () => {
                                                             borderRadius: '0.375rem 0.375rem 0 0'
                                                         }}
                                                     />
-                                                    <Button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleFavorite(restaurant.id);
-                                                        }}
-                                                        variant="light"
-                                                        className="rounded-circle p-2 position-absolute top-0 end-0 m-3 shadow-sm"
-                                                        style={{ transition: 'all 0.2s ease' }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = 'scale(1.15)';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = 'scale(1)';
-                                                        }}
-                                                    >
-                                                        <Heart
-                                                            size={20}
-                                                            className={favorites[restaurant.id] ? 'text-danger' : 'text-muted'}
-                                                            fill={favorites[restaurant.id] ? '#FF5E62' : 'none'}
-                                                            stroke={favorites[restaurant.id] ? '#FF5E62' : 'currentColor'}
-                                                        />
-                                                    </Button>
                                                     <Badge
                                                         bg="primary"
                                                         className="position-absolute bottom-0 start-0 m-3 p-2 fw-bold shadow-sm"
@@ -541,10 +519,14 @@ const HomePage: React.FC = () => {
                                 </Row>
 
                                 <div className="text-center mt-3">
-                                    <Button
-                                        variant="danger"
-                                        className="fw-bold px-4 py-2 shadow-lg"
-                                        style={{ transition: 'all 0.3s ease' }}
+                                    <Link
+                                        to="/restaurants"
+                                        className="btn btn-danger fw-bold px-4 py-2 shadow-lg text-decoration-none"
+                                        style={{
+                                            transition: 'all 0.3s ease',
+                                            display: 'inline-flex',
+                                            alignItems: 'center'
+                                        }}
                                         onMouseEnter={(e) => {
                                             e.currentTarget.style.transform = 'scale(1.05)';
                                             e.currentTarget.style.boxShadow = '0 8px 20px rgba(220, 53, 69, 0.4)';
@@ -556,7 +538,7 @@ const HomePage: React.FC = () => {
                                     >
                                         Xem tất cả nhà hàng
                                         <ChevronRight size={20} className="ms-2"/>
-                                    </Button>
+                                    </Link>
                                 </div>
                             </>
                         )}

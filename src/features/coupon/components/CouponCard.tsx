@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {Badge, Button, Card} from 'react-bootstrap';
 import {Calendar, Edit, Tag, Ticket, Trash2, Users} from 'lucide-react';
 import {Coupon} from '../hooks/useCouponList';
@@ -23,6 +23,9 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                                    onEdit,
                                                    viewMode = 'grid'
                                                }) => {
+    const [isDeleting, setIsDeleting] = useState(false); // THÊM STATE ĐỂ TRACK XÓA
+    const [isPopupOpen, setIsPopupOpen] = useState(false); // THÊM STATE ĐỂ TRACK POPUP
+
     const isExpired = new Date(coupon.validTo) < new Date();
     const isOutOfStock = coupon.usedCount >= coupon.usageLimit;
     const isInactive = !coupon.isActive;
@@ -53,8 +56,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
     const getStatusBadge = () => {
         if (isInactive) return <Badge bg="secondary" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Đã khóa</Badge>;
         if (isExpired) return <Badge bg="danger" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Hết hạn</Badge>;
-        if (isOutOfStock) return <Badge bg="warning" text="dark" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Hết
-            lượt</Badge>;
+        if (isOutOfStock) return <Badge bg="warning" text="dark" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Hết lượt</Badge>;
         return <Badge bg="success" className="py-1 px-2" style={{fontSize: '0.7rem'}}>Còn hiệu lực</Badge>;
     };
 
@@ -67,6 +69,11 @@ const CouponCard: React.FC<CouponCardProps> = ({
 
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
+
+        // NGĂN MỞ POPUP NẾU ĐÃ CÓ POPUP ĐANG MỞ
+        if (isPopupOpen || isDeleting) return;
+
+        setIsPopupOpen(true); // ĐÁNH DẤU POPUP ĐANG MỞ
 
         toast.custom((t) => (
             <div
@@ -103,18 +110,29 @@ const CouponCard: React.FC<CouponCardProps> = ({
                         size="sm"
                         style={{borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px'}}
                         onClick={() => {
+                            setIsDeleting(true); // ĐÁNH DẤU ĐANG XÓA
                             onDelete?.(coupon.id);
                             toast.dismiss(t.id);
+                            // Reset sau 1s để tránh click spam
+                            setTimeout(() => {
+                                setIsDeleting(false);
+                                setIsPopupOpen(false);
+                            }, 1000);
                         }}
+                        disabled={isDeleting}
                     >
-                        Xóa
+                        {isDeleting ? 'Đang xóa...' : 'Xóa'}
                     </Button>
                     <Button
                         className="flex-grow-1"
                         variant="light"
                         size="sm"
                         style={{borderRadius: '6px', fontSize: '0.8rem', padding: '6px 12px'}}
-                        onClick={() => toast.dismiss(t.id)}
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            setIsPopupOpen(false); // RESET STATE KHI HỦY
+                        }}
+                        disabled={isDeleting}
                     >
                         Hủy
                     </Button>
@@ -244,7 +262,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                     className="d-flex align-items-center justify-content-center"
                                     style={{fontSize: '0.75rem', padding: '5px 10px', width: '38px', height: '32px'}}
                                     onClick={!isDisabled ? () => onEdit?.(coupon) : undefined}
-                                    disabled={isDisabled}
+                                    disabled={isDisabled || isDeleting || isPopupOpen}
                                 >
                                     <Edit size={14}/>
                                 </Button>
@@ -254,7 +272,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                     className="d-flex align-items-center justify-content-center"
                                     style={{fontSize: '0.75rem', padding: '5px 10px', width: '38px', height: '32px'}}
                                     onClick={!isDisabled ? handleDeleteClick : undefined}
-                                    disabled={isDisabled}
+                                    disabled={isDisabled || isDeleting || isPopupOpen}
                                 >
                                     <Trash2 size={14}/>
                                 </Button>
@@ -380,6 +398,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                 className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
                                 style={{fontSize: '0.75rem', padding: '4px 8px'}}
                                 onClick={!isDisabled ? () => onEdit?.(coupon) : undefined}
+                                disabled={isDisabled || isDeleting || isPopupOpen}
                             >
                                 <Edit size={12}/>Sửa
                             </Button>
@@ -389,6 +408,7 @@ const CouponCard: React.FC<CouponCardProps> = ({
                                 className="flex-grow-1 d-flex align-items-center justify-content-center gap-1"
                                 style={{fontSize: '0.75rem', padding: '4px 8px'}}
                                 onClick={!isDisabled ? handleDeleteClick : undefined}
+                                disabled={isDisabled || isDeleting || isPopupOpen}
                             >
                                 <Trash2 size={12}/> Xóa
                             </Button>

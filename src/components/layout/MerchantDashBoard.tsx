@@ -632,10 +632,6 @@ const MerchantDashboardBootstrap: React.FC = () => {
 
                         {activeView === 'orders' && <OrderStatisticsCard/>}
 
-                        <div className="bg-light rounded-3 p-3 shadow-sm">
-                            <h6 className="fw-bold mb-2">💡 Mẹo hay</h6>
-                            <p className="small text-muted mb-0">Món ăn có ảnh đẹp sẽ thu hút khách hàng hơn!</p>
-                        </div>
                     </div>
 
                     <div className="col-lg-9">

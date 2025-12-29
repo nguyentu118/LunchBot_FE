@@ -4,6 +4,7 @@ import { getTopDiscountedDishes } from './services/DishService';
 import { DishDiscount } from './types/DishDiscount';
 import DiscountDishCard from './DiscountDishCard';
 import {ChevronRight, Zap} from "lucide-react";
+import {Link} from "react-router-dom";
 
 const TopDiscountsSection: React.FC = () => {
     const [dishes, setDishes] = useState<DishDiscount[]>([]);
@@ -75,10 +76,12 @@ const TopDiscountsSection: React.FC = () => {
 
             {/* Hiển thị chỉ 8 món, nếu muốn xem thêm có thể thêm Button */}
             <div className="text-center mt-3">
-                <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg">
-                    Xem thêm các món ưu đãi
-                    <ChevronRight size={20} className="ms-2"/>
-                </Button>
+                <Link to="/discount" style={{ textDecoration: 'none' }}>
+                    <Button variant="danger" className="fw-bold px-4 py-2 shadow-lg d-inline-flex align-items-center">
+                        Xem thêm các món ưu đãi
+                        <ChevronRight size={20} className="ms-2"/>
+                    </Button>
+                </Link>
             </div>
         </Container>
     );

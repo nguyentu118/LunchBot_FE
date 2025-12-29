@@ -23,7 +23,6 @@ const DriverListPage: React.FC = () => {
         setIsLoading(true);
         try {
             const data = await getAllShippingPartners();
-            console.log("Fetched data length:", data.length);
             setDrivers(data);
         } catch (error) {
             console.error("Lỗi khi tải danh sách đối tác", error);
@@ -119,7 +118,6 @@ const DriverListPage: React.FC = () => {
         }
     };
 
-    console.log("Render with drivers.length:", drivers.length);
 
     return (
         <div className="driver-management p-3">
