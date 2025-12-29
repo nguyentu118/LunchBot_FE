@@ -11,7 +11,8 @@ export const ROUTES = {
         REPORTS: '/admin/reports',
         SETTINGS: '/admin/settings',
         RECONCILIATION: '/admin/reconciliation',
-        PARTNER_REQUESTS: '/admin/merchants/partner-requests'
+        PARTNER_REQUESTS: '/admin/merchants/partner-requests',
+        WITHDRAWALS: '/admin/withdrawals',
     },
 
     AUTH: {
@@ -23,6 +24,7 @@ export const ROUTES = {
     MERCHANTS: {
         PROFILE_UPDATE: 'merchant/update',
         DASHBOARD: 'merchant/dashboard',
+        WALLET: 'merchant/wallet',
     },
 
     USER: {

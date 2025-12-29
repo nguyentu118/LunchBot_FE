@@ -3,7 +3,8 @@ import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import { Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
 import {
     BarChart3,
-    ClipboardCheck, Crown,
+    Bell,
+    ClipboardCheck, Crown, DollarSign,
     Home,
     Menu,
     Moon,
@@ -35,6 +36,7 @@ export const AdminLayout: React.FC = () => {
         {id: 'dashboard', label: 'Dashboard', icon: Home, path: ROUTES.ADMIN.DASHBOARD},
         {id: 'users', label: 'Quản lý User', icon: Users, path: '/admin/users'},
         {id: 'merchants', label: 'Quản lý Merchant', icon: Store, path: ROUTES.ADMIN.MERCHANTS},
+        {id: 'drivers', label: 'Quản lý Tài xế', icon: Truck, path: '/admin/drivers'},
         {
             id: 'reconciliation',
             label: 'Đối soát doanh thu',
@@ -47,7 +49,12 @@ export const AdminLayout: React.FC = () => {
             icon: Crown,
             path: ROUTES.ADMIN.PARTNER_REQUESTS
         },
-        {id: 'drivers', label: 'Quản lý Tài xế', icon: Truck, path: '/admin/drivers'},
+        {
+            id: 'withdrawals',
+            label: 'Quản lý Rút tiền',
+            icon: DollarSign,
+            path: ROUTES.ADMIN.WITHDRAWALS
+        },
         {id: 'orders', label: 'Đơn hàng', icon: Package, path: '/admin/orders'},
         {id: 'reports', label: 'Báo cáo', icon: BarChart3, path: '/admin/reports'},
         {id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings'},

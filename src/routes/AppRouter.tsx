@@ -41,6 +41,8 @@ import FavoriteDishesPage from "../features/favorite/FavoriteDishesPage.tsx";
 import AdminReconciliationPage from "../features/admin/reconciliation/AdminReconciliationPage.tsx";
 import PartnerRequestsPage from "../features/admin/merchants/pages/PartnerRequestsPage.tsx";
 import SepayPaymentPage from "../features/checkout-card/components/SepayPaymentPage.tsx";
+import WalletPage from "../features/financial/components/WalletPage.tsx";
+import AdminWithdrawalPage from "../features/admin/financial/components/AdminWithdrawalPage.tsx";
 import MerchantsPage from "../features/merchants/MerchantsPage.tsx";
 import PromotionsPage from "../features/coupon/components/PromotionsPage.tsx";
 import AllSuggestedPage from "../features/dish/pages/AllSuggestedPage.tsx";
@@ -152,7 +154,6 @@ const router = createBrowserRouter([
                 path: 'merchants/:merchantId', // Đường dẫn: /admin/merchants/123
                 element: <MerchantDetailPage/>,
             },
-            // Các route admin khác
             {
                 path: 'drivers',
                 element: <DriverListPage/>,
@@ -160,6 +161,10 @@ const router = createBrowserRouter([
             {
                 path: 'drivers/:driverId',
                 element: <DriverList/>,
+            },
+            {
+                path: 'withdrawals', // /admin/withdrawals
+                element: <AdminWithdrawalPage />
             },
             {
                 path: 'orders',
@@ -183,7 +188,6 @@ const router = createBrowserRouter([
             },
         ],
     },
-    // AppRouter.tsx - Thêm routes mới cho merchant
     {
         path: '/merchant',
         element: <ProtectedRoute requiredRole="MERCHANT">
@@ -209,6 +213,10 @@ const router = createBrowserRouter([
             {
                 path: 'coupons',
                 element: <CouponsPage />
+            },
+            {
+                path: 'wallet',
+                element: <WalletPage />
             },
             {
                 path: 'analytics',
