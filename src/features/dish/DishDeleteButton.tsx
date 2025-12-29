@@ -24,6 +24,7 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
                                                                className = ""
                                                            }) => {
     const [loading, setLoading] = useState<boolean>(false);
+    const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false); // THÊM STATE ĐỂ TRACK POPUP
     const navigate = useNavigate();
 
     // 1. Logic Xóa món ăn (Thực thi API)
@@ -46,18 +47,12 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
         } catch (err) {
             console.error("Lỗi khi xóa món ăn:", err);
 
-            // Ép kiểu lỗi sang AxiosError để lấy data từ response
             const error = err as AxiosError<ErrorResponse>;
-
-            // Lấy thông báo lỗi từ Backend (trường "error" mà ta đã map trong Controller)
             const serverErrorMessage = error.response?.data?.error;
-
-            // Fallback: Nếu không có message từ server thì dùng message mặc định
             const displayMessage = serverErrorMessage || "Không thể xóa món ăn này. Vui lòng thử lại.";
 
-            // Hiển thị Toast Lỗi
             toast.error(displayMessage, {
-                duration: 5000, // Hiện lâu hơn chút để user kịp đọc
+                duration: 5000,
                 style: {
                     border: '1px solid #ff4b4b',
                     padding: '16px',
@@ -72,11 +67,17 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
 
         } finally {
             setLoading(false);
+            setIsPopupOpen(false); // RESET STATE KHI HOÀN THÀNH
         }
     }, [dishId, dishName, onDeleteSuccess, navigate]);
 
-    // 2. Hàm kích hoạt hộp thoại xác nhận (Sử dụng toast.custom)
+    // 2. Hàm kích hoạt hộp thoại xác nhận
     const handleConfirmOpen = () => {
+        // NGĂN MỞ POPUP NẾU ĐÃ CÓ POPUP ĐANG MỞ
+        if (isPopupOpen) return;
+
+        setIsPopupOpen(true); // ĐÁNH DẤU POPUP ĐANG MỞ
+
         toast((t) => (
             <div
                 className="bg-white rounded-3 shadow-lg p-4 border border-danger"
@@ -104,15 +105,12 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-
-                    {/* SỬA ĐỔI CHÍNH: Nút XÁC NHẬN XÓA được đặt trước nút HỦY BỎ */}
-
-                    {/* 1. Nút XÁC NHẬN XÓA (Nằm bên trái Hủy bỏ, nhưng vẫn ở phía phải của popup) */}
+                    {/* Nút XÁC NHẬN XÓA */}
                     <button
                         className="btn btn-danger px-4 d-flex align-items-center gap-2"
                         onClick={() => {
-                            toast.dismiss(t.id); // Đóng toast xác nhận
-                            executeDelete();      // Thực thi hàm xóa (API call)
+                            toast.dismiss(t.id);
+                            executeDelete();
                         }}
                         disabled={loading}
                     >
@@ -129,10 +127,13 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
                         )}
                     </button>
 
-                    {/* 2. Nút HỦY BỎ (Nằm ngoài cùng bên phải) */}
+                    {/* Nút HỦY BỎ */}
                     <button
                         className="btn btn-light border px-4"
-                        onClick={() => toast.dismiss(t.id)}
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            setIsPopupOpen(false); // RESET STATE KHI HỦY
+                        }}
                         disabled={loading}
                     >
                         Hủy bỏ
@@ -152,7 +153,7 @@ const DishDeleteButton: React.FC<DishDeleteButtonProps> = ({
     return (
         <button
             onClick={handleConfirmOpen}
-            disabled={loading}
+            disabled={loading || isPopupOpen} // DISABLE NẾU ĐANG LOADING HOẶC POPUP ĐANG MỞ
             className={`btn btn-outline-danger d-flex align-items-center gap-2 ${className}`}
         >
             {loading ? (

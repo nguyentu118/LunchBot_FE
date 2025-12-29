@@ -2,9 +2,9 @@
 // Trang thanh toán SePay - Hiển thị QR Code và tự động check payment
 
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Spinner, Button, Alert, Badge } from 'react-bootstrap';
+import { Container, Card, Spinner, Button, Alert } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, Copy, RefreshCw, ArrowLeft, Clock } from 'lucide-react';
+import { CheckCircle, Copy, RefreshCw, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { paymentService, SepayPaymentResponse } from '../services/paymentService';
 
@@ -207,20 +207,11 @@ const SepayPaymentPage: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* Auto-pay countdown */}
-                                {paymentData.mode === 'MOCK' && autoPayCountdown > 0 && (
-                                    <Alert variant="success" className="mt-3">
-                                        <Clock size={20} className="me-2" />
-                                        <strong>🎭 Chế độ Demo:</strong> Tự động thanh toán sau{' '}
-                                        <Badge bg="danger">{autoPayCountdown}s</Badge>
-                                    </Alert>
-                                )}
 
                                 {/* Checking status */}
                                 {checking && (
                                     <Alert variant="info" className="mt-3 mb-0">
                                         <Spinner animation="border" size="sm" className="me-2" />
-                                        Đang kiểm tra thanh toán... (Lần {checkCount})
                                     </Alert>
                                 )}
 
