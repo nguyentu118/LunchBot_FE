@@ -1,10 +1,9 @@
 // src/features/payment/pages/SepayPaymentPage.tsx
-// Trang thanh toán SePay - Hiển thị QR Code và tự động check payment
 
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Spinner, Button, Alert, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Container, Card, Spinner, Button, Alert, Badge, Row, Col } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, Copy, RefreshCw, ArrowLeft, Clock } from 'lucide-react';
+import { CheckCircle, Copy, ArrowLeft, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { paymentService, SepayPaymentResponse } from '../services/paymentService';
 
@@ -12,333 +11,188 @@ const SepayPaymentPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Lấy payment data từ state (được truyền từ CheckoutPage)
+    // 1. Lấy dữ liệu thanh toán được truyền từ trang Checkout
     const paymentData = location.state?.paymentData as SepayPaymentResponse;
 
-    const [checking, setChecking] = useState(false);
-    const [paid, setPaid] = useState(false);
-    const [countdown, setCountdown] = useState(900); // 15 phút = 900 giây
-    const [autoPayCountdown, setAutoPayCountdown] = useState(10); // Countdown 10s
-    const [orderId, setOrderId] = useState<number | null>(null);
-    const [orderNumber, setOrderNumber] = useState<string>('');
-    const [checkCount, setCheckCount] = useState(0);
+    const [isPaid, setIsPaid] = useState(false);
 
-    // Nếu không có payment data, redirect về cart
+    // 👇 ĐÃ XÓA checkCount VÌ KHÔNG DÙNG
+
+    // Dùng Ref để giữ interval ID giúp clear sạch sẽ khi unmount
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 2. Validate dữ liệu: Nếu không có data thì đá về trang chủ
     useEffect(() => {
         if (!paymentData) {
-            toast.error('Không tìm thấy thông tin thanh toán');
+            toast.error("Không tìm thấy thông tin thanh toán");
             navigate('/cart');
-        } else {
         }
     }, [paymentData, navigate]);
 
-    // Auto check payment mỗi 3 giây
+    // 3. Logic Polling: Kiểm tra trạng thái thanh toán mỗi 2 giây
     useEffect(() => {
-        if (paymentData && !paid) {
-            const interval = setInterval(() => {
-                checkPaymentStatus();
-            }, 3000); // 3 giây
+        if (!paymentData || isPaid) return;
 
-            return () => clearInterval(interval);
-        }
-    }, [paymentData, paid]);
+        const checkPaymentStatus = async () => {
+            try {
+                // Gọi API check xem đơn hàng đã PAID chưa
+                const response = await paymentService.checkSepayPayment({
+                    txnRef: paymentData.txnRef,
+                    amount: paymentData.amount
+                });
 
-    // Countdown timer (15 phút)
-    useEffect(() => {
-        if (paymentData && !paid && countdown > 0) {
-            const timer = setTimeout(() => {
-                setCountdown(countdown - 1);
-            }, 1000);
+                // 👇 ĐÃ XÓA setCheckCount
 
-            return () => clearTimeout(timer);
-        }
+                // Nếu Backend báo đã thanh toán
+                if (response.paid || response.success) {
+                    setIsPaid(true);
+                    toast.success("Thanh toán thành công!");
 
-        // Hết thời gian
-        if (countdown === 0 && !paid) {
-            toast.error('Hết thời gian thanh toán');
-            navigate('/cart');
-        }
-    }, [countdown, paid, paymentData]);
+                    // Dừng polling ngay lập tức
+                    if (intervalRef.current) clearInterval(intervalRef.current);
 
-    // Auto-pay countdown (chỉ cho MOCK mode)
-    useEffect(() => {
-        if (paymentData?.mode === 'MOCK' && !paid && autoPayCountdown > 0) {
-            const timer = setTimeout(() => {
-                setAutoPayCountdown(autoPayCountdown - 1);
-            }, 1000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [autoPayCountdown, paid, paymentData]);
-
-    const checkPaymentStatus = async () => {
-        if (checking || !paymentData) return;
-
-        setChecking(true);
-        const currentCheck = checkCount + 1;
-        setCheckCount(currentCheck);
-
-        console.log(`🔍 [Check #${currentCheck}] Checking payment...`, {
-            txnRef: paymentData.txnRef,
-            amount: paymentData.amount
-        });
-
-        try {
-            const response = await paymentService.checkSepayPayment({
-                txnRef: paymentData.txnRef,
-                amount: paymentData.amount
-            });
-
-
-            if (response.paid) {
-                setPaid(true);
-                setOrderId(response.orderId || null);
-                setOrderNumber(response.orderNumber || '');
-
-                toast.success('✅ Thanh toán thành công!');
-
-                // Clear cart
-                window.dispatchEvent(new Event('cartUpdated'));
-
-                // Redirect sau 2 giây
-                setTimeout(() => {
-                    if (response.orderId) {
-                        navigate(`/orders/${response.orderId}`);
-                    } else {
-                        navigate('/orders');
-                    }
-                }, 2000);
-            } else {
-                console.log(`⏳ [Check #${currentCheck}] Payment pending...`);
+                    // Chờ 1.5s để người dùng nhìn thấy thông báo rồi chuyển trang
+                    setTimeout(() => {
+                        navigate('/orders', {
+                            state: { orderId: response.orderId || paymentData.txnRef }
+                        });
+                    }, 10000);
+                }
+            } catch (error) {
+                console.error("Lỗi khi check thanh toán", error);
             }
-        } catch (err: any) {
-            console.error(`❌ [Check #${currentCheck}] Error:`, err);
-            // Không hiển thị toast error để tránh spam
-        } finally {
-            setChecking(false);
-        }
-    };
+        };
 
+        // Bắt đầu interval
+        intervalRef.current = setInterval(checkPaymentStatus, 2000); // 2 giây check 1 lần
+
+        // Cleanup khi component unmount
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, [paymentData, isPaid, navigate]);
+
+    // Helper: Copy text
     const copyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
-        toast.success(`Đã copy ${label}!`);
+        toast.success(`Đã sao chép ${label}`);
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    if (!paymentData) {
-        return null;
-    }
-
-    if (paid) {
-        return (
-            <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-                <Container>
-                    <Card className="text-center shadow-lg border-0">
-                        <Card.Body className="p-5">
-                            <CheckCircle size={80} className="text-success mb-4" />
-                            <h2 className="fw-bold text-success mb-3">Thanh toán thành công!</h2>
-                            <p className="text-muted mb-2">
-                                Đơn hàng của bạn đã được tạo thành công.
-                            </p>
-                            {orderNumber && (
-                                <p className="text-muted mb-4">
-                                    Mã đơn hàng: <strong className="text-primary">{orderNumber}</strong>
-                                </p>
-                            )}
-                            <Spinner animation="border" variant="primary" size="sm" className="me-2" />
-                            <span className="text-muted">Đang chuyển đến trang đơn hàng...</span>
-                        </Card.Body>
-                    </Card>
-                </Container>
-            </div>
-        );
-    }
+    if (!paymentData) return <div className="p-5 text-center"><Spinner animation="border" /></div>;
 
     return (
-        <div className="min-vh-100 bg-light py-5">
-            <Container>
-                {/* Header */}
-                <div className="mb-4">
-                    <Button
-                        variant="link"
-                        className="text-decoration-none p-0 mb-3"
-                        onClick={() => navigate('/cart')}
-                    >
-                        <ArrowLeft size={20} className="me-2" />
-                        Quay lại giỏ hàng
-                    </Button>
+        <div className="bg-light min-vh-100 py-4">
+            <Container style={{ maxWidth: '800px' }}>
+                <Button variant="link" className="text-decoration-none mb-3 p-0 text-muted" onClick={() => navigate('/checkout')}>
+                    <ArrowLeft size={18} className="me-1" /> Quay lại
+                </Button>
 
-                    <div className="d-flex justify-content-between align-items-center">
-                        <h2 className="fw-bold mb-0">Thanh toán đơn hàng</h2>
-                        <div className="badge bg-warning text-dark fs-6">
-                            ⏰ {formatTime(countdown)}
-                        </div>
-                    </div>
+                <div className="text-center mb-4">
+                    <h3 className="fw-bold text-primary">Thanh toán qua SePay</h3>
+                    <p className="text-muted">Vui lòng quét mã QR hoặc chuyển khoản theo thông tin bên dưới</p>
                 </div>
 
-                <div className="row">
-                    {/* QR Code Section */}
-                    <div className="col-lg-6 mb-4">
-                        <Card className="shadow-sm border-0 h-100">
-                            <Card.Body className="p-4">
-                                <h5 className="fw-bold mb-3">Quét mã QR để thanh toán</h5>
-
-                                <div className="position-relative">
-                                    <div className="text-center bg-light p-4 rounded">
-                                        <img
-                                            src={paymentData.qrCodeUrl}
-                                            alt="QR Code"
-                                            className="img-fluid rounded"
-                                            style={{ maxWidth: '320px' }}
-                                        />
+                <Row>
+                    {/* Cột Trái: QR Code */}
+                    <Col md={5} className="mb-4">
+                        <Card className="border-0 shadow-sm text-center h-100">
+                            <Card.Body className="d-flex flex-column justify-content-center align-items-center">
+                                {isPaid ? (
+                                    <div className="py-5">
+                                        <CheckCircle size={80} className="text-success mb-3 animate-bounce" />
+                                        <h5 className="text-success fw-bold">Thanh toán thành công!</h5>
+                                        <p className="text-muted small">Đang chuyển hướng...</p>
                                     </div>
-
-                                    {checking && (
-                                        <div className="position-absolute top-50 start-50 translate-middle">
-                                            <div className="bg-white rounded-circle p-3 shadow">
-                                                <Spinner animation="border" variant="primary" />
-                                            </div>
+                                ) : (
+                                    <>
+                                        <div className="qr-container p-2 border rounded mb-3 bg-white">
+                                            {/* Hiển thị ảnh QR từ SePay */}
+                                            <img
+                                                src={paymentData.qrCodeUrl}
+                                                alt="QR Code"
+                                                className="img-fluid"
+                                                style={{ maxWidth: '250px' }}
+                                            />
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Auto-pay countdown */}
-                                {paymentData.mode === 'MOCK' && autoPayCountdown > 0 && (
-                                    <Alert variant="success" className="mt-3">
-                                        <Clock size={20} className="me-2" />
-                                        <strong>🎭 Chế độ Demo:</strong> Tự động thanh toán sau{' '}
-                                        <Badge bg="danger">{autoPayCountdown}s</Badge>
-                                    </Alert>
+                                        <div className="d-flex align-items-center gap-2 text-primary">
+                                            <Spinner animation="border" size="sm" />
+                                            <small className="fw-bold">Đang chờ thanh toán...</small>
+                                        </div>
+                                        <small className="text-muted mt-2 d-block">
+                                            Hệ thống tự động cập nhật sau vài giây
+                                        </small>
+                                    </>
                                 )}
-
-                                {/* Checking status */}
-                                {checking && (
-                                    <Alert variant="info" className="mt-3 mb-0">
-                                        <Spinner animation="border" size="sm" className="me-2" />
-                                        Đang kiểm tra thanh toán... (Lần {checkCount})
-                                    </Alert>
-                                )}
-
-                                <div className="mt-3">
-                                    <Button
-                                        variant="outline-primary"
-                                        className="w-100"
-                                        onClick={checkPaymentStatus}
-                                        disabled={checking}
-                                    >
-                                        <RefreshCw size={18} className="me-2" />
-                                        Kiểm tra thanh toán ngay
-                                    </Button>
-                                </div>
                             </Card.Body>
                         </Card>
-                    </div>
+                    </Col>
 
-                    {/* Payment Info Section */}
-                    <div className="col-lg-6 mb-4">
-                        <Card className="shadow-sm border-0 mb-3">
+                    {/* Cột Phải: Thông tin chuyển khoản */}
+                    <Col md={7}>
+                        <Card className="border-0 shadow-sm h-100">
                             <Card.Body className="p-4">
-                                <h5 className="fw-bold mb-3">Thông tin chuyển khoản</h5>
+                                <h5 className="fw-bold mb-4">Thông tin chuyển khoản</h5>
 
                                 <div className="mb-3">
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <span className="text-muted">Ngân hàng:</span>
-                                        <strong>{paymentData.bankName}</strong>
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <span className="text-muted">Số tài khoản:</span>
-                                        <div className="d-flex align-items-center gap-2">
-                                            <strong>{paymentData.accountNumber}</strong>
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="p-0"
-                                                onClick={() => copyToClipboard(paymentData.accountNumber, 'số tài khoản')}
-                                            >
-                                                <Copy size={16} />
-                                            </Button>
-                                        </div>
+                                    <label className="text-muted small">Ngân hàng</label>
+                                    <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                        <span className="fw-bold">{paymentData.bankName}</span>
+                                        <Badge bg="primary">QR 24/7</Badge>
                                     </div>
                                 </div>
 
                                 <div className="mb-3">
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <span className="text-muted">Tên tài khoản:</span>
-                                        <strong>{paymentData.accountName}</strong>
+                                    <label className="text-muted small">Số tài khoản</label>
+                                    <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                        <span className="fw-bold fs-5 text-dark">{paymentData.accountNumber}</span>
+                                        <Button variant="light" size="sm" onClick={() => copyToClipboard(paymentData.accountNumber, "Số tài khoản")}>
+                                            <Copy size={16} className="text-primary"/>
+                                        </Button>
                                     </div>
                                 </div>
 
-                                <hr />
-
-                                <div className="mb-3 bg-warning bg-opacity-10 p-3 rounded">
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <span className="text-muted">Số tiền:</span>
-                                        <div className="d-flex align-items-center gap-2">
-                                            <strong className="text-danger fs-5">
-                                                {paymentData.amount.toLocaleString('vi-VN')} ₫
-                                            </strong>
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="p-0"
-                                                onClick={() => copyToClipboard(paymentData.amount.toString(), 'số tiền')}
-                                            >
-                                                <Copy size={16} />
-                                            </Button>
-                                        </div>
+                                <div className="mb-3">
+                                    <label className="text-muted small">Chủ tài khoản</label>
+                                    <div className="p-2 bg-light rounded fw-bold text-uppercase">
+                                        {paymentData.accountName}
                                     </div>
                                 </div>
 
-                                <div className="bg-primary bg-opacity-10 p-3 rounded">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <span className="text-muted">Nội dung CK:</span>
-                                        <div className="d-flex align-items-center gap-2">
-                                            <code className="bg-white px-2 py-1 rounded">
-                                                {paymentData.content}
-                                            </code>
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="p-0"
-                                                onClick={() => copyToClipboard(paymentData.content, 'nội dung')}
-                                            >
-                                                <Copy size={16} />
-                                            </Button>
-                                        </div>
+                                <div className="mb-3">
+                                    <label className="text-muted small">Số tiền</label>
+                                    <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                        <span className="fw-bold fs-5 text-danger">
+                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(paymentData.amount)}
+                                        </span>
+                                        <Button variant="light" size="sm" onClick={() => copyToClipboard(paymentData.amount.toString(), "Số tiền")}>
+                                            <Copy size={16} className="text-primary"/>
+                                        </Button>
                                     </div>
                                 </div>
-                            </Card.Body>
-                        </Card>
 
-                        <Card className="shadow-sm border-0">
-                            <Card.Body className="p-4">
-                                <h6 className="fw-bold mb-3">Hướng dẫn thanh toán</h6>
-                                <ol className="mb-0 ps-3">
-                                    <li className="mb-2">Mở ứng dụng ngân hàng trên điện thoại</li>
-                                    <li className="mb-2">Quét mã QR hoặc chuyển khoản thủ công</li>
-                                    <li className="mb-2">
-                                        <strong className="text-danger">Nhập CHÍNH XÁC nội dung chuyển khoản</strong>
-                                    </li>
-                                    <li className="mb-0">Xác nhận thanh toán</li>
-                                </ol>
-
-                                <Alert variant="warning" className="mt-3 mb-0">
-                                    <small>
-                                        ⚠️ <strong>Lưu ý:</strong> Vui lòng nhập <strong>ĐÚNG NỘI DUNG</strong> chuyển khoản để đơn hàng được xác nhận tự động.
+                                <div className="mb-4">
+                                    <label className="text-muted small">Nội dung chuyển khoản <span className="text-danger">*</span></label>
+                                    <div className="d-flex justify-content-between align-items-center p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                                        <span className="fw-bold text-dark">{paymentData.content}</span>
+                                        <Button variant="warning" size="sm" onClick={() => copyToClipboard(paymentData.content, "Nội dung")}>
+                                            <Copy size={16} className="text-dark"/>
+                                        </Button>
+                                    </div>
+                                    <small className="text-danger mt-1 d-block">
+                                        * Vui lòng nhập chính xác nội dung này để được tự động xác nhận.
                                     </small>
-                                </Alert>
+                                </div>
+
+                                {!isPaid && (
+                                    <Alert variant="info" className="mb-0 small">
+                                        <QrCode size={16} className="me-2" />
+                                        Mẹo: Bạn có thể dùng tính năng "Quét QR" trong app ngân hàng để không phải nhập tay.
+                                    </Alert>
+                                )}
                             </Card.Body>
                         </Card>
-                    </div>
-                </div>
+                    </Col>
+                </Row>
             </Container>
         </div>
     );

@@ -1,6 +1,6 @@
 import axiosInstance from "../../../../config/axiosConfig";
 
-// Copy Type từ Merchant service sang hoặc import nếu có file shared types
+// Copy Type từ Merchant services sang hoặc import nếu có file shared types
 export interface AdminReconciliationRequestResponse {
     id: number;
     merchantId: number;

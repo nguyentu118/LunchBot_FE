@@ -53,7 +53,9 @@ export interface MerchantProfileResponse {
     address: string;
     phone: string;
     avatarUrl: string;
-    // --- THÊM 2 TRƯỜNG MỚI ---
     partnerStatus: PartnerStatus;
     currentMonthRevenue: number;
+    currentBalance: number;
+    revenueTotal: number
+
 }

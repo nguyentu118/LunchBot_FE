@@ -10,7 +10,7 @@ import {
     DollarSign,
     Settings,
     Camera,
-    User, Loader
+    User, Loader, Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axiosInstance from '../../config/axiosConfig';
@@ -223,6 +223,8 @@ const MerchantLayout: React.FC = () => {
                                 <SidebarLink to="/merchant/menu" icon={UtensilsCrossed} text="Món ăn" />
 
                                 <SidebarLink to="/merchant/coupons" icon={Ticket} text="Mã giảm giá" />
+
+                                <SidebarLink to="/merchant/wallet" icon={Wallet} text="Ví tiền & Tài chính" />
 
                                 {/* Thống kê - Dropdown style */}
                                 <div className="mt-2 mb-1">

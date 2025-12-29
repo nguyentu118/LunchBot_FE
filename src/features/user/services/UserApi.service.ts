@@ -1,4 +1,4 @@
-// src/features/user/services/UserApi.service.ts
+// src/features/user/services/UserApi.services.ts
 
 import axiosInstance from '../../../config/axiosConfig';
 import { UserMeDTO } from '../types/user.type';

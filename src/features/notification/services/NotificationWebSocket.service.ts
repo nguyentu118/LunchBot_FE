@@ -1,4 +1,4 @@
-// src/features/notification/services/NotificationWebSocket.service.ts
+// src/features/notification/services/NotificationWebSocket.services.ts
 
 import { Client, IMessage } from '@stomp/stompjs';
 import { INotification } from '../types/notification.types';

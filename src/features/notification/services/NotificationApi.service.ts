@@ -1,4 +1,4 @@
-// src/features/notification/services/NotificationApi.service.ts
+// src/features/notification/services/NotificationApi.services.ts
 
 import axiosInstance from '../../../config/axiosConfig';
 import { INotification } from '../types/notification.types';

@@ -45,7 +45,7 @@ export const GuestCartHelper = {
         return cart.reduce((total, item) => total + (Number(item.quantity) || 0), 0);
     },
 
-    // --- 2. THÊM HÀM NÀY: Để CartApi.service.ts lấy dữ liệu sync ---
+    // --- 2. THÊM HÀM NÀY: Để CartApi.services.ts lấy dữ liệu sync ---
     prepareForSync: (): { dishId: number; quantity: number }[] => {
         const cart = GuestCartHelper.getCart();
         return cart.map(item => ({
