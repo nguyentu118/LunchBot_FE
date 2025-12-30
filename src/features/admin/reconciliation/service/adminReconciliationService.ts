@@ -27,14 +27,14 @@ class AdminReconciliationService {
 
     // 1. Lấy danh sách (có phân trang & lọc status)
     async getAllRequests(status?: string, page: number = 0, size: number = 10) {
-        const params: any = { page, size };
+        const params: any = {page, size};
         if (status) params.status = status;
 
         const response = await axiosInstance.get<{
             content: AdminReconciliationRequestResponse[];
             totalPages: number;
             totalElements: number;
-        }>('/admin/reconciliation/requests', { params });
+        }>('/admin/reconciliation/requests', {params});
 
         return response.data;
     }
@@ -55,6 +55,20 @@ class AdminReconciliationService {
         );
         return response.data;
     }
-}
 
+    async downloadClaimFile(requestId: number): Promise<Blob> {
+        try {
+            const response = await axiosInstance.get(
+                `/admin/reconciliation/${requestId}/claim-file/download`,
+                {
+                    responseType: 'blob'
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error downloading claim file:', error);
+            throw error;
+        }
+    }
+}
 export const adminReconciliationService = new AdminReconciliationService();
