@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {Table, Badge, Button, Tabs, Tab, Card, Pagination, Spinner} from 'react-bootstrap';
-import {AlertTriangle, CheckCircle, XCircle} from 'lucide-react';
-import {adminReconciliationService, AdminReconciliationRequestResponse} from './service/adminReconciliationService';
+import {Table, Badge, Button, Tabs, Tab, Card, Pagination, Spinner, Modal} from 'react-bootstrap';
+import {AlertTriangle, CheckCircle, XCircle, Download, Eye} from 'lucide-react';
+import {AdminReconciliationRequestResponse, adminReconciliationService} from './service/adminReconciliationService';
 import toast from 'react-hot-toast';
 
 import { NotificationType } from '../../notification/types/notification.types';
@@ -14,9 +14,16 @@ const AdminReconciliationPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('PENDING');
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+
+    // Toast Reject State
     const [processingId, setProcessingId] = useState<number | null>(null);
 
-    // ✅ Subscribe to notifications
+    // Modal xem chi tiết báo cáo sai sót
+    const [showClaimDetailModal, setShowClaimDetailModal] = useState(false);
+    const [selectedClaim, setSelectedClaim] = useState<AdminReconciliationRequestResponse | null>(null);
+    const [downloadingFile, setDownloadingFile] = useState(false);
+
+    // âœ… Subscribe to notifications
     const userEmail = localStorage.getItem('userEmail') || '';
     const { notifications } = useNotifications(userEmail);
 
@@ -43,7 +50,7 @@ const AdminReconciliationPage: React.FC = () => {
         fetchRequests();
     }, [page, activeTab]);
 
-    // ✅ Auto-refresh khi nhận notification từ Merchant
+    // âœ… Auto-refresh khi nhận notification từ Merchant
     useEffect(() => {
         const reconciliationNotifications = notifications.filter(n =>
             n.type === NotificationType.RECONCILIATION_REQUEST_CREATED ||
@@ -52,9 +59,10 @@ const AdminReconciliationPage: React.FC = () => {
 
         if (reconciliationNotifications.length > 0) {
             fetchRequests();
+
             const latest = reconciliationNotifications[0];
             if (latest.type === NotificationType.RECONCILIATION_REQUEST_CREATED) {
-                toast('💰 Yêu cầu đối soát mới!', { icon: '🔔' });
+                toast('🎯 Yêu cầu đối soát mới!', { icon: '📋' });
             } else {
                 toast('🚨 Báo cáo sai sót mới!', { icon: '⚠️' });
             }
@@ -161,7 +169,6 @@ const AdminReconciliationPage: React.FC = () => {
         });
     };
 
-    // ✅ FIX: Xử lý reject tương tự
     const handleRejectSubmit = async (
         id: number,
         rejectionReason: string,
@@ -274,6 +281,36 @@ const AdminReconciliationPage: React.FC = () => {
         });
     };
 
+    // ===== ĐỀ XUẤT: Xem chi tiết + tải file báo cáo =====
+    const handleViewClaimDetail = (req: AdminReconciliationRequestResponse) => {
+        setSelectedClaim(req);
+        setShowClaimDetailModal(true);
+    };
+
+    const handleDownloadClaimFile = async (requestId: number, merchantName: string, yearMonth: string) => {
+        try {
+            setDownloadingFile(true);
+            // Gọi API để tải file
+            const blob = await adminReconciliationService.downloadClaimFile(requestId);
+
+            // Tạo link download
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `BaoCao_SaiSot_${merchantName}_${yearMonth}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success(' Đã tải file báo cáo thành công!');
+        } catch (error) {
+            toast.error('Lỗi khi tải file báo cáo');
+        } finally {
+            setDownloadingFile(false);
+        }
+    };
+
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(val);
 
@@ -285,17 +322,18 @@ const AdminReconciliationPage: React.FC = () => {
                 <tr>
                     <th>Merchant</th>
                     <th>Tháng</th>
-                    <th className="text-end">Tổng Đơn</th>
+                    <th className="text-end">Tổng đơn</th>
                     <th className="text-end">Thực nhận</th>
                     <th className="text-center">Trạng thái</th>
                     <th>Ghi chú Merchant</th>
+                    <th className="text-center">Báo cáo</th>
                     <th className="text-end">Hành động</th>
                 </tr>
                 </thead>
                 <tbody>
                 {requests.length === 0 ? (
                     <tr>
-                        <td colSpan={7} className="text-center py-4">Không có dữ liệu</td>
+                        <td colSpan={8} className="text-center py-4">Không có dữ liệu</td>
                     </tr>
                 ) : (
                     requests.map(req => (
@@ -331,6 +369,22 @@ const AdminReconciliationPage: React.FC = () => {
                                     </span>
                                 )}
                             </td>
+                            {/* ===== CỘT TẢI FILE BÁNG CÁO ===== */}
+                            <td className="text-center">
+                                {req.status === 'REPORTED' && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline-primary"
+                                        title="Xem chi tiết báo cáo"
+                                        onClick={() => handleViewClaimDetail(req)}
+                                    >
+                                        <Eye size={16} />
+                                    </Button>
+                                )}
+                                {req.status !== 'REPORTED' && (
+                                    <span className="text-muted">-</span>
+                                )}
+                            </td>
                             <td className="text-end">
                                 {(req.status === 'PENDING' || req.status === 'REPORTED') && (
                                     <div className="d-flex justify-content-end gap-2">
@@ -340,6 +394,7 @@ const AdminReconciliationPage: React.FC = () => {
                                             onClick={() => handleApprove(req)}
                                             title="Duyệt"
                                             disabled={processingId !== null}
+                                            style={{opacity: processingId !== null ? 0.5 : 1}}
                                         >
                                             <CheckCircle size={16} />
                                         </Button>
@@ -349,6 +404,7 @@ const AdminReconciliationPage: React.FC = () => {
                                             onClick={() => openRejectModal(req.id)}
                                             title="Từ chối"
                                             disabled={processingId !== null}
+                                            style={{opacity: processingId !== null ? 0.5 : 1}}
                                         >
                                             <XCircle size={16} />
                                         </Button>
@@ -404,8 +460,85 @@ const AdminReconciliationPage: React.FC = () => {
                     )}
                 </Card.Body>
             </Card>
+
+            {/* ===== MODAL XEM CHI TIẾT BÁO CÁO SÃI SÓT ===== */}
+            <Modal show={showClaimDetailModal} onHide={() => setShowClaimDetailModal(false)} size="lg" centered>
+                <Modal.Header closeButton className="bg-warning-subtle">
+                    <Modal.Title className="d-flex align-items-center gap-2">
+                        <AlertTriangle size={20} className="text-warning"/>
+                        Chi tiết báo cáo sai sót
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {selectedClaim && (
+                        <div>
+                            <div className="row mb-3">
+                                <div className="col-md-6">
+                                    <h6 className="text-muted small">Nhà hàng</h6>
+                                    <p className="fw-bold">{selectedClaim.merchantName}</p>
+                                </div>
+                                <div className="col-md-6">
+                                    <h6 className="text-muted small">Kỳ báo cáo</h6>
+                                    <p className="fw-bold">{selectedClaim.yearMonth}</p>
+                                </div>
+                            </div>
+
+                            <div className="alert alert-warning small mb-3">
+                                <strong>Lý do báo cáo:</strong>
+                                <p className="mb-0 mt-2">{selectedClaim.merchantNotes}</p>
+                            </div>
+
+                            <div className="row mb-3">
+                                <div className="col-md-6">
+                                    <h6 className="text-muted small">Tổng số đơn</h6>
+                                    <p className="fw-bold">{selectedClaim.totalOrders}</p>
+                                </div>
+                                <div className="col-md-6">
+                                    <h6 className="text-muted small">Doanh thu thực nhận</h6>
+                                    <p className="fw-bold text-success">{formatCurrency(selectedClaim.netRevenue)}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-light p-3 rounded">
+                                <h6 className="mb-2 fw-bold">📎 Tập tin báo cáo đính kèm</h6>
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className="text-muted small">
+                                        BaoCao_DoanhThu_{selectedClaim.yearMonth}.xlsx
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() => handleDownloadClaimFile(
+                                            selectedClaim.id,
+                                            selectedClaim.merchantName,
+                                            selectedClaim.yearMonth
+                                        )}
+                                        disabled={downloadingFile}
+                                    >
+                                        {downloadingFile ? (
+                                            <>
+                                                <Spinner size="sm" animation="border" className="me-2"/>
+                                                Đang tải...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Download size={16} className="me-2"/>
+                                                Tải xuống
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowClaimDetailModal(false)}>
+                        Đóng
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 };
-
 export default AdminReconciliationPage;

@@ -66,3 +66,42 @@ export interface ReconciliationRequestResponse {
     reviewedAt?: string;
     reviewedByName?: string;
 }
+export interface CompletedOrderDTO {
+    orderId: number;
+    orderNumber: string;
+    orderDate: string;
+    completedAt: string;
+    itemsTotal: number;
+    discountAmount: number;
+    revenue: number;
+}
+
+export interface CancelledOrderDTO {
+    orderId: number;
+    orderNumber: string;
+    orderDate: string;
+    cancelledAt: string;
+    cancellationReason: string;
+    cancelledBy: string; // "CUSTOMER" hoặc "MERCHANT"
+}
+
+export interface RevenueReportDTO {
+    merchantId: number;
+    merchantName: string;
+    period: string; // "01/2025"
+    exportedAt: string;
+    totalGrossRevenue: number;
+    totalOrders: number;
+    completedOrders: number;
+    completedOrderDetails: CompletedOrderDTO[];
+    cancelledOrders: number;
+    cancelledOrderDetails: CancelledOrderDTO[];
+    averageOrderValue: number;
+    platformCommissionRate: number;
+    totalPlatformFee: number;
+    netRevenue: number;
+    previousMonthRevenue: number;
+    revenueChange: number;
+    revenueChangePercent: number;
+    revenueChangeStatus: 'UP' | 'DOWN' | 'EQUAL';
+}

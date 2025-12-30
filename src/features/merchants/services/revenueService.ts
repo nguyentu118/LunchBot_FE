@@ -3,7 +3,7 @@ import axiosInstance from "../../../config/axiosConfig.ts";
 import {
     MonthlyRevenueResponse, ReconciliationClaimDTO,
     ReconciliationRequestCreateDTO,
-    ReconciliationRequestResponse
+    ReconciliationRequestResponse, RevenueReportDTO
 } from "../types/revenue.types.ts";
 
 
@@ -83,6 +83,53 @@ class RevenueService {
             return response.data;
         } catch (error) {
             console.error('Error submitting claim:', error);
+            throw error;
+        }
+    }
+    async getDetailedRevenueReport(yearMonth: string): Promise<RevenueReportDTO> {
+        try {
+            const response = await axiosInstance.get<RevenueReportDTO>(
+                '/merchants/revenue-reconciliation/detailed-report',
+                {
+                    params: { yearMonth }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching detailed revenue report:', error);
+            throw error;
+        }
+    }
+
+    async exportRevenueReportToExcel(yearMonth: string): Promise<Blob> {
+        try {
+            const response = await axiosInstance.get(
+                '/merchants/revenue-reconciliation/detailed-report/export',
+                {
+                    params: { yearMonth },
+                    responseType: 'blob'
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error exporting revenue report to Excel:', error);
+            throw error;
+        }
+    }
+    async submitClaimWithFile(formData: FormData): Promise<ReconciliationRequestResponse> {
+        try {
+            const response = await axiosInstance.post<ReconciliationRequestResponse>(
+                '/merchants/revenue-reconciliation/claim-with-file',
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error submitting claim with file:', error);
             throw error;
         }
     }
