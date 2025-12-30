@@ -9,9 +9,10 @@ import {MonthlyRevenueResponse, ReconciliationRequestResponse} from '../types/re
 import { revenueService } from '../services/revenueService';
 import toast from 'react-hot-toast';
 
-// ✅ Import từ shared notification folder
+
 import { NotificationType } from '../../notification/types/notification.types';
 import { useNotifications } from '../../notification/hooks/useNotifications';
+import {ExportRevenueReport} from "./ExportRevenueReport.tsx";
 
 const RevenueReconciliationPage: React.FC = () => {
     // --- STATE ---
@@ -31,6 +32,7 @@ const RevenueReconciliationPage: React.FC = () => {
     const [showClaimModal, setShowClaimModal] = useState(false);
     const [claimReason, setClaimReason] = useState('');
     const [submittingClaim, setSubmittingClaim] = useState(false);
+    const [claimExcelFile, setClaimExcelFile] = useState<File | null>(null);
 
     // ✅ Subscribe to notifications
     const userEmail = localStorage.getItem('userEmail') || '';
@@ -116,14 +118,34 @@ const RevenueReconciliationPage: React.FC = () => {
 
         try {
             setSubmittingClaim(true);
-            await revenueService.submitClaim({
-                yearMonth: selectedMonth,
-                reason: claimReason
-            });
 
-            toast.success(`Đã gửi báo cáo sai sót tháng ${selectedMonth}`);
+            // Nếu chưa có file Excel, tự động download rồi gửi
+            let fileToSend = claimExcelFile;
+
+            if (!fileToSend) {
+                // Auto download file Excel
+                const blob = await revenueService.exportRevenueReportToExcel(selectedMonth);
+                fileToSend = new File(
+                    [blob],
+                    `BaoCao_DoanhThu_${selectedMonth}.xlsx`,
+                    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+                );
+            }
+
+            // Gửi claim kèm file
+            const formData = new FormData();
+            formData.append('yearMonth', selectedMonth);
+            formData.append('reason', claimReason);
+            if (fileToSend) {
+                formData.append('excelFile', fileToSend);
+            }
+
+            await revenueService.submitClaimWithFile(formData);
+
+            toast.success(`Đã gửi báo cáo sai sót tháng ${selectedMonth} kèm file Excel`);
             setShowClaimModal(false);
             setClaimReason('');
+            setClaimExcelFile(null);
             fetchData();
         } catch (error: any) {
             toast.error(error.response?.data?.message || "Lỗi khi gửi báo cáo");
@@ -142,7 +164,7 @@ const RevenueReconciliationPage: React.FC = () => {
                         <MonthSelector selectedMonth={selectedMonth} onChange={setSelectedMonth} />
 
                         {!loading && data && (
-                            <div>
+                            <div className="d-flex flex-column gap-2">
                                 {isSubmitted ? (
                                     <div className="mb-3">
                                         <Alert
@@ -184,7 +206,7 @@ const RevenueReconciliationPage: React.FC = () => {
                                         </Alert>
                                     </div>
                                 ) : (
-                                    <div className="d-flex gap-2">
+                                    <div className="d-flex gap-2 flex-wrap">
                                         <Button
                                             variant="outline-danger"
                                             onClick={() => setShowClaimModal(true)}
@@ -202,6 +224,10 @@ const RevenueReconciliationPage: React.FC = () => {
                                             <Send size={18} className="me-2" />
                                             Xác nhận doanh thu
                                         </Button>
+                                        <ExportRevenueReport
+                                            yearMonth={selectedMonth}
+                                            disabled={data.totalOrders === 0}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -291,11 +317,11 @@ const RevenueReconciliationPage: React.FC = () => {
                         </Alert>
                     )}
                     <Alert variant="warning" className="small">
-                        Lưu ý: Admin sẽ kiểm tra dựa trên thông tin bạn cung cấp.
+                        Lưu ý: Admin sẽ kiểm tra dựa trên thông tin báo cáo bạn cung cấp.
                         Vui lòng ghi rõ mã đơn hàng hoặc số tiền bị sai lệch.
                     </Alert>
 
-                    <Form.Group>
+                    <Form.Group className="mb-3">
                         <Form.Label className="fw-semibold">Mô tả sai sót / Lý do <span className="text-danger">*</span></Form.Label>
                         <Form.Control
                             as="textarea"
@@ -307,15 +333,56 @@ const RevenueReconciliationPage: React.FC = () => {
                             className="border-danger"
                         />
                     </Form.Group>
+
+                    <Form.Group>
+                        <Form.Label className="fw-semibold">Tập tin báo cáo Excel (Tùy chọn)</Form.Label>
+                        <div className="alert alert-info small p-2 mb-2">
+                            💡 Nếu bạn không upload file, hệ thống sẽ tự động gửi kèm báo cáo Excel của tháng này.
+                        </div>
+                        <Form.Control
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={(e) => {
+                                const input = e.target as HTMLInputElement;
+                                const file = input.files?.[0];
+                                if (file) {
+                                    // Kiểm tra file size (tối đa 5MB)
+                                    if (file.size > 5 * 1024 * 1024) {
+                                        toast.error('File quá lớn! Tối đa 5MB');
+                                        return;
+                                    }
+                                    setClaimExcelFile(file);
+                                    toast.success(`✅ Đã chọn file: ${file.name}`);
+                                }
+                            }}
+                        />
+                        {claimExcelFile && (
+                            <small className="text-success d-block mt-2">
+                                ✓ File đã chọn: <strong>{claimExcelFile.name}</strong> ({(claimExcelFile.size / 1024).toFixed(2)} KB)
+                            </small>
+                        )}
+                    </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowClaimModal(false)}>Hủy bỏ</Button>
+                    <Button variant="secondary" onClick={() => {
+                        setShowClaimModal(false);
+                        setClaimExcelFile(null);
+                    }}>
+                        Hủy bỏ
+                    </Button>
                     <Button
                         variant="danger"
                         onClick={handleSubmitClaim}
                         disabled={submittingClaim || !claimReason.trim()}
                     >
-                        {submittingClaim ? <Spinner size="sm" animation="border"/> : 'Gửi báo cáo'}
+                        {submittingClaim ? (
+                            <>
+                                <Spinner size="sm" animation="border" className="me-2"/>
+                                Đang gửi...
+                            </>
+                        ) : (
+                            'Gửi báo cáo'
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>
