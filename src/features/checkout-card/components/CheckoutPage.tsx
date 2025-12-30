@@ -95,31 +95,19 @@ const CheckoutPage: React.FC = () => {
             setIsLoading(true);
             setError('');
 
-            const data = await checkoutService.getCheckoutInfo();
+            // ✅ Truyền selectedDishIds
+            const data = await checkoutService.getCheckoutInfo(selectedDishIds);
 
-            const filteredItems = data.items.filter(item =>
-                selectedDishIds.includes(item.dishId)
-            );
-
-            if (filteredItems.length === 0) {
+            if (data.items.length === 0) {
                 toast.error('Không tìm thấy món đã chọn trong giỏ hàng');
                 navigate('/cart');
                 return;
             }
 
-            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
-            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
-            const totalAmount = itemsTotal + data.serviceFee + data.shippingFee - data.discountAmount;
+            // ✅ Backend đã xử lý tất cả, chỉ set data
+            setCheckoutData(data);
 
-            setCheckoutData({
-                ...data,
-                items: filteredItems,
-                totalItems: totalItems,
-                itemsTotal: itemsTotal,
-                totalAmount: totalAmount
-            });
-
-            // Auto select default address
+            // Auto select default address và tính shipping fee
             if (data.defaultAddressId) {
                 setSelectedAddressId(data.defaultAddressId);
                 await calculateShippingFeeForAddress(data.defaultAddressId);
@@ -312,29 +300,14 @@ const CheckoutPage: React.FC = () => {
     const handleApplyCoupon = async (code: string) => {
         try {
             setIsApplyingCoupon(true);
-            const data = await checkoutService.applyCoupon(code);
+            const data = await checkoutService.applyCoupon(code, selectedDishIds);
 
-            const filteredItems = data.items.filter(item =>
-                selectedDishIds.includes(item.dishId)
-            );
-
-            if (filteredItems.length === 0) {
-                toast.error('Không tìm thấy món đã chọn');
-                navigate('/cart');
-                return;
-            }
-
-            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
-            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
-            const totalAmount = itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
+            const newTotalAmount = data.itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
 
             setCheckoutData({
                 ...data,
-                items: filteredItems,
-                totalItems: totalItems,
-                itemsTotal: itemsTotal,
-                totalAmount: totalAmount,
-                shippingFee: shippingFee
+                shippingFee: shippingFee,
+                totalAmount: newTotalAmount
             });
 
             toast.success(`Áp dụng mã "${code}" thành công!`);
@@ -349,29 +322,14 @@ const CheckoutPage: React.FC = () => {
     const handleRemoveCoupon = async () => {
         try {
             setIsApplyingCoupon(true);
-            const data = await checkoutService.removeCoupon();
+            const data = await checkoutService.removeCoupon(selectedDishIds);
 
-            const filteredItems = data.items.filter(item =>
-                selectedDishIds.includes(item.dishId)
-            );
-
-            if (filteredItems.length === 0) {
-                toast.error('Không tìm thấy món đã chọn');
-                navigate('/cart');
-                return;
-            }
-
-            const itemsTotal = filteredItems.reduce((sum, item) => sum + item.subtotal, 0);
-            const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
-            const totalAmount = itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
+            const newTotalAmount = data.itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
 
             setCheckoutData({
                 ...data,
-                items: filteredItems,
-                totalItems: totalItems,
-                itemsTotal: itemsTotal,
-                totalAmount: totalAmount,
-                shippingFee: shippingFee
+                shippingFee: shippingFee,
+                totalAmount: newTotalAmount
             });
 
             toast.success('Đã xóa mã giảm giá');
@@ -403,9 +361,9 @@ const CheckoutPage: React.FC = () => {
 
             setIsProcessing(true);
 
-            // Tạo payment request
+            // ✅ CHECK: paymentRequest có đầy đủ thông tin không?
             const paymentRequest = {
-                items: selectedDishIds,
+                items: selectedDishIds, // ✅ Đảm bảo đây là dishIds
                 addressId: selectedAddressId,
                 amount: checkoutData.totalAmount,
                 merchantName: checkoutData.merchantName,
@@ -414,6 +372,8 @@ const CheckoutPage: React.FC = () => {
                 notes: notes.trim() || undefined,
                 shippingFee: shippingFee
             };
+
+            console.log('🔍 Payment Request:', paymentRequest); // ✅ THÊM LOG NÀY
 
             // Gọi API tạo payment
             const paymentResponse = await paymentService.createSepayPayment(paymentRequest);

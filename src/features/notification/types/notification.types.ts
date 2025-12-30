@@ -47,9 +47,9 @@ export interface Notification {
     content: string;
     type: NotificationType;
     isRead: boolean;
-    createdAt: string;
+    // createdAt: string;
     readAt?: string | null;
-    sentAt?: string;
+    sentAt: string;
 
     // Optional metadata
     merchant?: {

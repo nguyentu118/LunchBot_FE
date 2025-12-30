@@ -22,7 +22,6 @@ export interface CouponInfo {
 }
 
 export interface CheckoutResponse {
-    // Merchant info
     merchantId: number;
     merchantName: string;
     merchantAddress: string;

@@ -56,7 +56,7 @@ const DishSearchPage: React.FC = () => {
                 maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
                 isRecommended: isRecommended !== null ? isRecommended : undefined,
                 page,
-                size: 12
+                size: 9
             };
 
             const response = await searchDishes(requestParams);
@@ -175,35 +175,6 @@ const DishSearchPage: React.FC = () => {
                                         {categoriesError && (
                                             <small className="text-danger d-block mt-1">{categoriesError}</small>
                                         )}
-                                    </Form.Group>
-
-                                    {/* Price Range */}
-                                    <Form.Group className="mb-3">
-                                        <Form.Label className="fw-semibold small">Khoảng giá (VNĐ)</Form.Label>
-                                        <Row className="g-2">
-                                            <Col xs={6}>
-                                                <Form.Control
-                                                    type="number"
-                                                    placeholder="Từ"
-                                                    value={minPrice}
-                                                    onChange={(e) => setMinPrice(e.target.value)}
-                                                    min="0"
-                                                    step="1000"
-                                                    size="sm"
-                                                />
-                                            </Col>
-                                            <Col xs={6}>
-                                                <Form.Control
-                                                    type="number"
-                                                    placeholder="Đến"
-                                                    value={maxPrice}
-                                                    onChange={(e) => setMaxPrice(e.target.value)}
-                                                    min="0"
-                                                    step="1000"
-                                                    size="sm"
-                                                />
-                                            </Col>
-                                        </Row>
                                     </Form.Group>
 
                                     {/* Recommended Filter */}

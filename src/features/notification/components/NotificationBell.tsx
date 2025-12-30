@@ -5,7 +5,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { NotificationType } from '../types/notification.types';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom'; // 1. Thêm navigate để tránh reload trang
+import { useNavigate } from 'react-router-dom';
 
 interface NotificationBellProps {
     userEmail: string;
@@ -151,7 +151,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
                                     <div className="d-flex justify-content-between align-items-center mt-1">
                                         <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-                                            {formatDistanceToNow(new Date(notification.createdAt), {
+                                            {formatDistanceToNow(new Date(notification.sentAt), {
                                                 addSuffix: true,
                                                 locale: vi,
                                             })}

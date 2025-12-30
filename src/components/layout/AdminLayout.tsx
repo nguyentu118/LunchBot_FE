@@ -2,20 +2,15 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import { Button, Container, Form, InputGroup, Nav, Navbar} from 'react-bootstrap';
 import {
-    BarChart3,
-    Bell,
     ClipboardCheck, Crown, DollarSign,
     Home,
     Menu,
     Moon,
-    Package,
     Search,
-    Settings,
     Shield,
     Store,
     Sun,
     Truck,
-    Users
 } from 'lucide-react';
 import {ROUTES} from '../../routes/route.constants';
 import './AdminLayout.css';
@@ -34,7 +29,6 @@ export const AdminLayout: React.FC = () => {
 
     const menuItems = [
         {id: 'dashboard', label: 'Dashboard', icon: Home, path: ROUTES.ADMIN.DASHBOARD},
-        {id: 'users', label: 'Quản lý User', icon: Users, path: '/admin/users'},
         {id: 'merchants', label: 'Quản lý Merchant', icon: Store, path: ROUTES.ADMIN.MERCHANTS},
         {id: 'drivers', label: 'Quản lý Tài xế', icon: Truck, path: '/admin/drivers'},
         {
@@ -55,9 +49,6 @@ export const AdminLayout: React.FC = () => {
             icon: DollarSign,
             path: ROUTES.ADMIN.WITHDRAWALS
         },
-        {id: 'orders', label: 'Đơn hàng', icon: Package, path: '/admin/orders'},
-        {id: 'reports', label: 'Báo cáo', icon: BarChart3, path: '/admin/reports'},
-        {id: 'settings', label: 'Cài đặt', icon: Settings, path: '/admin/settings'},
     ];
 
     const handleLogout = useCallback(() => {

@@ -8,33 +8,29 @@ const API_PREFIX = '/checkout';
 /**
  * Checkout Service - Xử lý thanh toán
  */
+// checkoutService.ts
 export const checkoutService = {
-    /**
-     * Lấy thông tin trang thanh toán
-     * Bao gồm: merchant info, cart items, addresses, prices
-     */
-    getCheckoutInfo: async (): Promise<CheckoutResponse> => {
-        const response = await axiosInstance.get<CheckoutResponse>(API_PREFIX);
+    getCheckoutInfo: async (dishIds?: number[]): Promise<CheckoutResponse> => {
+        const params = dishIds && dishIds.length > 0
+            ? { dishIds: dishIds.join(',') }
+            : {};
+        const response = await axiosInstance.get<CheckoutResponse>(API_PREFIX, { params });
         return response.data;
     },
 
-    /**
-     * Áp dụng mã giảm giá
-     * @param couponCode - Mã giảm giá (VD: "SUMMER2023")
-     * @returns CheckoutResponse với giá đã giảm
-     */
-    applyCoupon: async (couponCode: string): Promise<CheckoutResponse> => {
+    applyCoupon: async (couponCode: string, dishIds?: number[]): Promise<CheckoutResponse> => {
+        const params = dishIds && dishIds.length > 0
+            ? { dishIds: dishIds.join(',') }
+            : {};
         const response = await axiosInstance.post<CheckoutResponse>(
             `${API_PREFIX}/apply-coupon`,
-            { couponCode }
+            { couponCode },
+            { params } // ✅ Thêm params vào request
         );
         return response.data;
     },
 
-    /**
-     * Xóa mã giảm giá (gọi lại getCheckoutInfo)
-     */
-    removeCoupon: async (): Promise<CheckoutResponse> => {
-        return checkoutService.getCheckoutInfo();
+    removeCoupon: async (dishIds?: number[]): Promise<CheckoutResponse> => {
+        return checkoutService.getCheckoutInfo(dishIds);
     }
 };

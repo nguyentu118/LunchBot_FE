@@ -218,8 +218,8 @@ const SettingsPage: React.FC = () => {
                                         <Clock size={24} className="text-success" />
                                     </div>
                                     <div>
-                                        <h6 className="mb-1">Giờ mở cửa</h6>
-                                        <p className="text-muted small mb-0">Cấu hình thời gian hoạt động</p>
+                                        <h6 className="mb-1">Tài khoản thanh toán</h6>
+                                        <p className="text-muted small mb-0">Cập nhật tài khoản thanh toán</p>
                                     </div>
                                 </div>
                                 <Button variant="outline-secondary" size="sm" disabled>Sắp ra mắt</Button>
