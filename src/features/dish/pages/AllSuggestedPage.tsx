@@ -367,9 +367,14 @@ const AllSuggestedPage: React.FC = () => {
                             </p>
                             {keyword && (
                                 <button
-                                    className="btn btn-success px-4 py-2"
+                                    className="btn px-4 py-2"
                                     onClick={handleClearSearch}
-                                    style={{ borderRadius: '10px' }}
+                                    style={{
+                                        borderRadius: '10px',
+                                        backgroundColor: '#dc3545',
+                                        color: 'white',
+                                        border: '1px solid #dc3545'
+                                    }}
                                 >
                                     <i className="bi bi-arrow-clockwise me-2"></i>
                                     Xem tất cả món đề xuất

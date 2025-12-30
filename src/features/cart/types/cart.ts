@@ -8,6 +8,7 @@ export interface CartItem {
     subtotal: number;
     restaurantId: number;
     restaurantName: string;
+    restaurantAddress?: string;
 }
 
 export interface CartResponse {

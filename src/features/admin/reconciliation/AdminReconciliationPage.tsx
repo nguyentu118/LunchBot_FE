@@ -12,17 +12,9 @@ const AdminReconciliationPage: React.FC = () => {
     const [requests, setRequests] = useState<AdminReconciliationRequestResponse[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('PENDING');
-    const [isProcessing, setIsProcessing] = useState(false);
-    // Pagination
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-
-    // Toast Reject State
-    const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
-    const [rejectionReason, setRejectionReason] = useState('');
-    const [adminNotes, setAdminNotes] = useState('');
     const [processingId, setProcessingId] = useState<number | null>(null);
-    const [showRejectToast, setShowRejectToast] = useState(false);
 
     // ✅ Subscribe to notifications
     const userEmail = localStorage.getItem('userEmail') || '';
@@ -33,7 +25,6 @@ const AdminReconciliationPage: React.FC = () => {
         try {
             setLoading(true);
             const statusParam = activeTab === 'ALL' ? undefined : activeTab;
-
             const data = await adminReconciliationService.getAllRequests(statusParam, page);
             setRequests(data.content);
             setTotalPages(data.totalPages);
@@ -60,8 +51,7 @@ const AdminReconciliationPage: React.FC = () => {
         );
 
         if (reconciliationNotifications.length > 0) {
-            fetchRequests(); // Refresh danh sách
-
+            fetchRequests();
             const latest = reconciliationNotifications[0];
             if (latest.type === NotificationType.RECONCILIATION_REQUEST_CREATED) {
                 toast('💰 Yêu cầu đối soát mới!', { icon: '🔔' });
@@ -73,21 +63,28 @@ const AdminReconciliationPage: React.FC = () => {
 
     // --- HANDLERS ---
 
-    const executeApprove = async (id: number) => {
-        const toastId = toast.loading("Đang xử lý phê duyệt...");
+    // ✅ FIX: Dismiss ngay lập tức, xử lý async sau
+    const executeApprove = async (id: number, toastId: string) => {
+        // 1. Dismiss toast NGAY
+        toast.dismiss(toastId);
+
+        // 2. Hiển thị loading toast mới
+        const loadingId = toast.loading("Đang xử lý phê duyệt...");
+
         try {
             await adminReconciliationService.approveRequest(id);
-            toast.success("Đã duyệt yêu cầu thành công!", {id: toastId});
-            setProcessingId(null);
-            fetchRequests();
+            toast.success("Đã duyệt yêu cầu thành công!", { id: loadingId });
+            await fetchRequests();
         } catch (error) {
-            toast.error("Lỗi khi duyệt yêu cầu", {id: toastId});
+            toast.error("Lỗi khi duyệt yêu cầu", { id: loadingId });
+        } finally {
             setProcessingId(null);
         }
     };
 
     const handleApprove = (req: AdminReconciliationRequestResponse) => {
         setProcessingId(req.id);
+
         toast.custom((t) => (
             <div
                 className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white shadow-lg rounded-3`}
@@ -100,8 +97,7 @@ const AdminReconciliationPage: React.FC = () => {
             >
                 <div className="p-3">
                     <div className="d-flex align-items-center mb-3">
-                        <div
-                            className="rounded-circle bg-success bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
+                        <div className="rounded-circle bg-success bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
                             <CheckCircle size={20} className="text-success"/>
                         </div>
                         <h6 className="fw-bold text-dark mb-0 ms-2" style={{fontSize: '0.95rem'}}>
@@ -137,6 +133,7 @@ const AdminReconciliationPage: React.FC = () => {
                             className="border border-secondary text-secondary fw-500 px-3"
                             style={{fontSize: '0.85rem'}}
                             onClick={() => {
+                                // ✅ FIX: Dismiss ngay + reset state
                                 toast.dismiss(t.id);
                                 setProcessingId(null);
                             }}
@@ -149,8 +146,8 @@ const AdminReconciliationPage: React.FC = () => {
                             className="px-3 fw-bold"
                             style={{fontSize: '0.85rem'}}
                             onClick={() => {
-                                toast.dismiss(t.id);
-                                executeApprove(req.id);
+                                // ✅ FIX: Truyền toastId vào để dismiss ngay
+                                executeApprove(req.id, t.id);
                             }}
                         >
                             Xác nhận
@@ -163,25 +160,33 @@ const AdminReconciliationPage: React.FC = () => {
             position: 'top-center',
         });
     };
+
+    // ✅ FIX: Xử lý reject tương tự
     const handleRejectSubmit = async (
         id: number,
         rejectionReason: string,
-        adminNotes: string
+        adminNotes: string,
+        toastId: string
     ) => {
+        // 1. Dismiss toast NGAY
+        toast.dismiss(toastId);
+
+        // 2. Hiển thị loading
+        const loadingId = toast.loading("Đang xử lý từ chối...");
+
         try {
             await adminReconciliationService.rejectRequest(id, {
                 rejectionReason,
                 adminNotes
             });
-            toast.success("Đã từ chối yêu cầu");
-            setProcessingId(null);
-            fetchRequests();
+            toast.success("Đã từ chối yêu cầu", { id: loadingId });
+            await fetchRequests();
         } catch {
-            toast.error("Lỗi khi từ chối yêu cầu");
+            toast.error("Lỗi khi từ chối yêu cầu", { id: loadingId });
+        } finally {
             setProcessingId(null);
         }
     };
-
 
     const openRejectModal = (id: number) => {
         setProcessingId(id);
@@ -200,10 +205,17 @@ const AdminReconciliationPage: React.FC = () => {
                 }}
             >
                 <div className="p-3">
-                    <h6 className="fw-bold mb-3">Từ chối đối soát?</h6>
+                    <div className="d-flex align-items-center mb-3">
+                        <div className="rounded-circle bg-danger bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
+                            <XCircle size={20} className="text-danger"/>
+                        </div>
+                        <h6 className="fw-bold text-dark mb-0 ms-2" style={{fontSize: '0.95rem'}}>
+                            Từ chối đối soát?
+                        </h6>
+                    </div>
 
                     <div className="mb-3">
-                        <label className="fw-semibold">
+                        <label className="fw-semibold small">
                             Lý do từ chối <span className="text-danger">*</span>
                         </label>
                         <textarea
@@ -215,7 +227,7 @@ const AdminReconciliationPage: React.FC = () => {
                     </div>
 
                     <div className="mb-3">
-                        <label>Ghi chú nội bộ</label>
+                        <label className="small">Ghi chú nội bộ</label>
                         <input
                             type="text"
                             className="form-control"
@@ -228,7 +240,9 @@ const AdminReconciliationPage: React.FC = () => {
                         <Button
                             size="sm"
                             variant="light"
+                            className="border border-secondary"
                             onClick={() => {
+                                // ✅ FIX: Dismiss ngay
                                 toast.dismiss(t.id);
                                 setProcessingId(null);
                             }}
@@ -245,8 +259,8 @@ const AdminReconciliationPage: React.FC = () => {
                                     return;
                                 }
 
-                                toast.dismiss(t.id);
-                                handleRejectSubmit(id, reasonRef.current, notesRef.current);
+                                // ✅ FIX: Truyền toastId để dismiss ngay
+                                handleRejectSubmit(id, reasonRef.current, notesRef.current, t.id);
                             }}
                         >
                             Xác nhận
@@ -259,7 +273,6 @@ const AdminReconciliationPage: React.FC = () => {
             position: 'top-center'
         });
     };
-
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('vi-VN', {style: 'currency', currency: 'VND'}).format(val);
@@ -327,7 +340,6 @@ const AdminReconciliationPage: React.FC = () => {
                                             onClick={() => handleApprove(req)}
                                             title="Duyệt"
                                             disabled={processingId !== null}
-                                            style={{opacity: processingId !== null ? 0.5 : 1, pointerEvents: processingId !== null ? 'none' : 'auto'}}
                                         >
                                             <CheckCircle size={16} />
                                         </Button>
@@ -337,7 +349,6 @@ const AdminReconciliationPage: React.FC = () => {
                                             onClick={() => openRejectModal(req.id)}
                                             title="Từ chối"
                                             disabled={processingId !== null}
-                                            style={{opacity: processingId !== null ? 0.5 : 1, pointerEvents: processingId !== null ? 'none' : 'auto'}}
                                         >
                                             <XCircle size={16} />
                                         </Button>
@@ -393,97 +404,6 @@ const AdminReconciliationPage: React.FC = () => {
                     )}
                 </Card.Body>
             </Card>
-
-            {/* Toast Từ Chối */}
-            {showRejectToast && (
-                <div
-                    className="bg-white shadow-lg rounded-3"
-                    style={{
-                        maxWidth: '380px',
-                        width: '100%',
-                        borderLeft: '5px solid #dc3545',
-                        pointerEvents: 'auto',
-                        position: 'fixed',
-                        top: '20px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        zIndex: 9999
-                    }}
-                >
-                    <div className="p-3">
-                        <div className="d-flex align-items-center mb-3">
-                            <div
-                                className="rounded-circle bg-danger bg-opacity-10 p-2 d-flex align-items-center justify-content-center flex-shrink-0">
-                                <XCircle size={20} className="text-danger"/>
-                            </div>
-                            <h6 className="fw-bold text-dark mb-0 ms-2" style={{fontSize: '0.95rem'}}>
-                                Từ chối đối soát?
-                            </h6>
-                        </div>
-
-                        <div className="mb-3">
-                            <label style={{fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block', fontWeight: 500}}>
-                                Lý do từ chối <span className="text-danger">*</span>
-                            </label>
-                            <textarea
-                                rows={2}
-                                placeholder="Nhập lý do sai lệch..."
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                className="form-control"
-                                style={{fontSize: '0.9rem'}}
-                            />
-                        </div>
-
-                        <div className="mb-3">
-                            <label style={{fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block', fontWeight: 500}}>
-                                Ghi chú nội bộ (Admin only)
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="Ghi chú thêm..."
-                                value={adminNotes}
-                                onChange={(e) => setAdminNotes(e.target.value)}
-                                className="form-control"
-                                style={{fontSize: '0.9rem'}}
-                            />
-                        </div>
-
-                        <div className="d-flex gap-2 justify-content-end">
-                            <Button
-                                variant="light"
-                                size="sm"
-                                className="border border-secondary text-secondary fw-500 px-3"
-                                style={{fontSize: '0.85rem'}}
-                                onClick={() => {
-                                    setShowRejectToast(false);
-                                    setProcessingId(null);
-                                }}
-                            >
-                                Hủy bỏ
-                            </Button>
-                            <Button
-                                variant="danger"
-                                size="sm"
-                                className="px-3 fw-bold"
-                                style={{fontSize: '0.85rem'}}
-                                onClick={() => {
-                                    if (!rejectionReason.trim()) {
-                                        toast.error("Vui lòng nhập lý do từ chối");
-                                        return;
-                                    }
-                                    setShowRejectToast(false);
-                                    if (selectedRequestId) {
-                                        handleRejectSubmit(selectedRequestId);
-                                    }
-                                }}
-                            >
-                                Xác nhận
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
