@@ -17,7 +17,6 @@ const AdminReconciliationPage: React.FC = () => {
 
     // Toast Reject State
     const [processingId, setProcessingId] = useState<number | null>(null);
-    const [showRejectToast, setShowRejectToast] = useState(false);
 
     // Modal xem chi tiết báo cáo sai sót
     const [showClaimDetailModal, setShowClaimDetailModal] = useState(false);
