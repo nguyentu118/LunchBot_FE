@@ -168,7 +168,6 @@ const AdminReconciliationPage: React.FC = () => {
             position: 'top-center',
         });
     };
-
     const handleRejectSubmit = async (
         id: number,
         rejectionReason: string,
@@ -194,6 +193,7 @@ const AdminReconciliationPage: React.FC = () => {
             setProcessingId(null);
         }
     };
+
 
     const openRejectModal = (id: number) => {
         setProcessingId(id);
@@ -541,4 +541,5 @@ const AdminReconciliationPage: React.FC = () => {
         </div>
     );
 };
+
 export default AdminReconciliationPage;
