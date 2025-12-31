@@ -37,7 +37,7 @@ const RestaurantGroupCard: React.FC<RestaurantGroupCardProps> = ({
                                                                      onRemove
                                                                  }) => {
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalPrice = items.reduce((sum, item) => sum + item.discountPrice, 0);
 
     const handleGroupCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onSelectGroup(restaurantId, e.target.checked);
