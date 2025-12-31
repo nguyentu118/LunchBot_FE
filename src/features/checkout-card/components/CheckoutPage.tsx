@@ -76,9 +76,10 @@ const CheckoutPage: React.FC = () => {
 
                 // Sau đó load checkout info
                 await loadCheckoutInfo();
-            } catch (err: any) {
+            } catch (err) {
                 console.error('Error initializing checkout:', err);
-                if (err.response?.status === 401) {
+                const error = err as { response?: { status: number } };
+                if (error.response?.status === 401) {
                     toast.error('Vui lòng đăng nhập để thanh toán');
                     navigate('/login');
                 } else {
@@ -88,7 +89,27 @@ const CheckoutPage: React.FC = () => {
         };
 
         initialize();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        if (checkoutData && shippingFee > 0) {
+            // Tính lại totalAmount dựa trên shippingFee thực tế từ FE
+            const correctTotalAmount =
+                checkoutData.itemsTotal +
+                checkoutData.serviceFee +
+                shippingFee -
+                checkoutData.discountAmount;
+
+            // Chỉ update nếu khác với giá trị hiện tại
+            if (checkoutData.totalAmount !== correctTotalAmount) {
+                setCheckoutData(prev => prev ? {
+                    ...prev,
+                    totalAmount: correctTotalAmount
+                } : null);
+            }
+        }
+    }, [shippingFee, checkoutData?.itemsTotal, checkoutData?.serviceFee, checkoutData?.discountAmount]);
 
     const loadCheckoutInfo = async () => {
         try {
@@ -115,9 +136,10 @@ const CheckoutPage: React.FC = () => {
                 setSelectedAddressId(data.addresses[0].id);
                 await calculateShippingFeeForAddress(data.addresses[0].id);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error loading checkout:', err);
-            const errorMsg = err.response?.data?.error || 'Không thể tải thông tin thanh toán';
+            const error = err as { response?: { data?: { error?: string } } };
+            const errorMsg = error.response?.data?.error || 'Không thể tải thông tin thanh toán';
             setError(errorMsg);
             toast.error(errorMsg);
 
@@ -135,47 +157,21 @@ const CheckoutPage: React.FC = () => {
             setShippingFeeError('');
 
             const fee = await shippingService.calculateShippingFee(addressId);
-            setShippingFee(fee);
+            setShippingFee(fee); // useEffect sẽ tự động tính lại totalAmount
 
-            if (checkoutData) {
-                const newTotalAmount =
-                    checkoutData.itemsTotal +
-                    checkoutData.serviceFee +
-                    fee -
-                    checkoutData.discountAmount;
-
-                setCheckoutData(prev => prev ? {
-                    ...prev,
-                    shippingFee: fee,
-                    totalAmount: newTotalAmount
-                } : null);
-            }
-
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error calculating shipping fee:', err);
-            setShippingFeeError(err.message || 'Không thể tính phí giao hàng');
+            const error = err as { message?: string };
+            setShippingFeeError(error.message || 'Không thể tính phí giao hàng');
             toast.error('⚠️ Không thể tính phí giao hàng. Sử dụng phí mặc định.');
 
             const defaultFee = 25000;
-            setShippingFee(defaultFee);
-
-            if (checkoutData) {
-                const newTotalAmount =
-                    checkoutData.itemsTotal +
-                    checkoutData.serviceFee +
-                    defaultFee -
-                    checkoutData.discountAmount;
-
-                setCheckoutData(prev => prev ? {
-                    ...prev,
-                    shippingFee: defaultFee,
-                    totalAmount: newTotalAmount
-                } : null);
-            }
+            setShippingFee(defaultFee); // useEffect sẽ tự động tính lại totalAmount
         } finally {
             setIsCalculatingShippingFee(false);
         }
     };
+
 
     // Address handlers
     const handleSelectAddress = async (address: Address) => {
@@ -190,9 +186,10 @@ const CheckoutPage: React.FC = () => {
             await loadCheckoutInfo();
             setSelectedAddressId(newAddress.id);
             await calculateShippingFeeForAddress(newAddress.id);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error adding address:', err);
-            toast.error(err.response?.data?.error || 'Không thể thêm địa chỉ');
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error(error.response?.data?.error || 'Không thể thêm địa chỉ');
             throw err;
         }
     };
@@ -205,9 +202,10 @@ const CheckoutPage: React.FC = () => {
             if (selectedAddressId === addressId) {
                 await calculateShippingFeeForAddress(addressId);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error updating address:', err);
-            toast.error(err.response?.data?.error || 'Không thể cập nhật địa chỉ');
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error(error.response?.data?.error || 'Không thể cập nhật địa chỉ');
             throw err;
         }
     };
@@ -219,49 +217,48 @@ const CheckoutPage: React.FC = () => {
         setIsDeletePopupOpen(true);
 
         toast((t) =>
-            (<div className="d-flex align-items-start gap-3">
-                <div
-                    className="rounded-circle bg-danger bg-opacity-10 p-2 flex-shrink-0 d-flex align-items-center justify-content-center"
-                    style={{
-                        width: '40px',
-                        height: '40px'
-                    }}>
-                    <Trash2 size={20} className="text-danger"/>
-                </div>
-                <div className="flex-grow-1">
-                    <h6 className="fw-bold text-dark mb-2">
-                        Xóa địa chỉ này?
-                    </h6>
-                    <p className="text-muted small mb-3">Hành động này không thể hoàn tác.</p>
-                    <div className="d-flex gap-2 justify-content-end">
-                        <button className="btn btn-danger btn-sm px-3"
-                                style={{backgroundColor: '#ff5e62', border: 'none'}}
-                                onClick={async () => {
-                                    toast.dismiss(t.id);
-                                    await executeDelete(addressId);
-                                }}> Xác nhận xóa
-                        </button>
-                        <button className="btn btn-light btn-sm px-3"
-                                onClick={() => {
-                                    toast.dismiss(t.id);
-                                    setIsDeletePopupOpen(false);
-                                }}> Hủy
-                        </button>
+                (<div className="d-flex align-items-start gap-3">
+                    <div
+                        className="rounded-circle bg-danger bg-opacity-10 p-2 flex-shrink-0 d-flex align-items-center justify-content-center"
+                        style={{
+                            width: '40px',
+                            height: '40px'
+                        }}>
+                        <Trash2 size={20} className="text-danger"/>
                     </div>
-                </div>
-            </div>),
+                    <div className="flex-grow-1">
+                        <h6 className="fw-bold text-dark mb-2">
+                            Xóa địa chỉ này?
+                        </h6>
+                        <p className="text-muted small mb-3">Hành động này không thể hoàn tác.</p>
+                        <div className="d-flex gap-2 justify-content-end">
+                            <button className="btn btn-danger btn-sm px-3"
+                                    style={{backgroundColor: '#ff5e62', border: 'none'}}
+                                    onClick={async () => {
+                                        toast.dismiss(t.id);
+                                        await executeDelete(addressId);
+                                    }}> Xác nhận xóa
+                            </button>
+                            <button className="btn btn-light btn-sm px-3"
+                                    onClick={() => {
+                                        toast.dismiss(t.id);
+                                        setIsDeletePopupOpen(false);
+                                    }}> Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>),
             {
-            duration: Infinity,
-            position: 'top-center',
-            style: {
-                background: '#fff',
-                padding: '16px',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                minWidth: '320px',
-            },
-            onClose: () => setIsDeletePopupOpen(false)
-        });
+                duration: Infinity,
+                position: 'top-center',
+                style: {
+                    background: '#fff',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    minWidth: '320px',
+                }
+            });
     };
 
 // Hàm phụ trợ để tách logic xử lý API
@@ -276,7 +273,7 @@ const CheckoutPage: React.FC = () => {
                 setSelectedAddressId(null);
                 setShippingFee(0);
             }
-        } catch (err: any) {
+        } catch (err) {
             toast.error('Lỗi khi xóa địa chỉ');
         } finally {
             setIsDeletingAddressId(null);
@@ -289,9 +286,10 @@ const CheckoutPage: React.FC = () => {
             await addressService.setDefaultAddress(addressId);
             toast.success('Đã đặt làm địa chỉ mặc định');
             await loadCheckoutInfo();
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error setting default address:', err);
-            toast.error(err.response?.data?.error || 'Không thể đặt địa chỉ mặc định');
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error(error.response?.data?.error || 'Không thể đặt địa chỉ mặc định');
             throw err;
         }
     };
@@ -302,16 +300,15 @@ const CheckoutPage: React.FC = () => {
             setIsApplyingCoupon(true);
             const data = await checkoutService.applyCoupon(code, selectedDishIds);
 
-            const newTotalAmount = data.itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
-
+            // Chỉ update checkoutData, useEffect sẽ tự động tính totalAmount
             setCheckoutData({
                 ...data,
                 shippingFee: shippingFee,
-                totalAmount: newTotalAmount
+                // Không tính totalAmount ở đây - để useEffect xử lý
             });
 
             toast.success(`Áp dụng mã "${code}" thành công!`);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error applying coupon:', err);
             throw err;
         } finally {
@@ -324,27 +321,117 @@ const CheckoutPage: React.FC = () => {
             setIsApplyingCoupon(true);
             const data = await checkoutService.removeCoupon(selectedDishIds);
 
-            const newTotalAmount = data.itemsTotal + data.serviceFee + shippingFee - data.discountAmount;
-
+            // Chỉ update checkoutData, useEffect sẽ tự động tính totalAmount
             setCheckoutData({
                 ...data,
                 shippingFee: shippingFee,
-                totalAmount: newTotalAmount
+                // Không tính totalAmount ở đây - để useEffect xử lý
             });
 
             toast.success('Đã xóa mã giảm giá');
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error removing coupon:', err);
             toast.error('Không thể xóa mã giảm giá');
         } finally {
             setIsApplyingCoupon(false);
         }
-    };
+    }
 
-    // Xử lý thanh toán VNPay
-    const handleSepayPayment = async () => {
-        try {
-            if (!checkoutData) {
+        // Xử lý thanh toán VNPay
+        const handleSepayPayment = async () => {
+            try {
+                if (!checkoutData) {
+                    return;
+                }
+
+                if (!selectedAddressId) {
+                    toast.error('Vui lòng chọn địa chỉ giao hàng');
+                    return;
+                }
+
+                if (!userEmail) {
+                    toast.error('Không tìm thấy thông tin người dùng');
+                    navigate('/login');
+                    return;
+                }
+
+                setIsProcessing(true);
+
+                // ✅ FIX: Tạo paymentRequest với đúng type SepayPaymentRequest
+                const paymentRequest = {
+                    items: selectedDishIds,
+                    addressId: selectedAddressId,
+                    amount: checkoutData.totalAmount,
+                    merchantName: checkoutData.merchantName,
+                    userEmail: userEmail,
+                    couponCode: checkoutData.appliedCouponCode || undefined,
+                    notes: notes.trim() || undefined,
+                    shippingFee: shippingFee
+                };
+
+                console.log('🔍 Payment Request:', paymentRequest);
+
+                // Gọi API tạo payment
+                const paymentResponse = await paymentService.createSepayPayment(paymentRequest);
+
+                toast.success('Đã tạo thanh toán!');
+
+                // Navigate đến trang hiển thị QR
+                navigate('/payment/sepay', {
+                    state: {paymentData: paymentResponse}
+                });
+
+            } catch (err) {
+                console.error('SePay payment error:', err);
+                const error = err as { message?: string };
+                toast.error(error.message || 'Không thể tạo thanh toán');
+                setIsProcessing(false);
+                isOrderingRef.current = false;
+            }
+        };
+
+        // Xử lý đặt hàng COD
+        const handleCODOrder = async () => {
+            try {
+                if (!selectedAddressId) {
+                    toast.error('Vui lòng chọn địa chỉ giao hàng');
+                    return;
+                }
+
+                setIsProcessing(true);
+
+                const orderData = {
+                    dishIds: selectedDishIds,
+                    addressId: selectedAddressId,
+                    paymentMethod: selectedPaymentMethod,
+                    couponCode: checkoutData?.appliedCouponCode || undefined,
+                    notes: notes.trim() || undefined,
+                    shippingFee: shippingFee
+                };
+
+                const order = await orderService.createOrder(orderData);
+
+                toast.success('Đặt hàng thành công!');
+
+                window.dispatchEvent(new Event('cartUpdated'));
+
+                navigate(`/orders/${order.id}`);
+
+            } catch (err) {
+                console.error('Error placing order:', err);
+                const error = err as { response?: { data?: { error?: string } } };
+                const errorMsg = error.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
+                toast.error(errorMsg);
+                throw err;
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        // ✅ ĐÃ FIX: handlePlaceOrder - Ngăn multiple order confirmations
+        const handlePlaceOrder = async () => {
+            // NGĂN MULTIPLE CLICKS
+            if (isOrderingRef.current || isOrderConfirmOpen) {
                 return;
             }
 
@@ -353,424 +440,337 @@ const CheckoutPage: React.FC = () => {
                 return;
             }
 
-            if (!userEmail) {
-                toast.error('Không tìm thấy thông tin người dùng');
-                navigate('/login');
+            if (!selectedPaymentMethod) {
+                toast.error('Vui lòng chọn phương thức thanh toán');
                 return;
             }
 
-            setIsProcessing(true);
-
-            // ✅ CHECK: paymentRequest có đầy đủ thông tin không?
-            const paymentRequest = {
-                items: selectedDishIds, // ✅ Đảm bảo đây là dishIds
-                addressId: selectedAddressId,
-                amount: checkoutData.totalAmount,
-                merchantName: checkoutData.merchantName,
-                userEmail: userEmail,
-                couponCode: checkoutData.appliedCouponCode,
-                notes: notes.trim() || undefined,
-                shippingFee: shippingFee
-            };
-
-            console.log('🔍 Payment Request:', paymentRequest); // ✅ THÊM LOG NÀY
-
-            // Gọi API tạo payment
-            const paymentResponse = await paymentService.createSepayPayment(paymentRequest);
-
-            toast.success('Đã tạo thanh toán!');
-
-            // Navigate đến trang hiển thị QR
-            navigate('/payment/sepay', {
-                state: {paymentData: paymentResponse}
-            });
-
-        } catch (err: any) {
-            console.error('SePay payment error:', err);
-            toast.error(err.message || 'Không thể tạo thanh toán');
-            setIsProcessing(false);
-            isOrderingRef.current = false;
-        }
-    };
-
-    // Xử lý đặt hàng COD
-    const handleCODOrder = async () => {
-        try {
-            if (!selectedAddressId) {
-                toast.error('Vui lòng chọn địa chỉ giao hàng');
+            if (notes.length > 500) {
+                toast.error('Ghi chú không được vượt quá 500 ký tự');
                 return;
             }
 
-            setIsProcessing(true);
+            setIsOrderConfirmOpen(true); // ĐÁNH DẤU POPUP CONFIRM ĐANG MỞ
+            isOrderingRef.current = true;
 
-            const orderData = {
-                dishIds: selectedDishIds,
-                addressId: selectedAddressId,
-                paymentMethod: selectedPaymentMethod,
-                couponCode: checkoutData?.appliedCouponCode || undefined,
-                notes: notes.trim() || undefined,
-                shippingFee: shippingFee
-            };
-
-            const order = await orderService.createOrder(orderData);
-
-            toast.success('Đặt hàng thành công!');
-
-            window.dispatchEvent(new Event('cartUpdated'));
-
-            navigate(`/orders/${order.id}`);
-
-        } catch (err: any) {
-            console.error('Error placing order:', err);
-            const errorMsg = err.response?.data?.error || 'Không thể đặt hàng. Vui lòng thử lại.';
-            toast.error(errorMsg);
-            throw err;
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    // ✅ ĐÃ FIX: handlePlaceOrder - Ngăn multiple order confirmations
-    const handlePlaceOrder = async () => {
-        // NGĂN MULTIPLE CLICKS
-        if (isOrderingRef.current || isOrderConfirmOpen) {
-            return;
-        }
-
-        if (!selectedAddressId) {
-            toast.error('Vui lòng chọn địa chỉ giao hàng');
-            return;
-        }
-
-        if (!selectedPaymentMethod) {
-            toast.error('Vui lòng chọn phương thức thanh toán');
-            return;
-        }
-
-        if (notes.length > 500) {
-            toast.error('Ghi chú không được vượt quá 500 ký tự');
-            return;
-        }
-
-        setIsOrderConfirmOpen(true); // ĐÁNH DẤU POPUP CONFIRM ĐANG MỞ
-        isOrderingRef.current = true;
-
-        const confirmOrder = () => new Promise<boolean>((resolve) => {
-            const toastId = toast.custom((t) => (
-                <div
-                    className="bg-white rounded-3 p-4 border"
-                    style={{
-                        width: '380px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                        opacity: t.visible ? 1 : 0,
-                        transform: t.visible ? 'translateY(0)' : 'translateY(-10px)',
-                        transition: 'all 0.15s ease-out',
-                    }}
-                >
-                    <div className="d-flex gap-3">
-                        {/* Icon */}
-                        <div
-                            className="flex-shrink-0 d-flex align-items-center justify-content-center"
-                            style={{
-                                width: '48px',
-                                height: '48px',
-                                backgroundColor: '#fff1f1',
-                                borderRadius: '14px',
-                                color: '#ff5e62'
-                            }}
-                        >
-                            <ShoppingCart size={22}/>
-                        </div>
-
-                        {/* Nội dung */}
-                        <div className="flex-grow-1">
-                            <div className="fw-bold text-dark" style={{fontSize: '1rem', marginBottom: '4px'}}>
-                                Xác nhận đặt hàng?
-                            </div>
-                            <div className="text-muted"
-                                 style={{fontSize: '0.85rem', lineHeight: '1.4', marginBottom: '14px'}}>
-                                {selectedPaymentMethod === PaymentMethod.CARD
-                                    ? 'Bạn sẽ được chuyển đến trang thanh toán SePay.'
-                                    : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận.'}
+            const confirmOrder = () => new Promise<boolean>((resolve) => {
+                const toastId = toast.custom((t) => (
+                    <div
+                        className="bg-white rounded-3 p-4 border"
+                        style={{
+                            width: '380px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                            opacity: t.visible ? 1 : 0,
+                            transform: t.visible ? 'translateY(0)' : 'translateY(-10px)',
+                            transition: 'all 0.15s ease-out',
+                        }}
+                    >
+                        <div className="d-flex gap-3">
+                            {/* Icon */}
+                            <div
+                                className="flex-shrink-0 d-flex align-items-center justify-content-center"
+                                style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    backgroundColor: '#fff1f1',
+                                    borderRadius: '14px',
+                                    color: '#ff5e62'
+                                }}
+                            >
+                                <ShoppingCart size={22}/>
                             </div>
 
-                            {/* Buttons */}
-                            <div className="d-flex gap-2 justify-content-end">
-                                <button
-                                    className="btn btn-sm px-3 border-0 text-white"
-                                    style={{
-                                        backgroundColor: '#ff5e62',
-                                        borderRadius: '8px',
-                                        fontWeight: '600',
-                                        fontSize: '0.8rem',
-                                        padding: '6px 12px',
-                                        transition: 'all 0.1s ease'
-                                    }}
-                                    onClick={() => {
-                                        toast.dismiss(toastId);
-                                        setTimeout(() => resolve(true), 50);
-                                    }}
-                                    disabled={isProcessing}
-                                >
-                                    Xác nhận
-                                </button>
-                                <button
-                                    className="btn btn-sm px-3 border-0"
-                                    style={{
-                                        backgroundColor: '#f1f3f5',
-                                        color: '#495057',
-                                        borderRadius: '8px',
-                                        fontWeight: '600',
-                                        fontSize: '0.8rem',
-                                        padding: '6px 12px',
-                                        transition: 'all 0.1s ease'
-                                    }}
-                                    onClick={() => {
-                                        toast.dismiss(toastId);
-                                        setTimeout(() => {
-                                            setIsOrderConfirmOpen(false);
-                                            isOrderingRef.current = false;
-                                            resolve(false);
-                                        }, 50);
-                                    }}
-                                    disabled={isProcessing}
-                                >
-                                    Hủy
-                                </button>
+                            {/* Nội dung */}
+                            <div className="flex-grow-1">
+                                <div className="fw-bold text-dark" style={{fontSize: '1rem', marginBottom: '4px'}}>
+                                    Xác nhận đặt hàng?
+                                </div>
+                                <div className="text-muted"
+                                     style={{fontSize: '0.85rem', lineHeight: '1.4', marginBottom: '14px'}}>
+                                    {selectedPaymentMethod === PaymentMethod.CARD
+                                        ? 'Bạn sẽ được chuyển đến trang thanh toán SePay.'
+                                        : 'Đơn hàng sẽ được gửi đến địa chỉ ngay sau khi xác nhận.'}
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="d-flex gap-2 justify-content-end">
+                                    <button
+                                        className="btn btn-sm px-3 border-0 text-white"
+                                        style={{
+                                            backgroundColor: '#ff5e62',
+                                            borderRadius: '8px',
+                                            fontWeight: '600',
+                                            fontSize: '0.8rem',
+                                            padding: '6px 12px',
+                                            transition: 'all 0.1s ease'
+                                        }}
+                                        onClick={() => {
+                                            toast.dismiss(toastId);
+                                            setTimeout(() => resolve(true), 50);
+                                        }}
+                                        disabled={isProcessing}
+                                    >
+                                        Xác nhận
+                                    </button>
+                                    <button
+                                        className="btn btn-sm px-3 border-0"
+                                        style={{
+                                            backgroundColor: '#f1f3f5',
+                                            color: '#495057',
+                                            borderRadius: '8px',
+                                            fontWeight: '600',
+                                            fontSize: '0.8rem',
+                                            padding: '6px 12px',
+                                            transition: 'all 0.1s ease'
+                                        }}
+                                        onClick={() => {
+                                            toast.dismiss(toastId);
+                                            setTimeout(() => {
+                                                setIsOrderConfirmOpen(false);
+                                                isOrderingRef.current = false;
+                                                resolve(false);
+                                            }, 50);
+                                        }}
+                                        disabled={isProcessing}
+                                    >
+                                        Hủy
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            ), {
-                duration: Infinity,
-                position: 'top-center',
+                ), {
+                    duration: Infinity,
+                    position: 'top-center',
+                });
             });
-        });
 
-        try {
-            const confirmed = await confirmOrder();
+            try {
+                const confirmed = await confirmOrder();
 
-            if (!confirmed) {
+                if (!confirmed) {
+                    isOrderingRef.current = false;
+                    setIsOrderConfirmOpen(false);
+                    return;
+                }
+
+                setIsProcessing(true);
+
+                if (selectedPaymentMethod === PaymentMethod.CARD) {
+                    await handleSepayPayment();
+                } else {
+                    await handleCODOrder();
+                }
+
+            } catch (err) {
+                const error = err as { message?: string };
+                if (error.message === 'Đã hủy') {
+                    return;
+                }
                 isOrderingRef.current = false;
                 setIsOrderConfirmOpen(false);
-                return;
             }
+        };
 
-            setIsProcessing(true);
-
-            if (selectedPaymentMethod === PaymentMethod.CARD) {
-                await handleSepayPayment();
-            } else {
-                await handleCODOrder();
-            }
-
-        } catch (err: any) {
-            if (err.message === 'Đã hủy') {
-                return;
-            }
-            isOrderingRef.current = false;
-            setIsOrderConfirmOpen(false);
-        }
-    };
-
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="min-vh-100 d-flex align-items-center justify-content-center">
-                <div className="text-center">
-                    <Spinner animation="border" variant="primary"/>
-                    <p className="mt-3">Đang tải thông tin thanh toán...</p>
+        // Loading state
+        if (isLoading) {
+            return (
+                <div className="min-vh-100 d-flex align-items-center justify-content-center">
+                    <div className="text-center">
+                        <Spinner animation="border" variant="primary"/>
+                        <p className="mt-3">Đang tải thông tin thanh toán...</p>
+                    </div>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
 
-    // Error state
-    if (error && !checkoutData) {
+        // Error state
+        if (error && !checkoutData) {
+            return (
+                <div className="min-vh-100 d-flex align-items-center justify-content-center">
+                    <Container>
+                        <Alert variant="danger" className="text-center">
+                            <h5>Có lỗi xảy ra</h5>
+                            <p>{error}</p>
+                            <Button variant="primary" onClick={() => navigate('/cart')}>
+                                Quay lại giỏ hàng
+                            </Button>
+                        </Alert>
+                    </Container>
+                </div>
+            );
+        }
+
         return (
-            <div className="min-vh-100 d-flex align-items-center justify-content-center">
-                <Container>
-                    <Alert variant="danger" className="text-center">
-                        <h5>Có lỗi xảy ra</h5>
-                        <p>{error}</p>
-                        <Button variant="primary" onClick={() => navigate('/cart')}>
+            <div className="bg-light min-vh-100">
+                <Navigation/>
+
+                <Container className="py-4">
+                    {/* Header */}
+                    <div className="mb-4">
+                        <Button
+                            variant="link"
+                            className="text-decoration-none p-0 mb-3"
+                            onClick={() => navigate('/cart')}
+                        >
+                            <ArrowLeft size={20} className="me-2"/>
                             Quay lại giỏ hàng
                         </Button>
-                    </Alert>
+
+                        <h2 className="fw-bold d-flex align-items-center">
+                            <ShoppingCart size={32} className="text-danger me-3"/>
+                            Thanh toán đơn hàng
+                        </h2>
+                    </div>
+
+                    {checkoutData && (
+                        <Row>
+                            {/* Left Column */}
+                            <Col lg={8}>
+                                {/* Address Selector */}
+                                <AddressSelector
+                                    addresses={checkoutData.addresses}
+                                    selectedAddressId={selectedAddressId}
+                                    onSelectAddress={handleSelectAddress}
+                                    onAddAddress={handleAddAddress}
+                                    onEditAddress={handleEditAddress}
+                                    onDeleteAddress={handleDeleteAddress}
+                                    onSetDefaultAddress={handleSetDefaultAddress}
+                                />
+
+                                {/* Shipping Fee Status */}
+                                {isCalculatingShippingFee && (
+                                    <Alert variant="info" className="mb-3">
+                                        <Spinner animation="border" size="sm" className="me-2"/>
+                                        Đang tính phí giao hàng...
+                                    </Alert>
+                                )}
+
+                                {shippingFeeError && (
+                                    <Alert variant="warning" className="mb-3">
+                                        ⚠️ {shippingFeeError}
+                                    </Alert>
+                                )}
+
+                                {/* Payment Method */}
+                                <PaymentMethodSelector
+                                    selectedMethod={selectedPaymentMethod}
+                                    onSelectMethod={setSelectedPaymentMethod}
+                                />
+
+                                {/* Thông báo khi chọn VNPay */}
+                                {selectedPaymentMethod === PaymentMethod.CARD && (
+                                    <Alert variant="info" className="mb-3">
+                                        <CreditCard size={20} className="me-2"/>
+                                        <strong>Thanh toán SePay:</strong> Bạn sẽ quét mã QR để thanh toán qua ứng dụng
+                                        ngân
+                                        hàng
+                                    </Alert>
+                                )}
+
+                                {/* Coupon */}
+                                <CouponInput
+                                    appliedCouponCode={checkoutData.appliedCouponCode}
+                                    availableCoupons={checkoutData.availableCoupons}
+                                    onApplyCoupon={handleApplyCoupon}
+                                    onRemoveCoupon={handleRemoveCoupon}
+                                    isLoading={isApplyingCoupon}
+                                    discountAmount={checkoutData.discountAmount}
+                                />
+
+                                {/* Notes */}
+                                <div className="card shadow-sm border-0 mb-4">
+                                    <div className="card-body">
+                                        <h6 className="mb-3">Ghi chú cho cửa hàng (không bắt buộc)</h6>
+                                        <Form.Control
+                                            as="textarea"
+                                            rows={3}
+                                            placeholder="VD: Giao hàng trước 12h, không gõ chuông..."
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            maxLength={500}
+                                            isInvalid={notes.length > 500}
+                                        />
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                            <small className={`${notes.length > 500 ? 'text-danger' : 'text-muted'}`}>
+                                                {notes.length}/500 ký tự
+                                            </small>
+                                            {notes.length > 500 && (
+                                                <small className="text-danger">
+                                                    Vượt quá giới hạn {notes.length - 500} ký tự
+                                                </small>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Col>
+
+                            {/* Right Column - Order Summary */}
+                            <Col lg={4}>
+                                <div className="sticky-top" style={{top: '20px', zIndex: 10}}>
+                                    <OrderSummary
+                                        merchantName={checkoutData.merchantName}
+                                        merchantAddress={checkoutData.merchantAddress}
+                                        items={checkoutData.items}
+                                        totalItems={checkoutData.totalItems}
+                                        itemsTotal={checkoutData.itemsTotal}
+                                        discountAmount={checkoutData.discountAmount}
+                                        serviceFee={checkoutData.serviceFee}
+                                        shippingFee={shippingFee}
+                                        totalAmount={checkoutData.totalAmount}
+                                        appliedCouponCode={checkoutData.appliedCouponCode}
+                                    />
+
+                                    {/* Place Order Button */}
+                                    <Button
+                                        variant="danger"
+                                        size="lg"
+                                        className="w-100 mt-3 fw-bold"
+                                        onClick={handlePlaceOrder}
+                                        disabled={
+                                            isProcessing ||
+                                            !selectedAddressId ||
+                                            isCalculatingShippingFee ||
+                                            isOrderingRef.current ||
+                                            isOrderConfirmOpen
+                                        }
+                                    >
+                                        {isProcessing ? (
+                                            <>
+                                                <Spinner
+                                                    as="span"
+                                                    animation="border"
+                                                    size="sm"
+                                                    className="me-2"
+                                                />
+                                                {selectedPaymentMethod === PaymentMethod.CARD
+                                                    ? 'Đang tạo thanh toán...'
+                                                    : 'Đang xử lý...'
+                                                }
+                                            </>
+                                        ) : (
+                                            <>
+                                                {selectedPaymentMethod === PaymentMethod.CARD ? (
+                                                    <>
+                                                        <CreditCard size={20} className="me-2"/>
+                                                        Thanh toán Online
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ShoppingCart size={20} className="me-2"/>
+                                                        Đặt hàng
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </Col>
+                        </Row>
+                    )}
                 </Container>
             </div>
         );
-    }
-
-    return (
-        <div className="bg-light min-vh-100">
-            <Navigation/>
-
-            <Container className="py-4">
-                {/* Header */}
-                <div className="mb-4">
-                    <Button
-                        variant="link"
-                        className="text-decoration-none p-0 mb-3"
-                        onClick={() => navigate('/cart')}
-                    >
-                        <ArrowLeft size={20} className="me-2"/>
-                        Quay lại giỏ hàng
-                    </Button>
-
-                    <h2 className="fw-bold d-flex align-items-center">
-                        <ShoppingCart size={32} className="text-danger me-3"/>
-                        Thanh toán đơn hàng
-                    </h2>
-                </div>
-
-                {checkoutData && (
-                    <Row>
-                        {/* Left Column */}
-                        <Col lg={8}>
-                            {/* Address Selector */}
-                            <AddressSelector
-                                addresses={checkoutData.addresses}
-                                selectedAddressId={selectedAddressId}
-                                onSelectAddress={handleSelectAddress}
-                                onAddAddress={handleAddAddress}
-                                onEditAddress={handleEditAddress}
-                                onDeleteAddress={handleDeleteAddress}
-                                onSetDefaultAddress={handleSetDefaultAddress}
-                            />
-
-                            {/* Shipping Fee Status */}
-                            {isCalculatingShippingFee && (
-                                <Alert variant="info" className="mb-3">
-                                    <Spinner animation="border" size="sm" className="me-2"/>
-                                    Đang tính phí giao hàng...
-                                </Alert>
-                            )}
-
-                            {shippingFeeError && (
-                                <Alert variant="warning" className="mb-3">
-                                    ⚠️ {shippingFeeError}
-                                </Alert>
-                            )}
-
-                            {/* Payment Method */}
-                            <PaymentMethodSelector
-                                selectedMethod={selectedPaymentMethod}
-                                onSelectMethod={setSelectedPaymentMethod}
-                            />
-
-                            {/* Thông báo khi chọn VNPay */}
-                            {selectedPaymentMethod === PaymentMethod.CARD && (
-                                <Alert variant="info" className="mb-3">
-                                    <CreditCard size={20} className="me-2"/>
-                                    <strong>Thanh toán SePay:</strong> Bạn sẽ quét mã QR để thanh toán qua ứng dụng ngân
-                                    hàng
-                                </Alert>
-                            )}
-
-                            {/* Coupon */}
-                            <CouponInput
-                                appliedCouponCode={checkoutData.appliedCouponCode}
-                                availableCoupons={checkoutData.availableCoupons}
-                                onApplyCoupon={handleApplyCoupon}
-                                onRemoveCoupon={handleRemoveCoupon}
-                                isLoading={isApplyingCoupon}
-                                discountAmount={checkoutData.discountAmount}
-                            />
-
-                            {/* Notes */}
-                            <div className="card shadow-sm border-0 mb-4">
-                                <div className="card-body">
-                                    <h6 className="mb-3">Ghi chú cho cửa hàng (không bắt buộc)</h6>
-                                    <Form.Control
-                                        as="textarea"
-                                        rows={3}
-                                        placeholder="VD: Giao hàng trước 12h, không gõ chuông..."
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        maxLength={500}
-                                        isInvalid={notes.length > 500}
-                                    />
-                                    <div className="d-flex justify-content-between align-items-center mt-2">
-                                        <small className={`${notes.length > 500 ? 'text-danger' : 'text-muted'}`}>
-                                            {notes.length}/500 ký tự
-                                        </small>
-                                        {notes.length > 500 && (
-                                            <small className="text-danger">
-                                                Vượt quá giới hạn {notes.length - 500} ký tự
-                                            </small>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </Col>
-
-                        {/* Right Column - Order Summary */}
-                        <Col lg={4}>
-                            <div className="sticky-top" style={{top: '20px', zIndex: 10}}>
-                                <OrderSummary
-                                    merchantName={checkoutData.merchantName}
-                                    merchantAddress={checkoutData.merchantAddress}
-                                    items={checkoutData.items}
-                                    totalItems={checkoutData.totalItems}
-                                    itemsTotal={checkoutData.itemsTotal}
-                                    discountAmount={checkoutData.discountAmount}
-                                    serviceFee={checkoutData.serviceFee}
-                                    shippingFee={shippingFee}
-                                    totalAmount={checkoutData.totalAmount}
-                                    appliedCouponCode={checkoutData.appliedCouponCode}
-                                />
-
-                                {/* Place Order Button */}
-                                <Button
-                                    variant="danger"
-                                    size="lg"
-                                    className="w-100 mt-3 fw-bold"
-                                    onClick={handlePlaceOrder}
-                                    disabled={
-                                        isProcessing ||
-                                        !selectedAddressId ||
-                                        isCalculatingShippingFee ||
-                                        isOrderingRef.current ||
-                                        isOrderConfirmOpen
-                                    }
-                                >
-                                    {isProcessing ? (
-                                        <>
-                                            <Spinner
-                                                as="span"
-                                                animation="border"
-                                                size="sm"
-                                                className="me-2"
-                                            />
-                                            {selectedPaymentMethod === PaymentMethod.CARD
-                                                ? 'Đang tạo thanh toán...'
-                                                : 'Đang xử lý...'
-                                            }
-                                        </>
-                                    ) : (
-                                        <>
-                                            {selectedPaymentMethod === PaymentMethod.CARD ? (
-                                                <>
-                                                    <CreditCard size={20} className="me-2"/>
-                                                    Thanh toán Online
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ShoppingCart size={20} className="me-2"/>
-                                                    Đặt hàng
-                                                </>
-                                            )}
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </Col>
-                    </Row>
-                )}
-            </Container>
-        </div>
-    );
-};
+    };
 
 export default CheckoutPage;

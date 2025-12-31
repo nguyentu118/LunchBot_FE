@@ -177,7 +177,7 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                         <h5 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '250px' }}>
                             {item.dishName}
                         </h5>
-                        <p className="text-danger fw-bold mb-2">{formatCurrency(item.price)}</p>
+                        <p className="text-danger fw-bold mb-2">{formatCurrency(item.discountPrice)}</p>
 
                         {/* --- KHU VỰC CỘNG TRỪ SỐ LƯỢNG --- */}
                         <InputGroup size="sm" style={{ width: '120px' }}>
@@ -218,7 +218,7 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
                     {/* TỔNG TIỀN & XÓA */}
                     <div className="text-end ms-2">
                         <p className="fw-bold text-danger mb-3" style={{ fontSize: '1.1rem' }}>
-                            {formatCurrency(item.price * localQuantity)}
+                            {formatCurrency(item.discountPrice * localQuantity)}
                         </p>
                         <Button
                             variant="outline-danger"

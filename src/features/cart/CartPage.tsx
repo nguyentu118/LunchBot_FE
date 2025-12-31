@@ -149,7 +149,7 @@ const CartPage: React.FC = () => {
         return enrichedItems.reduce((acc, item) => {
             if (selectedItems.has(item.dishId)) {
                 acc.count += item.quantity;
-                acc.price += item.subtotal;
+                acc.price += item.discountPrice;
             }
             return acc;
         }, { count: 0, price: 0 });

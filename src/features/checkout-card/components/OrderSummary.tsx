@@ -72,10 +72,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                                 <div className="flex-grow-1">
                                     <h6 className="mb-1 small">{item.dishName}</h6>
                                     <p className="mb-1 small text-muted">
-                                        {formatPrice(item.price)} x {item.quantity}
+                                        {formatPrice(item.discountPrice)} x {item.quantity}
                                     </p>
                                     <p className="mb-0 fw-bold text-danger small">
-                                        {formatPrice(item.subtotal)}
+                                        {formatPrice(item.discountPrice)}
                                     </p>
                                 </div>
                             </div>
