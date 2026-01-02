@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {Badge, Button, Container, Dropdown, Nav, Navbar} from 'react-bootstrap';
 import {
+    Banknote,
     Briefcase, Heart,
     Home,
     LogIn,
@@ -159,6 +160,9 @@ const Navigation: React.FC = () => {
     const handleMyOrders = () => {
         navigate('/orders');
     };
+    const handleBankInfo = () => {
+        navigate('/user/bank-info');
+    };
 
     const normalizedRole = userInfo.userRole ? userInfo.userRole.toUpperCase().replace(/^ROLE_/, '') : null;
     const displayName = userInfo.fullName ? userInfo.fullName.split(' ')[0] : 'User';
@@ -269,6 +273,13 @@ const Navigation: React.FC = () => {
                                             >
                                                 <ShoppingBag size={16} className="me-2 text-success"/>
                                                 Đơn hàng của tôi
+                                            </Dropdown.Item>
+                                            <Dropdown.Item
+                                                onClick={handleBankInfo}
+                                                className="d-flex align-items-center"
+                                            >
+                                                <Banknote size={16} className="me-2 text-warning"/>
+                                                Tài khoản/Ngân hàng
                                             </Dropdown.Item>
                                             <Dropdown.Item
                                                 onClick={handleUpdateUserProfile}

@@ -13,6 +13,7 @@ export const ROUTES = {
         RECONCILIATION: '/admin/reconciliation',
         PARTNER_REQUESTS: '/admin/merchants/partner-requests',
         WITHDRAWALS: '/admin/withdrawals',
+        REFUNDS: '/admin/refunds',
     },
 
     AUTH: {
@@ -29,6 +30,7 @@ export const ROUTES = {
 
     USER: {
         PROFILE: 'user/update',
+        BANK_INFO: 'user/bank-info',
         DISH_DETAILS: 'dish/detail/{dishId}'
     }
 };

@@ -100,7 +100,7 @@ const SepayPaymentPage: React.FC = () => {
         // Check ngay lập tức
         checkPaymentStatus();
 
-        // ✅ CHECK MỖI 3 GIÂY (tăng từ 2s lên 3s để giảm load)
+        // ✅ CHECK MỖI 5 GIÂY (tăng từ 2s lên 3s để giảm load)
         intervalRef.current = setInterval(() => {
             checkPaymentStatus();
         }, 5000);
@@ -142,14 +142,6 @@ const SepayPaymentPage: React.FC = () => {
             duration: 2000,
             position: 'bottom-center'
         });
-    };
-
-    // ✅ MANUAL CHECK - Người dùng có thể bấm để check ngay
-    const handleManualCheck = () => {
-        if (!isChecking) {
-            toast.loading('Đang kiểm tra...', { duration: 1000 });
-            checkPaymentStatus();
-        }
     };
 
     if (!paymentData) {

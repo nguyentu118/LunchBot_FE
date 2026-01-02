@@ -47,6 +47,8 @@ import MerchantsPage from "../features/merchants/MerchantsPage.tsx";
 import PromotionsPage from "../features/coupon/components/PromotionsPage.tsx";
 import AllSuggestedPage from "../features/dish/pages/AllSuggestedPage.tsx";
 import AllDiscountsPage from "../features/dish/pages/AllDiscountsPage.tsx";
+import BankInfoPage from "../features/user/BankInfoPage.tsx";
+import AdminRefundPage from "../features/admin/refund/components/AdminRefundPage.tsx";
 
 
 const router = createBrowserRouter([
@@ -67,6 +69,10 @@ const router = createBrowserRouter([
     {
         path: 'user/update',
         element: <UserUpdateForm/>,
+    },
+    {
+        path: 'user/bank-info', // 👈 THÊM ROUTE MỚI
+        element: <BankInfoPage/>,
     },
     {
         path: '/register-merchant',
@@ -167,8 +173,8 @@ const router = createBrowserRouter([
                 element: <AdminWithdrawalPage />
             },
             {
-                path: 'orders',
-                element: <div>Order Management Page</div>,
+                path: 'refunds',  // ← THÊM ROUTE MỚI
+                element: <AdminRefundPage/>,
             },
             {
                 path: 'drivers/update/:driverId',
