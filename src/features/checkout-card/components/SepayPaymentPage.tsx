@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Spinner, Button, Alert, Badge, Row, Col } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, Copy, ArrowLeft, QrCode } from 'lucide-react';
+import { CheckCircle, Copy, ArrowLeft, QrCode, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { paymentService, SepayPaymentResponse } from '../services/paymentService';
 
@@ -12,7 +12,9 @@ const SepayPaymentPage: React.FC = () => {
     const paymentData = location.state?.paymentData as SepayPaymentResponse;
 
     const [isPaid, setIsPaid] = useState(false);
+    const [isChecking, setIsChecking] = useState(false);
     const [checkCount, setCheckCount] = useState(0);
+    const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
 
     const isMountedRef = useRef(true);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,7 +29,67 @@ const SepayPaymentPage: React.FC = () => {
         }
     }, [paymentData, navigate]);
 
-    // Polling logic
+    // ✅ CHECK PAYMENT - Tách thành function riêng để có thể gọi manual
+    const checkPaymentStatus = async () => {
+        if (!isMountedRef.current || isChecking) {
+            return;
+        }
+
+        setIsChecking(true);
+        const currentCount = checkCount + 1;
+        setCheckCount(currentCount);
+        setLastCheckTime(new Date());
+
+        try {
+            console.log(`🔍 [CHECK #${currentCount}] Checking payment for ${paymentData.txnRef}...`);
+
+            const response = await paymentService.checkSepayPayment({
+                txnRef: paymentData.txnRef,
+                amount: paymentData.amount
+            });
+
+            console.log(`📊 [CHECK #${currentCount}] Response:`, response);
+
+            if (response.paid === true) {
+                console.log('✅ Payment confirmed!');
+
+                // Dừng polling
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                    timeoutRef.current = null;
+                }
+
+                setIsPaid(true);
+                toast.success("Thanh toán thành công! 🎉", {
+                    duration: 3000,
+                    position: 'top-center'
+                });
+
+                // Chờ 2 giây rồi chuyển trang
+                setTimeout(() => {
+                    if (isMountedRef.current) {
+                        navigate('/orders', {
+                            state: { orderId: response.orderId }
+                        });
+                    }
+                }, 2000);
+            } else {
+                console.log(`⏳ [CHECK #${currentCount}] Not paid yet`);
+            }
+        } catch (error) {
+            console.error('❌ Error checking payment:', error);
+            // Không toast error để tránh spam user
+        } finally {
+            setIsChecking(false);
+        }
+    };
+
+    // ✅ POLLING - Chạy check tự động
     useEffect(() => {
         if (!paymentData || isPollingRef.current) {
             return;
@@ -35,62 +97,27 @@ const SepayPaymentPage: React.FC = () => {
 
         isPollingRef.current = true;
 
-        const checkPaymentStatus = async () => {
-            if (!isMountedRef.current) {
-                return;
-            }
-
-            const currentCount = checkCount + 1;
-            setCheckCount(currentCount);
-
-            try {
-                const response = await paymentService.checkSepayPayment({
-                    txnRef: paymentData.txnRef,
-                    amount: paymentData.amount
-                });
-
-                if (response.paid === true) {
-                    if (intervalRef.current) {
-                        clearInterval(intervalRef.current);
-                        intervalRef.current = null;
-                    }
-
-                    if (timeoutRef.current) {
-                        clearTimeout(timeoutRef.current);
-                        timeoutRef.current = null;
-                    }
-
-                    setIsPaid(true);
-                    toast.success("Thanh toán thành công!");
-
-                    setTimeout(() => {
-                        if (isMountedRef.current) {
-                            navigate('/orders', {
-                                state: { orderId: response.orderId || paymentData.txnRef }
-                            });
-                        }
-                    }, 2000);
-                }
-            } catch (error) {
-                console.error('Error checking payment:', error);
-            }
-        };
-
+        // Check ngay lập tức
         checkPaymentStatus();
 
+        // ✅ CHECK MỖI 3 GIÂY (tăng từ 2s lên 3s để giảm load)
         intervalRef.current = setInterval(() => {
             checkPaymentStatus();
-        }, 2000);
+        }, 5000);
 
+        // ✅ TIMEOUT SAU 5 PHÚT (thay vì 1 phút)
         timeoutRef.current = setTimeout(() => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
             if (!isPaid) {
-                toast.error('Hết thời gian chờ. Vui lòng kiểm tra lại đơn hàng.');
+                toast.error(
+                    'Hết thời gian chờ. Vui lòng kiểm tra lại đơn hàng hoặc liên hệ CSKH.',
+                    { duration: 5000 }
+                );
             }
-        }, 60000);
+        }, 300000); // 5 phút
 
         return () => {
             isMountedRef.current = false;
@@ -106,11 +133,23 @@ const SepayPaymentPage: React.FC = () => {
                 timeoutRef.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [paymentData]);
 
     const copyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
-        toast.success(`Đã sao chép ${label}`);
+        toast.success(`Đã sao chép ${label}`, {
+            duration: 2000,
+            position: 'bottom-center'
+        });
+    };
+
+    // ✅ MANUAL CHECK - Người dùng có thể bấm để check ngay
+    const handleManualCheck = () => {
+        if (!isChecking) {
+            toast.loading('Đang kiểm tra...', { duration: 1000 });
+            checkPaymentStatus();
+        }
     };
 
     if (!paymentData) {
@@ -128,6 +167,7 @@ const SepayPaymentPage: React.FC = () => {
                     variant="link"
                     className="text-decoration-none mb-3 p-0 text-muted"
                     onClick={() => navigate('/checkout')}
+                    disabled={isPaid}
                 >
                     <ArrowLeft size={18} className="me-1" /> Quay lại
                 </Button>
@@ -137,6 +177,7 @@ const SepayPaymentPage: React.FC = () => {
                     <p className="text-muted">
                         Vui lòng quét mã QR hoặc chuyển khoản theo thông tin bên dưới
                     </p>
+
                 </div>
 
                 <Row>
@@ -166,15 +207,17 @@ const SepayPaymentPage: React.FC = () => {
                                                 style={{ maxWidth: '250px' }}
                                             />
                                         </div>
-                                        <div className="d-flex align-items-center gap-2 text-primary">
-                                            <Spinner animation="border" size="sm" />
+
+                                        <div className="d-flex align-items-center gap-2 text-primary mb-2">
+                                            {isChecking ? (
+                                                <Spinner animation="border" size="sm" />
+                                            ) : (
+                                                <RefreshCw size={16} />
+                                            )}
                                             <small className="fw-bold">
                                                 Đang chờ thanh toán...
                                             </small>
                                         </div>
-                                        <small className="text-muted mt-2 d-block">
-                                            Hệ thống tự động cập nhật sau vài giây
-                                        </small>
                                     </>
                                 )}
                             </Card.Body>
@@ -272,11 +315,18 @@ const SepayPaymentPage: React.FC = () => {
                                 </div>
 
                                 {!isPaid && (
-                                    <Alert variant="info" className="mb-0 small">
-                                        <QrCode size={16} className="me-2" />
-                                        Mẹo: Bạn có thể dùng tính năng "Quét QR" trong app ngân hàng
-                                        để không phải nhập tay.
-                                    </Alert>
+                                    <>
+                                        <Alert variant="info" className="mb-3 small">
+                                            <QrCode size={16} className="me-2" />
+                                            <strong>Mẹo:</strong> Bạn có thể dùng tính năng "Quét QR" trong app ngân hàng
+                                            để không phải nhập tay.
+                                        </Alert>
+
+                                        <Alert variant="warning" className="mb-0 small">
+                                            <strong>⏱️ Lưu ý:</strong> Sau khi chuyển khoản, hệ thống sẽ tự động xác nhận trong vòng 5-10 giây.
+                                            Nếu quá lâu, hãy bấm nút "Kiểm tra ngay" bên trái.
+                                        </Alert>
+                                    </>
                                 )}
                             </Card.Body>
                         </Card>
