@@ -5,7 +5,7 @@ import {
     ClipboardCheck, Crown, DollarSign,
     Home,
     Menu,
-    Moon,
+    Moon, RotateCcw,
     Search,
     Shield,
     Store,
@@ -48,6 +48,12 @@ export const AdminLayout: React.FC = () => {
             label: 'Quản lý Rút tiền',
             icon: DollarSign,
             path: ROUTES.ADMIN.WITHDRAWALS
+        },
+        {
+            id: 'refunds',
+            label: 'Quản lý hoàn tiền',
+            icon: RotateCcw,
+            path: '/admin/refunds'  // ← THÊM DÒNG NÀY
         },
     ];
 

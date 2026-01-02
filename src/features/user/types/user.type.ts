@@ -8,3 +8,23 @@ export interface UserMeDTO {
 export interface CartCountDTO {
     count: number;
 }
+export interface BankInfo {
+    bankAccountNumber: string;
+    bankName: string;
+    bankAccountName: string;
+    bankBranch?: string;
+    hasBankInfo: boolean;
+}
+
+export interface BankInfoResponse {
+    success: boolean;
+    data?: BankInfo;
+    message?: string;
+}
+
+export interface UpdateBankInfoRequest {
+    bankAccountNumber: string;
+    bankName: string;
+    bankAccountName: string;
+    bankBranch?: string;
+}
