@@ -84,7 +84,9 @@ const MerchantProfilePage = () => {
 
                 return {
                     ...dish,
-                    images: images
+                    images: images,
+                    // Ensure discountPrice is properly parsed as number
+                    discountPrice: dish.discountPrice ? Number(dish.discountPrice) : undefined
                 };
             });
 
@@ -259,7 +261,7 @@ const MerchantProfilePage = () => {
                                 <>
                                     <Row className="g-4">
                                         {currentDishes.map((dish) => {
-                                            const hasDiscount = dish.discountPrice && dish.discountPrice < dish.price;
+                                            const hasDiscount = dish.discountPrice != null && dish.discountPrice > 0 && dish.discountPrice < dish.price;
                                             const finalPrice = hasDiscount ? dish.discountPrice : dish.price;
 
                                             return (
@@ -613,7 +615,9 @@ const MerchantProfilePage = () => {
                                 <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mb-3">
                                     <span className="fw-semibold">Tổng cộng:</span>
                                     <span className="fs-4 fw-bold text-danger">
-                                        {formatPrice((selectedDish.discountPrice || selectedDish.price) * quantity)}
+                                        {formatPrice((selectedDish.discountPrice && selectedDish.discountPrice < selectedDish.price
+                                            ? selectedDish.discountPrice
+                                            : selectedDish.price) * quantity)}
                                     </span>
                                 </div>
 
