@@ -61,7 +61,9 @@ const HomePage: React.FC = () => {
     const {merchants: apiMerchants, loading: merchantsLoading, error: merchantsError} = usePopularMerchants(8);
 
 
-    const popularRestaurants: Restaurant[] = apiMerchants.map(formatMerchantForDisplay);
+    const popularRestaurants: Restaurant[] = Array.isArray(apiMerchants)
+        ? apiMerchants.map(formatMerchantForDisplay)
+        : [];
 
     // ⭐ Hàm generate màu cho categories
 
