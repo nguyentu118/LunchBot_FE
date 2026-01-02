@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Alert, Badge, Button, Card, Col, Container, Form, Image, InputGroup, Row} from 'react-bootstrap';
 import './Homepage.css';
 import {
-    ChevronLeft, ChevronRight, Clock, Facebook, Heart, Instagram,
+    ChevronLeft, ChevronRight, Clock, Facebook, Instagram,
     Mail, Phone, Search, Star, Stars, Twitter, Youtube, Zap
 } from 'lucide-react';
 import Navigation from '../layout/Navigation';
@@ -173,14 +173,6 @@ const HomePage: React.FC = () => {
         return () => clearInterval(timer);
     }, [nextCategorySlide, foodCategories.length]);
 
-    const [favorites, setFavorites] = useState<Record<number, boolean>>(
-        popularRestaurants.reduce((acc, r) => ({...acc, [r.id]: r.favorite}), {} as Record<number, boolean>)
-    );
-
-    const toggleFavorite = useCallback((id: number) => {
-        setFavorites(prev => ({...prev, [id]: !prev[id]}));
-    }, []);
-
     return (
         <div className="homepage-wrapper bg-light">
             <div className="bg-light min-vh-100">
@@ -215,7 +207,7 @@ const HomePage: React.FC = () => {
                                 </span>
                             </Alert>
                             <h1 className="display-4 fw-bold mb-3" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>
-                                Khám phá món ăn ngon nhất tại <span className="text-warning">Hà Nội</span> VN
+                                Khám phá món ăn ngon nhất tại <span className="text-warning">Hà Nội</span>
                             </h1>
 
                             <Row className="justify-content-center mb-4">

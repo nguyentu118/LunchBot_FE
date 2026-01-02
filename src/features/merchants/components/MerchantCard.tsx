@@ -80,7 +80,7 @@ const MerchantCard: React.FC<MerchantCardProps> = ({ merchant }) => {
                     <span className="fw-medium text-dark">
                         {(merchant.openTime && merchant.closeTime)
                             ? `${merchant.openTime.substring(0, 5)} - ${merchant.closeTime.substring(0, 5)}`
-                            : "Đang cập nhật"
+                            : "08:00 - 22:00"
                         }
                     </span>
                 </div>
