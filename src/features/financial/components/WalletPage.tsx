@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Table, Badge, Modal, Form, Alert, Spinner, Row, Col } from 'react-bootstrap';
-import {  CreditCard, History, AlertTriangle, Ban } from 'lucide-react';
+import {CreditCard, History, AlertTriangle, Ban, CheckCircle} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { financialService } from '../services/financialService';
 
 import { WithdrawalCreateDTO, WithdrawalRequest } from '../types/financial.types';
 import {merchantService} from "../../merchants/services/merchantService.ts";
+import axiosInstance from "../../../config/axiosConfig.ts";
 
 const WalletPage: React.FC = () => {
     // Data State
@@ -18,6 +19,14 @@ const WalletPage: React.FC = () => {
     // Modal State
     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     const [showLiquidateModal, setShowLiquidateModal] = useState(false);
+
+    const [bankInfo, setBankInfo] = useState({
+        hasLinkedBank: false,
+        bankName: '',
+        bankAccountNumber: '',
+        bankAccountHolder: ''
+    });
+    const [loadingBankInfo, setLoadingBankInfo] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<WithdrawalCreateDTO>({
@@ -50,6 +59,36 @@ const WalletPage: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (showWithdrawModal) {
+            fetchBankInfo();
+        }
+    }, [showWithdrawModal]);
+
+// Hàm fetch thông tin bank
+    const fetchBankInfo = async () => {
+        setLoadingBankInfo(true);
+        try {
+            const response = await axiosInstance.get('/merchants/bank-account');
+            setBankInfo(response.data);
+
+            // Tự động fill vào form nếu đã có thông tin bank
+            if (response.data.hasLinkedBank) {
+                setFormData(prev => ({
+                    ...prev,
+                    bankName: response.data.bankName || '',
+                    bankAccountNumber: response.data.bankAccountNumber || '',
+                    bankAccountHolder: response.data.bankAccountHolder || ''
+                }));
+            }
+        } catch (error) {
+            console.error('Lỗi khi tải thông tin ngân hàng:', error);
+            toast.error('Không thể tải thông tin ngân hàng');
+        } finally {
+            setLoadingBankInfo(false);
+        }
+    };
 
     // Handle Input Change
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,36 +236,100 @@ const WalletPage: React.FC = () => {
                 </Table>
             </Card>
 
-            {/* MODAL RÚT TIỀN */}
             <Modal show={showWithdrawModal} onHide={() => setShowWithdrawModal(false)} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Yêu cầu Rút tiền</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Form>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Số tiền muốn rút (VNĐ)</Form.Label>
-                            <Form.Control type="number" name="amount" value={formData.amount} onChange={handleInputChange} />
-                            <Form.Text className="text-muted">Tối đa: {formatCurrency(balance)}</Form.Text>
-                        </Form.Group>
-                        <h6 className="mt-4 mb-3">Thông tin nhận tiền</h6>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Ngân hàng</Form.Label>
-                            <Form.Control type="text" name="bankName" placeholder="VD: Vietcombank" value={formData.bankName} onChange={handleInputChange} />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Số tài khoản</Form.Label>
-                            <Form.Control type="text" name="bankAccountNumber" placeholder="VD: 123456789" value={formData.bankAccountNumber} onChange={handleInputChange} />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Chủ tài khoản (In hoa không dấu)</Form.Label>
-                            <Form.Control type="text" name="bankAccountHolder" placeholder="VD: NGUYEN VAN A" value={formData.bankAccountHolder} onChange={handleInputChange} />
-                        </Form.Group>
-                    </Form>
+                    {loadingBankInfo ? (
+                        <div className="text-center py-4">
+                            <Spinner animation="border" role="status">
+                                <span className="visually-hidden">Đang tải...</span>
+                            </Spinner>
+                            <p className="text-muted mt-2">Đang tải thông tin tài khoản...</p>
+                        </div>
+                    ) : (
+                        <Form>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Số tiền muốn rút (VNĐ)</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    name="amount"
+                                    value={formData.amount}
+                                    onChange={handleInputChange}
+                                    placeholder="Nhập số tiền"
+                                />
+                                <Form.Text className="text-muted">
+                                    Tối đa: {formatCurrency(balance)}
+                                </Form.Text>
+                            </Form.Group>
+
+                            <hr className="my-4" />
+
+                            <h6 className="mb-3 fw-bold">Thông tin nhận tiền</h6>
+
+                            {/* Hiển thị badge nếu đã liên kết */}
+                            {bankInfo.hasLinkedBank && (
+                                <Alert variant="success" className="py-2 px-3 mb-3 d-flex align-items-center gap-2">
+                                    <CheckCircle size={18} />
+                                    <small>Sử dụng tài khoản đã liên kết</small>
+                                </Alert>
+                            )}
+
+                            <Form.Group className="mb-3">
+                                <Form.Label>Ngân hàng</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    name="bankName"
+                                    placeholder="VD: Vietcombank"
+                                    value={formData.bankName}
+                                    onChange={handleInputChange}
+                                    disabled={bankInfo.hasLinkedBank} // Disable nếu đã có bank
+                                />
+                            </Form.Group>
+
+                            <Form.Group className="mb-3">
+                                <Form.Label>Số tài khoản</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    name="bankAccountNumber"
+                                    placeholder="VD: 123456789"
+                                    value={formData.bankAccountNumber}
+                                    onChange={handleInputChange}
+                                    disabled={bankInfo.hasLinkedBank}
+                                />
+                            </Form.Group>
+
+                            <Form.Group className="mb-3">
+                                <Form.Label>Chủ tài khoản (In hoa không dấu)</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    name="bankAccountHolder"
+                                    placeholder="VD: NGUYEN VAN A"
+                                    value={formData.bankAccountHolder}
+                                    onChange={handleInputChange}
+                                    disabled={bankInfo.hasLinkedBank}
+                                    style={{ textTransform: 'uppercase' }}
+                                />
+                            </Form.Group>
+                        </Form>
+                    )}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowWithdrawModal(false)}>Hủy</Button>
-                    <Button variant="primary" onClick={handleWithdraw}>Xác nhận rút</Button>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowWithdrawModal(false)}
+                        disabled={loadingBankInfo}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleWithdraw}
+                        disabled={loadingBankInfo || !formData.amount}
+                    >
+                        Xác nhận rút
+                    </Button>
                 </Modal.Footer>
             </Modal>
 

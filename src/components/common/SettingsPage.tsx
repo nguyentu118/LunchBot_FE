@@ -1,6 +1,6 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { Alert, Button, Modal, Form, Spinner, Row, Col } from 'react-bootstrap';
-import { Settings as SettingsIcon, Store, Clock } from 'lucide-react';
+import { Settings as SettingsIcon, Store, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../config/axiosConfig';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import { AxiosError } from 'axios';
 import { merchantService } from "../../features/merchants/services/merchantService.ts";
 import { MerchantProfileResponse, PartnerStatus } from "../../features/merchants/types/merchant.ts";
 import { LoyaltyPartnerCard } from "../../features/merchants/LoyaltyPartnerCard.tsx";
+import BankAccountModal from "../../features/merchants/components/BankAccountModal.tsx";
 
 // Kiểu dữ liệu cho Form
 interface IMerchantUpdateFormData {
@@ -45,6 +46,7 @@ const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<MerchantProfileResponse | null>(null);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [showBankAccountModal, setShowBankAccountModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
@@ -181,7 +183,7 @@ const SettingsPage: React.FC = () => {
 
     return (
         <div className="container-fluid p-0">
-            <h5 className="fw-bold mb-4">Cài Đặt & Hồ sơ</h5>
+            <h5 className="fw-bold mb-4">Cài đặt & Hồ sơ</h5>
 
             <div className="row g-4">
                 {/* CỘT TRÁI: CÁC MENU CÀI ĐẶT CƠ BẢN */}
@@ -210,25 +212,31 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Giờ mở cửa */}
-                        <div className="border rounded p-3 bg-white shadow-sm">
+                        {/* Tài khoản thanh toán */}
+                        <div className="border rounded p-3 bg-white shadow-sm" style={{ cursor: 'pointer' }}>
                             <div className="d-flex justify-content-between align-items-center">
                                 <div className="d-flex align-items-center gap-3">
                                     <div className="bg-success bg-opacity-10 p-3 rounded">
-                                        <Clock size={24} className="text-success" />
+                                        <CreditCard size={24} className="text-success" />
                                     </div>
                                     <div>
                                         <h6 className="mb-1">Tài khoản thanh toán</h6>
-                                        <p className="text-muted small mb-0">Cập nhật tài khoản thanh toán</p>
+                                        <p className="text-muted small mb-0">Cập nhật tài khoản ngân hàng để nhận tiền</p>
                                     </div>
                                 </div>
-                                <Button variant="outline-secondary" size="sm" disabled>Sắp ra mắt</Button>
+                                <Button
+                                    variant="outline-success"
+                                    size="sm"
+                                    onClick={() => setShowBankAccountModal(true)}
+                                >
+                                    Quản lý
+                                </Button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* CỘT PHẢI: THẺTẠO LOYALTY */}
+                {/* CỘT PHẢI: THẺ TÀO LOYALTY */}
                 <div className="col-lg-4">
                     {profile && (
                         <LoyaltyPartnerCard
@@ -410,6 +418,12 @@ const SettingsPage: React.FC = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* MODAL TÀI KHOẢN NGÂN HÀNG */}
+            <BankAccountModal
+                show={showBankAccountModal}
+                onHide={() => setShowBankAccountModal(false)}
+            />
         </div>
     );
 };

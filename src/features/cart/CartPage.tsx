@@ -83,7 +83,8 @@ const CartPage: React.FC = () => {
                             restaurantName: merchantName,
                             // Update luôn tên món/giá/ảnh từ server cho chính xác
                             dishName: dishDetail.name,
-                            price: dishDetail.price,
+                            price: Number(dishDetail.price) || Number(item.price) || 0,
+                            discountPrice: Number(item.discountPrice) || Number(item.price) || 0,
                             dishImage: dishDetail.images?.[0]?.imageUrl || item.dishImage
                         } as EnrichedCartItem;
 
@@ -95,7 +96,9 @@ const CartPage: React.FC = () => {
                         return {
                             ...item,
                             restaurantId: item.restaurantId || -1,
-                            restaurantName: item.restaurantName || 'Không thể tải tên quán'
+                            restaurantName: item.restaurantName || 'Không thể tải tên quán',
+                            price: Number(item.price) || 0,  // ✅ FIX NaN
+                            discountPrice: Number(item.discountPrice) || Number(item.price) || 0
                         } as EnrichedCartItem;
                     }
                 });
@@ -149,7 +152,7 @@ const CartPage: React.FC = () => {
         return enrichedItems.reduce((acc, item) => {
             if (selectedItems.has(item.dishId)) {
                 acc.count += item.quantity;
-                acc.price += item.discountPrice;
+                acc.price += item.discountPrice * item.quantity;
             }
             return acc;
         }, { count: 0, price: 0 });
