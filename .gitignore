@@ -1,3 +1,11 @@
+# Environment files
+.env.local
+.env.*.local
+.env
+
+# Keep .env.production for reference (sẽ override bởi Vercel)
+!.env.production
+
 # Logs
 logs
 *.log
