@@ -1,5 +1,5 @@
 // src/features/checkout/components/OrderSummary.tsx
-// tổng thanh toán
+// Tổng thanh toán - Fixed với scroll cho danh sách món
 import React from 'react';
 import { Card, ListGroup, Badge, Image } from 'react-bootstrap';
 import { ShoppingBag, Store, MapPin } from 'lucide-react';
@@ -35,7 +35,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
 
     return (
-        <Card className="shadow-sm border-0 sticky-top" style={{ top: '20px' }}>
+        <Card className="shadow-sm border-0">
             <Card.Header className="bg-white border-bottom">
                 <h5 className="mb-0 d-flex align-items-center">
                     <ShoppingBag size={20} className="text-danger me-2" />
@@ -47,41 +47,52 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 {/* Merchant Info */}
                 <div className="p-3 bg-light border-bottom">
                     <div className="d-flex align-items-start gap-2 mb-2">
-                        <Store size={18} className="text-primary mt-1" />
+                        <Store size={18} className="text-primary mt-1 flex-shrink-0" />
                         <div>
                             <h6 className="mb-1 fw-bold">{merchantName}</h6>
                             <p className="mb-0 small text-muted d-flex align-items-start gap-1">
-                                <MapPin size={14} className="mt-1" />
+                                <MapPin size={14} className="mt-1 flex-shrink-0" />
                                 <span>{merchantAddress}</span>
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Items List */}
-                <ListGroup variant="flush">
-                    {items.map((item) => (
-                        <ListGroup.Item key={item.id} className="px-3 py-2">
-                            <div className="d-flex gap-3">
-                                <Image
-                                    src={item.dishImage || 'https://via.placeholder.com/60'}
-                                    alt={item.dishName}
-                                    rounded
-                                    style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                                />
-                                <div className="flex-grow-1">
-                                    <h6 className="mb-1 small">{item.dishName}</h6>
-                                    <p className="mb-1 small text-muted">
-                                        {formatPrice(item.discountPrice)} x {item.quantity}
-                                    </p>
-                                    <p className="mb-0 fw-bold text-danger small">
-                                        {formatPrice(item.discountPrice)}
-                                    </p>
+                {/* Items List - Với scroll nếu quá nhiều món */}
+                <div
+                    style={{
+                        maxHeight: '320px',
+                        overflowY: 'auto',
+                        overflowX: 'hidden'
+                    }}
+                >
+                    <ListGroup variant="flush">
+                        {items.map((item) => (
+                            <ListGroup.Item key={item.id} className="px-3 py-2">
+                                <div className="d-flex gap-3">
+                                    <Image
+                                        src={item.dishImage || 'https://via.placeholder.com/60'}
+                                        alt={item.dishName}
+                                        rounded
+                                        className="flex-shrink-0"
+                                        style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+                                    />
+                                    <div className="flex-grow-1 min-w-0">
+                                        <h6 className="mb-1 small text-truncate" title={item.dishName}>
+                                            {item.dishName}
+                                        </h6>
+                                        <p className="mb-1 small text-muted">
+                                            {formatPrice(item.discountPrice)} x {item.quantity}
+                                        </p>
+                                        <p className="mb-0 fw-bold text-danger small">
+                                            {formatPrice(item.discountPrice * item.quantity)}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
+                            </ListGroup.Item>
+                        ))}
+                    </ListGroup>
+                </div>
 
                 {/* Price Breakdown */}
                 <div className="p-3 border-top">
@@ -92,14 +103,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
                     {discountAmount > 0 && (
                         <div className="d-flex justify-content-between mb-2">
-              <span className="text-muted small">
-                Giảm giá
-                  {appliedCouponCode && (
-                      <Badge bg="success" className="ms-2 small">
-                          {appliedCouponCode}
-                      </Badge>
-                  )}
-              </span>
+                            <span className="text-muted small">
+                                Giảm giá
+                                {appliedCouponCode && (
+                                    <Badge bg="success" className="ms-2 small">
+                                        {appliedCouponCode}
+                                    </Badge>
+                                )}
+                            </span>
                             <span className="small text-success">-{formatPrice(discountAmount)}</span>
                         </div>
                     )}
@@ -107,8 +118,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <div className="d-flex justify-content-between mb-2">
                         <span className="text-muted small">Phí dịch vụ</span>
                         <span className="small">
-              {serviceFee === 0 ? 'Miễn phí' : formatPrice(serviceFee)}
-            </span>
+                            {serviceFee === 0 ? 'Miễn phí' : formatPrice(serviceFee)}
+                        </span>
                     </div>
 
                     <div className="d-flex justify-content-between mb-3">
@@ -119,8 +130,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <div className="d-flex justify-content-between pt-3 border-top">
                         <span className="fw-bold">Tổng thanh toán</span>
                         <span className="fw-bold fs-5 text-danger">
-              {formatPrice(totalAmount)}
-            </span>
+                            {formatPrice(totalAmount)}
+                        </span>
                     </div>
                 </div>
             </Card.Body>
