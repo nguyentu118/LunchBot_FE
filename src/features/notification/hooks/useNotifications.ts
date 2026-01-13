@@ -21,27 +21,27 @@ export const useNotifications = (userEmail: string) => {
     useEffect(() => {
         // ✅ KIỂM TRA: Chỉ connect khi có cả userEmail VÀ token
         if (!userEmail) {
-            console.log('⏸️ No userEmail, skipping WebSocket connection');
             return;
         }
 
         const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
         if (!token) {
-            console.log('⏸️ No token, skipping WebSocket connection');
             return;
         }
 
         // ✅ Kiểm tra số lần thử kết nối
         if (connectionAttemptRef.current >= maxConnectionAttempts) {
-            console.warn('⚠️ Max WebSocket connection attempts reached. Stopping reconnection.');
             return;
         }
 
         connectionAttemptRef.current += 1;
         console.log(`🔌 Connecting WebSocket for user: ${userEmail} (attempt ${connectionAttemptRef.current}/${maxConnectionAttempts})`);
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-        // ✅ Lấy URL từ env, fallback về localhost cho dev
-        const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+        // Nếu API_BASE có /api, thì bỏ nó đi cho WebSocket
+        const WS_BASE = API_BASE.replace('/api', '');
+        const WEBSOCKET_URL = `${WS_BASE}/ws`;
+
         console.log('🔌 WebSocket URL:', WEBSOCKET_URL);
 
         const socket = new SockJS(WEBSOCKET_URL);
