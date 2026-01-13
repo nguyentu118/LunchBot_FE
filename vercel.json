@@ -8,6 +8,10 @@
       "destination": "http://103.176.179.107:8080/api/:path*"
     },
     {
+      "source": "/ws/:path*",
+      "destination": "http://103.176.179.107:8080/ws/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
