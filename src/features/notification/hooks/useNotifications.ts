@@ -15,6 +15,8 @@ export const useNotifications = (userEmail: string) => {
 
     const stompClientRef = useRef<Client | null>(null);
     const subscriptionRef = useRef<StompSubscription | null>(null);
+    const connectionAttemptRef = useRef<number>(0);
+    const maxConnectionAttempts = 3;
 
     useEffect(() => {
         // ✅ KIỂM TRA: Chỉ connect khi có cả userEmail VÀ token
@@ -29,21 +31,32 @@ export const useNotifications = (userEmail: string) => {
             return;
         }
 
-        console.log('🔌 Connecting WebSocket for user:', userEmail);
+        // ✅ Kiểm tra số lần thử kết nối
+        if (connectionAttemptRef.current >= maxConnectionAttempts) {
+            console.warn('⚠️ Max WebSocket connection attempts reached. Stopping reconnection.');
+            return;
+        }
 
-        const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || 'http://103.176.179.107:8080/ws'; // ✅ ĐỔI URL production
+        connectionAttemptRef.current += 1;
+        console.log(`🔌 Connecting WebSocket for user: ${userEmail} (attempt ${connectionAttemptRef.current}/${maxConnectionAttempts})`);
+
+        // ✅ Lấy URL từ env, fallback về localhost cho dev
+        const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+        console.log('🔌 WebSocket URL:', WEBSOCKET_URL);
 
         const socket = new SockJS(WEBSOCKET_URL);
         const stompClient = new Client({
             webSocketFactory: () => socket,
-            reconnectDelay: 5000,
-            heartbeatIncoming: 20000,  // ✅ Tăng lên 20s
-            heartbeatOutgoing: 20000,  // ✅ Tăng lên 20s
+            reconnectDelay: 0, // ✅ TẮT auto-reconnect, tự xử lý
+            heartbeatIncoming: 20000,
+            heartbeatOutgoing: 20000,
             connectHeaders: { Authorization: `Bearer ${token}` },
 
             onConnect: () => {
-                console.log('✅ WebSocket connected');
+                console.log('✅ WebSocket connected successfully');
                 setIsConnected(true);
+                connectionAttemptRef.current = 0; // Reset counter on success
+
                 const destination = '/user/queue/notifications';
 
                 try {
@@ -68,12 +81,21 @@ export const useNotifications = (userEmail: string) => {
                     console.error('❌ Error during subscription:', error);
                 }
             },
+
             onDisconnect: () => {
                 console.log('🔌 WebSocket disconnected');
                 setIsConnected(false);
             },
+
             onStompError: (frame) => {
                 console.error('❌ STOMP error:', frame);
+                setIsConnected(false);
+                // ✅ KHÔNG retry nữa, để user tự refresh page
+            },
+
+            onWebSocketError: (error) => {
+                console.error('❌ WebSocket error:', error);
+                setIsConnected(false);
             }
         });
 
@@ -82,12 +104,12 @@ export const useNotifications = (userEmail: string) => {
 
         return () => {
             console.log('🔌 Cleaning up WebSocket connection');
+            connectionAttemptRef.current = 0;
             subscriptionRef.current?.unsubscribe();
             stompClientRef.current?.deactivate();
         };
-    }, [userEmail]);
+    }, [userEmail]); // ✅ Chỉ chạy lại khi userEmail thay đổi
 
-    // ✅ Hàm Đánh dấu đã đọc
     const markAsRead = (notificationId: number) => {
         setNotifications(prev =>
             prev.map(n => (String(n.id) === String(notificationId) ? { ...n, isRead: true } : n))
@@ -95,24 +117,19 @@ export const useNotifications = (userEmail: string) => {
         setUnreadCount(prev => Math.max(0, prev - 1));
     };
 
-    // ✅ Hàm Đánh dấu tất cả đã đọc
     const markAllAsRead = () => {
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         setUnreadCount(0);
     };
 
-    // 🔥 HÀM XÓA CỦA BẠN ĐÂY:
     const deleteNotification = (notificationId: number) => {
         setNotifications(prev => {
-            // Tìm thông báo trước khi xóa để kiểm tra trạng thái đọc
             const target = prev.find(n => String(n.id) === String(notificationId));
 
-            // Nếu thông báo tồn tại và chưa đọc, thì trừ unreadCount
             if (target && !target.isRead) {
                 setUnreadCount(count => Math.max(0, count - 1));
             }
 
-            // Trả về danh sách mới đã lọc bỏ thông báo có ID này
             return prev.filter(n => String(n.id) !== String(notificationId));
         });
     };
@@ -123,7 +140,7 @@ export const useNotifications = (userEmail: string) => {
         isConnected,
         markAsRead,
         markAllAsRead,
-        deleteNotification, // ✅ Nhớ export ra để NotificationBell.tsx dùng được
+        deleteNotification,
         setNotifications,
         setUnreadCount,
     };
