@@ -8,8 +8,6 @@ if (typeof (window as any).global === 'undefined') {
     (window as any).global = window;
 }
 
-const WEBSOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws';
-
 export const useNotifications = (userEmail: string) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -19,20 +17,32 @@ export const useNotifications = (userEmail: string) => {
     const subscriptionRef = useRef<StompSubscription | null>(null);
 
     useEffect(() => {
-        if (!userEmail) return;
+        // ✅ KIỂM TRA: Chỉ connect khi có cả userEmail VÀ token
+        if (!userEmail) {
+            console.log('⏸️ No userEmail, skipping WebSocket connection');
+            return;
+        }
 
         const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-        if (!token) return;
+        if (!token) {
+            console.log('⏸️ No token, skipping WebSocket connection');
+            return;
+        }
+
+        console.log('🔌 Connecting WebSocket for user:', userEmail);
+
+        const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || 'http://103.176.179.107:8080/ws'; // ✅ ĐỔI URL production
 
         const socket = new SockJS(WEBSOCKET_URL);
         const stompClient = new Client({
             webSocketFactory: () => socket,
             reconnectDelay: 5000,
-            heartbeatIncoming: 4000,
-            heartbeatOutgoing: 4000,
+            heartbeatIncoming: 20000,  // ✅ Tăng lên 20s
+            heartbeatOutgoing: 20000,  // ✅ Tăng lên 20s
             connectHeaders: { Authorization: `Bearer ${token}` },
 
             onConnect: () => {
+                console.log('✅ WebSocket connected');
                 setIsConnected(true);
                 const destination = '/user/queue/notifications';
 
@@ -58,13 +68,20 @@ export const useNotifications = (userEmail: string) => {
                     console.error('❌ Error during subscription:', error);
                 }
             },
-            onDisconnect: () => setIsConnected(false),
+            onDisconnect: () => {
+                console.log('🔌 WebSocket disconnected');
+                setIsConnected(false);
+            },
+            onStompError: (frame) => {
+                console.error('❌ STOMP error:', frame);
+            }
         });
 
         stompClient.activate();
         stompClientRef.current = stompClient;
 
         return () => {
+            console.log('🔌 Cleaning up WebSocket connection');
             subscriptionRef.current?.unsubscribe();
             stompClientRef.current?.deactivate();
         };
